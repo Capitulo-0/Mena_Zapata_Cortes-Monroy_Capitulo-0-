@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import 'forgot_password_screen.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, required this.onAuthenticated});
+
+  final ValueChanged<bool> onAuthenticated;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -35,6 +38,7 @@ class _AuthScreenState extends State<AuthScreen> {
     registerEmailController.dispose();
     registerPasswordController.dispose();
     registerConfirmPasswordController.dispose();
+
     super.dispose();
   }
 
@@ -72,7 +76,7 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 26),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -86,13 +90,25 @@ class _AuthScreenState extends State<AuthScreen> {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppColors.gold, width: 1.5),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.gold.withValues(alpha: 0.55),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.20),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            child: const Icon(
-              Icons.menu_book_rounded,
-              color: AppColors.gold,
-              size: 38,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: Image.asset(
+                'assets/images/logo_capitulo0.png',
+                fit: BoxFit.cover,
+              ),
             ),
           ),
           const SizedBox(height: 14),
@@ -211,7 +227,9 @@ class _AuthScreenState extends State<AuthScreen> {
         const SizedBox(height: 24),
 
         _buildLabel('Correo electrónico'),
+
         const SizedBox(height: 7),
+
         TextField(
           controller: loginEmailController,
           keyboardType: TextInputType.emailAddress,
@@ -224,7 +242,9 @@ class _AuthScreenState extends State<AuthScreen> {
         const SizedBox(height: 18),
 
         _buildLabel('Contraseña'),
+
         const SizedBox(height: 7),
+
         TextField(
           controller: loginPasswordController,
           obscureText: obscurePassword,
@@ -250,8 +270,10 @@ class _AuthScreenState extends State<AuthScreen> {
           alignment: Alignment.centerRight,
           child: TextButton(
             onPressed: () {
-              showTemporaryMessage(
-                'Recuperación de contraseña será el siguiente paso.',
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ForgotPasswordScreen(),
+                ),
               );
             },
             child: Text(
@@ -276,7 +298,7 @@ class _AuthScreenState extends State<AuthScreen> {
               return;
             }
 
-            showTemporaryMessage('Inicio de sesión simulado correctamente.');
+            widget.onAuthenticated(false);
           },
         ),
 
@@ -330,7 +352,9 @@ class _AuthScreenState extends State<AuthScreen> {
         const SizedBox(height: 24),
 
         _buildLabel('Nombre completo'),
+
         const SizedBox(height: 7),
+
         TextField(
           controller: registerNameController,
           decoration: const InputDecoration(
@@ -342,7 +366,9 @@ class _AuthScreenState extends State<AuthScreen> {
         const SizedBox(height: 18),
 
         _buildLabel('Fecha de nacimiento'),
+
         const SizedBox(height: 7),
+
         TextField(
           controller: registerBirthDateController,
           readOnly: true,
@@ -356,6 +382,7 @@ class _AuthScreenState extends State<AuthScreen> {
         const SizedBox(height: 18),
 
         _buildLabel('Género'),
+
         const SizedBox(height: 7),
 
         DropdownButtonFormField<String>(
@@ -383,7 +410,9 @@ class _AuthScreenState extends State<AuthScreen> {
         const SizedBox(height: 18),
 
         _buildLabel('Correo electrónico'),
+
         const SizedBox(height: 7),
+
         TextField(
           controller: registerEmailController,
           keyboardType: TextInputType.emailAddress,
@@ -396,7 +425,9 @@ class _AuthScreenState extends State<AuthScreen> {
         const SizedBox(height: 18),
 
         _buildLabel('Contraseña'),
+
         const SizedBox(height: 7),
+
         TextField(
           controller: registerPasswordController,
           obscureText: obscurePassword,
@@ -421,7 +452,9 @@ class _AuthScreenState extends State<AuthScreen> {
         const SizedBox(height: 18),
 
         _buildLabel('Confirmar contraseña'),
+
         const SizedBox(height: 7),
+
         TextField(
           controller: registerConfirmPasswordController,
           obscureText: obscureConfirmPassword,
@@ -533,7 +566,7 @@ class _AuthScreenState extends State<AuthScreen> {
       height: 50,
       child: TextButton(
         onPressed: () {
-          showTemporaryMessage('Modo invitado simulado.');
+          widget.onAuthenticated(true);
         },
         child: Text(
           'Iniciar como invitado',
