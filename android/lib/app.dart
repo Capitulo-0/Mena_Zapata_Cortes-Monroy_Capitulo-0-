@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/screens/auth_screen.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
+import 'features/home/presentation/screens/main_shell_screen.dart';
+
+enum AppStage { splash, auth, main }
 
 class CapituloCeroApp extends StatefulWidget {
   const CapituloCeroApp({super.key});
@@ -12,11 +15,27 @@ class CapituloCeroApp extends StatefulWidget {
 }
 
 class _CapituloCeroAppState extends State<CapituloCeroApp> {
-  bool _showSplash = true;
+  AppStage stage = AppStage.splash;
+
+  bool isGuest = false;
 
   void _finishSplash() {
     setState(() {
-      _showSplash = false;
+      stage = AppStage.auth;
+    });
+  }
+
+  void _enterApp(bool guest) {
+    setState(() {
+      isGuest = guest;
+      stage = AppStage.main;
+    });
+  }
+
+  void _logout() {
+    setState(() {
+      isGuest = false;
+      stage = AppStage.auth;
     });
   }
 
@@ -25,14 +44,23 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
     return MaterialApp(
       title: 'Capítulo 0',
       debugShowCheckedModeBanner: false,
-
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.light,
-
-      home: _showSplash
-          ? SplashScreen(onFinished: _finishSplash)
-          : const AuthScreen(),
+      home: _buildCurrentStage(),
     );
+  }
+
+  Widget _buildCurrentStage() {
+    switch (stage) {
+      case AppStage.splash:
+        return SplashScreen(onFinished: _finishSplash);
+
+      case AppStage.auth:
+        return AuthScreen(onAuthenticated: _enterApp);
+
+      case AppStage.main:
+        return MainShellScreen(isGuest: isGuest, onLogout: _logout);
+    }
   }
 }
