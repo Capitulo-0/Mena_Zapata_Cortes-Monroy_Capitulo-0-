@@ -124,7 +124,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppColors.background,
+      color: AppColors.backgroundOf(context),
       child: SafeArea(
         bottom: false,
         child: ListView(
@@ -160,7 +160,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         Text(
           'MI BIBLIOTECA',
           style: GoogleFonts.cinzel(
-            color: AppColors.deep,
+            color: AppColors.textPrimaryOf(context),
             fontSize: 18,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.8,
@@ -170,7 +170,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         Text(
           'Tus libros, progreso, estados y reseñas en un solo lugar.',
           style: GoogleFonts.merriweather(
-            color: AppColors.textSecondary,
+            color: AppColors.textSecondaryOf(context),
             fontSize: 9.5,
             fontStyle: FontStyle.italic,
           ),
@@ -183,7 +183,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.gold.withValues(alpha: 0.55)),
       ),
@@ -206,13 +206,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
         height: 36,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: active ? AppColors.deep : Colors.transparent,
+          color: active ? AppColors.deepOf(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(9),
         ),
         child: Text(
           label,
           style: GoogleFonts.inter(
-            color: active ? AppColors.gold : AppColors.deep,
+            color: active ? AppColors.gold : AppColors.textPrimaryOf(context),
             fontSize: 9,
             fontWeight: FontWeight.w700,
           ),
@@ -226,7 +226,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       height: 42,
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(11),
         border: Border.all(color: AppColors.gold.withValues(alpha: 0.7)),
       ),
@@ -239,13 +239,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
               controller: _searchController,
               onChanged: (value) => setState(() => _query = value),
               style: GoogleFonts.inter(
-                color: AppColors.textPrimary,
+                color: AppColors.textPrimaryOf(context),
                 fontSize: 10,
               ),
               decoration: InputDecoration.collapsed(
                 hintText: 'Buscar en mi biblioteca...',
                 hintStyle: GoogleFonts.inter(
-                  color: AppColors.textSecondary,
+                  color: AppColors.textSecondaryOf(context),
                   fontSize: 9,
                 ),
               ),
@@ -257,9 +257,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 _searchController.clear();
                 setState(() => _query = '');
               },
-              child: const Icon(
+              child: Icon(
                 Icons.close_rounded,
-                color: AppColors.textSecondary,
+                color: AppColors.textSecondaryOf(context),
                 size: 16,
               ),
             ),
@@ -291,7 +291,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           child: _counterCard(
             'Leídos',
             _count(BookStatus.leido),
-            AppColors.deep,
+            AppColors.textPrimaryOf(context),
           ),
         ),
       ],
@@ -302,7 +302,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.75), width: 1.2),
       ),
@@ -320,7 +320,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           Text(
             label,
             style: GoogleFonts.inter(
-              color: AppColors.textSecondary,
+              color: AppColors.textSecondaryOf(context),
               fontSize: 7.5,
             ),
           ),
@@ -353,7 +353,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   vertical: 7,
                 ),
                 decoration: BoxDecoration(
-                  color: active ? AppColors.deep : AppColors.surface,
+                  color: active
+                      ? AppColors.deepOf(context)
+                      : AppColors.surfaceOf(context),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: AppColors.gold.withValues(alpha: 0.55),
@@ -362,7 +364,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 child: Text(
                   tab['label']!,
                   style: GoogleFonts.inter(
-                    color: active ? AppColors.gold : AppColors.textSecondary,
+                    color: active
+                        ? AppColors.gold
+                        : AppColors.textSecondaryOf(context),
                     fontSize: 8.5,
                     fontWeight: FontWeight.w700,
                   ),
@@ -379,7 +383,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.gold.withValues(alpha: 0.35)),
       ),
@@ -397,7 +401,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 : 'No encontramos libros con este filtro.',
             textAlign: TextAlign.center,
             style: GoogleFonts.merriweather(
-              color: AppColors.textSecondary,
+              color: AppColors.textSecondaryOf(context),
               fontSize: 10,
             ),
           ),
@@ -418,12 +422,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: AppColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppColors.gold.withValues(alpha: 0.42)),
           boxShadow: [
             BoxShadow(
-              color: AppColors.deep.withValues(alpha: 0.05),
+              color: AppColors.deepOf(context).withValues(alpha: 0.05),
               blurRadius: 12,
               offset: const Offset(0, 5),
             ),
@@ -447,7 +451,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.merriweather(
-                            color: AppColors.textPrimary,
+                            color: AppColors.textPrimaryOf(context),
                             fontSize: 10.5,
                             fontWeight: FontWeight.w700,
                             height: 1.25,
@@ -462,7 +466,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   Text(
                     book.author,
                     style: GoogleFonts.inter(
-                      color: AppColors.textSecondary,
+                      color: AppColors.textSecondaryOf(context),
                       fontSize: 8,
                     ),
                   ),
@@ -474,7 +478,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           child: Text(
                             'Progreso',
                             style: GoogleFonts.inter(
-                              color: AppColors.textSecondary,
+                              color: AppColors.textSecondaryOf(context),
                               fontSize: 7.5,
                             ),
                           ),
@@ -510,7 +514,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         Text(
                           review.isPublic ? 'Reseña pública' : 'Reseña privada',
                           style: GoogleFonts.inter(
-                            color: AppColors.textSecondary,
+                            color: AppColors.textSecondaryOf(context),
                             fontSize: 7,
                           ),
                         ),
@@ -611,7 +615,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       child: OutlinedButton(
         onPressed: onTap,
         style: OutlinedButton.styleFrom(
-          foregroundColor: AppColors.deep,
+          foregroundColor: AppColors.textPrimaryOf(context),
           side: BorderSide(color: AppColors.gold.withValues(alpha: 0.85)),
           padding: const EdgeInsets.symmetric(horizontal: 8),
           minimumSize: const Size(0, 30),
@@ -640,7 +644,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         break;
       case BookStatus.leido:
         text = 'LEÍDO';
-        color = AppColors.deep;
+        color = AppColors.textPrimaryOf(context);
         break;
     }
 
@@ -670,7 +674,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            ColoredBox(color: AppColors.surfaceSoft),
+            ColoredBox(color: AppColors.surfaceSoftOf(context)),
             FractionallySizedBox(
               alignment: Alignment.centerLeft,
               widthFactor: value.clamp(0.0, 1.0).toDouble(),
@@ -735,7 +739,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
       ),
@@ -753,7 +757,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     Text(
                       title,
                       style: GoogleFonts.merriweather(
-                        color: AppColors.textPrimary,
+                        color: AppColors.textPrimaryOf(context),
                         fontSize: 10.5,
                         fontWeight: FontWeight.w700,
                       ),
@@ -761,7 +765,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     Text(
                       subtitle,
                       style: GoogleFonts.inter(
-                        color: AppColors.textSecondary,
+                        color: AppColors.textSecondaryOf(context),
                         fontSize: 7.5,
                       ),
                     ),
@@ -865,7 +869,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           fit: BoxFit.cover,
           errorBuilder: (_, _, _) {
             return Container(
-              color: AppColors.deep,
+              color: AppColors.deepOf(context),
               alignment: Alignment.center,
               child: const Icon(Icons.menu_book_rounded, color: AppColors.gold),
             );
@@ -938,7 +942,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
     final book = widget.book;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.backgroundOf(context),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.only(bottom: 28),
@@ -951,7 +955,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
               child: Text(
                 book.synopsis,
                 style: GoogleFonts.merriweather(
-                  color: AppColors.textPrimary,
+                  color: AppColors.textPrimaryOf(context),
                   fontSize: 10.5,
                   height: 1.7,
                 ),
@@ -988,7 +992,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
           ),
           const Spacer(),
           PopupMenuButton<String>(
-            color: AppColors.surface,
+            color: AppColors.surfaceOf(context),
             onSelected: (value) async {
               if (value == 'share') {
                 await Clipboard.setData(
@@ -1007,15 +1011,15 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: AppColors.surfaceOf(context),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: AppColors.gold.withValues(alpha: 0.55),
                 ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.more_vert_rounded,
-                color: AppColors.deep,
+                color: AppColors.textPrimaryOf(context),
                 size: 18,
               ),
             ),
@@ -1034,7 +1038,8 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
           Image.network(
             book.cover,
             fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const ColoredBox(color: AppColors.deep),
+            errorBuilder: (_, _, _) =>
+                ColoredBox(color: AppColors.deepOf(context)),
           ),
           const DecoratedBox(
             decoration: BoxDecoration(
@@ -1171,7 +1176,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
           Text(
             '125 reseñas',
             style: GoogleFonts.inter(
-              color: AppColors.textSecondary,
+              color: AppColors.textSecondaryOf(context),
               fontSize: 7.5,
             ),
           ),
@@ -1185,12 +1190,12 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.deep.withValues(alpha: 0.06),
+            color: AppColors.deepOf(context).withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1213,7 +1218,10 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
       padding: const EdgeInsets.only(bottom: 5),
       child: RichText(
         text: TextSpan(
-          style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 8),
+          style: GoogleFonts.inter(
+            color: AppColors.textSecondaryOf(context),
+            fontSize: 8,
+          ),
           children: [
             TextSpan(text: '$label: '),
             TextSpan(
@@ -1221,7 +1229,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
               style: GoogleFonts.inter(
                 color: label == 'Disponibilidad'
                     ? const Color(0xFF3D7A45)
-                    : AppColors.textPrimary,
+                    : AppColors.textPrimaryOf(context),
                 fontSize: 8,
                 fontWeight: FontWeight.w700,
               ),
@@ -1281,7 +1289,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.surfaceOf(context),
               borderRadius: BorderRadius.circular(11),
               border: Border.all(color: AppColors.gold.withValues(alpha: 0.32)),
             ),
@@ -1300,9 +1308,9 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
                         ),
                       ),
                     ),
-                    const Icon(
+                    Icon(
                       Icons.more_vert_rounded,
-                      color: AppColors.textSecondary,
+                      color: AppColors.textSecondaryOf(context),
                       size: 15,
                     ),
                   ],
@@ -1311,7 +1319,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
                 Text(
                   comment['text'] as String,
                   style: GoogleFonts.merriweather(
-                    color: AppColors.textPrimary,
+                    color: AppColors.textPrimaryOf(context),
                     fontSize: 8.5,
                     height: 1.45,
                   ),
@@ -1333,7 +1341,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
                         style: GoogleFonts.inter(
                           color: comment['liked'] == true
                               ? AppColors.accent
-                              : AppColors.textSecondary,
+                              : AppColors.textSecondaryOf(context),
                           fontSize: 7,
                         ),
                       ),
@@ -1414,7 +1422,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
                 ? AppColors.gold
                 : AppColors.accent,
             foregroundColor: _status == BookStatus.leido
-                ? AppColors.deep
+                ? AppColors.deepOf(context)
                 : AppColors.background,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
@@ -1439,7 +1447,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
               child: OutlinedButton(
                 onPressed: _openReviewEditor,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.deep,
+                  foregroundColor: AppColors.textPrimaryOf(context),
                   side: BorderSide(
                     color: AppColors.gold.withValues(alpha: 0.55),
                   ),
@@ -1460,7 +1468,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(11),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: AppColors.surfaceOf(context),
                 borderRadius: BorderRadius.circular(11),
                 border: Border.all(
                   color: AppColors.gold.withValues(alpha: 0.4),
@@ -1498,7 +1506,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
                   Text(
                     '“${_review!.text}”',
                     style: GoogleFonts.merriweather(
-                      color: AppColors.textPrimary,
+                      color: AppColors.textPrimaryOf(context),
                       fontSize: 9,
                       fontStyle: FontStyle.italic,
                       height: 1.5,
@@ -1508,7 +1516,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
                   Text(
                     _review!.isPublic ? '🌐 Pública' : '🔒 Privada',
                     style: GoogleFonts.inter(
-                      color: AppColors.textSecondary,
+                      color: AppColors.textSecondaryOf(context),
                       fontSize: 7,
                     ),
                   ),
@@ -1526,7 +1534,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
           Text(
             title,
             style: GoogleFonts.cinzel(
-              color: AppColors.deep,
+              color: AppColors.textPrimaryOf(context),
               fontSize: 9,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.7,
@@ -1570,7 +1578,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.backgroundOf(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -1599,7 +1607,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
                 Text(
                   widget.book.title,
                   style: GoogleFonts.cinzel(
-                    color: AppColors.deep,
+                    color: AppColors.textPrimaryOf(context),
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1608,7 +1616,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
                 Text(
                   'Lectura gratuita · muestra',
                   style: GoogleFonts.inter(
-                    color: AppColors.textSecondary,
+                    color: AppColors.textSecondaryOf(context),
                     fontSize: 8.5,
                   ),
                 ),
@@ -1619,7 +1627,7 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
                   'como si el libro hubiese esperado exactamente este momento para ser leído.\n\n'
                   'La habitación quedó en silencio y, por unos minutos, todo lo que existía era la historia.',
                   style: GoogleFonts.merriweather(
-                    color: AppColors.textPrimary,
+                    color: AppColors.textPrimaryOf(context),
                     fontSize: 12,
                     height: 1.9,
                   ),
@@ -1660,11 +1668,11 @@ class _BookDetailScreenState extends State<_BookDetailScreen> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          backgroundColor: AppColors.background,
+          backgroundColor: AppColors.backgroundOf(context),
           title: Text(
             'Responder a $user',
             style: GoogleFonts.cinzel(
-              color: AppColors.deep,
+              color: AppColors.textPrimaryOf(context),
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -1741,12 +1749,12 @@ class _ReviewDialogState extends State<_ReviewDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.backgroundOf(context),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       title: Text(
         'Calificar y reseñar',
         style: GoogleFonts.cinzel(
-          color: AppColors.deep,
+          color: AppColors.textPrimaryOf(context),
           fontSize: 15,
           fontWeight: FontWeight.w700,
         ),
@@ -1759,7 +1767,7 @@ class _ReviewDialogState extends State<_ReviewDialog> {
             Text(
               widget.bookTitle,
               style: GoogleFonts.merriweather(
-                color: AppColors.textPrimary,
+                color: AppColors.textPrimaryOf(context),
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
               ),
@@ -1793,7 +1801,7 @@ class _ReviewDialogState extends State<_ReviewDialog> {
               decoration: InputDecoration(
                 hintText: '¿Qué te pareció este libro?',
                 filled: true,
-                fillColor: AppColors.surface,
+                fillColor: AppColors.surfaceOf(context),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -1805,7 +1813,7 @@ class _ReviewDialogState extends State<_ReviewDialog> {
               title: Text(
                 'Reseña pública',
                 style: GoogleFonts.inter(
-                  color: AppColors.textPrimary,
+                  color: AppColors.textPrimaryOf(context),
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1815,7 +1823,7 @@ class _ReviewDialogState extends State<_ReviewDialog> {
                     ? 'Visible para la comunidad'
                     : 'Solo visible para ti',
                 style: GoogleFonts.inter(
-                  color: AppColors.textSecondary,
+                  color: AppColors.textSecondaryOf(context),
                   fontSize: 7.5,
                 ),
               ),

@@ -18,6 +18,7 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
   AppStage stage = AppStage.splash;
 
   bool isGuest = false;
+  bool isDarkMode = false;
 
   void _finishSplash() {
     setState(() {
@@ -39,6 +40,12 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
     });
   }
 
+  void _changeDarkMode(bool value) {
+    setState(() {
+      isDarkMode = value;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -46,7 +53,7 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.light,
+      themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
       home: _buildCurrentStage(),
     );
   }
@@ -60,7 +67,12 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
         return AuthScreen(onAuthenticated: _enterApp);
 
       case AppStage.main:
-        return MainShellScreen(isGuest: isGuest, onLogout: _logout);
+        return MainShellScreen(
+          isGuest: isGuest,
+          onLogout: _logout,
+          isDarkMode: isDarkMode,
+          onDarkModeChanged: _changeDarkMode,
+        );
     }
   }
 }

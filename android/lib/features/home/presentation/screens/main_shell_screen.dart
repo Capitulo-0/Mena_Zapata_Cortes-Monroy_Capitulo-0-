@@ -7,15 +7,21 @@ import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../profile/presentation/screens/settings_screen.dart';
 import 'home_screen.dart';
 
+import 'package:android/features/maps/presentation/screens/maps_screen.dart';
+
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({
     super.key,
     required this.isGuest,
     required this.onLogout,
+    required this.isDarkMode,
+    required this.onDarkModeChanged,
   });
 
   final bool isGuest;
   final VoidCallback onLogout;
+  final bool isDarkMode;
+  final ValueChanged<bool> onDarkModeChanged;
 
   @override
   State<MainShellScreen> createState() => _MainShellScreenState();
@@ -25,7 +31,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
   int selectedIndex = 0;
 
   bool showSettings = false;
-  bool isDarkMode = false;
 
   // Estado compartido de Biblioteca. En el siguiente paso Perfil consumirá
   // exactamente estas mismas colecciones para mantener contadores, reto y estante
@@ -408,7 +413,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.surfaceOf(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -418,9 +423,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.auto_stories_outlined,
-                color: AppColors.gold,
+                color: AppColors.goldOf(context),
                 size: 42,
               ),
               const SizedBox(height: 16),
@@ -428,7 +433,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 title,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.cinzel(
-                  color: AppColors.deep,
+                  color: AppColors.deepOf(context),
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -438,7 +443,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 message,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.inter(
-                  color: AppColors.textSecondary,
+                  color: AppColors.textSecondaryOf(context),
                   fontSize: 12,
                   height: 1.5,
                 ),
@@ -453,8 +458,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     widget.onLogout();
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: AppColors.background,
+                    backgroundColor: AppColors.accentOf(context),
+                    foregroundColor: AppColors.backgroundOf(context),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -473,7 +478,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 child: Text(
                   'Seguir como invitado',
                   style: GoogleFonts.inter(
-                    color: AppColors.accent,
+                    color: AppColors.accentOf(context),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -523,11 +528,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         );
 
       case 3:
-        return _buildPlaceholder(
-          icon: Icons.location_on_outlined,
-          title: 'Puntos Lectores',
-          description: 'Aquí mostraremos cafeterías, bibliotecas y espacios para lectores.',
-        );
+        return const MapsScreen();
 
       case 4:
         return ProfileScreen(
@@ -558,7 +559,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
     required String description,
   }) {
     return ColoredBox(
-      color: AppColors.background,
+      color: AppColors.backgroundOf(context),
       child: SafeArea(
         child: Center(
           child: Padding(
@@ -566,13 +567,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 54, color: AppColors.gold),
+                Icon(icon, size: 54, color: AppColors.goldOf(context)),
                 const SizedBox(height: 18),
                 Text(
                   title,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.cinzel(
-                    color: AppColors.deep,
+                    color: AppColors.deepOf(context),
                     fontSize: 23,
                     fontWeight: FontWeight.w700,
                   ),
@@ -582,7 +583,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   description,
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
-                    color: AppColors.textSecondary,
+                    color: AppColors.textSecondaryOf(context),
                     fontSize: 13,
                     height: 1.5,
                   ),
@@ -606,12 +607,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         },
         onLogout: widget.onLogout,
         onDeleteAccount: widget.onLogout,
-        isDarkMode: isDarkMode,
-        onDarkModeChanged: (value) {
-          setState(() {
-            isDarkMode = value;
-          });
-        },
+        isDarkMode: widget.isDarkMode,
+        onDarkModeChanged: widget.onDarkModeChanged,
         onProfileSaved: (name, username, biography, readingFormat, annualGoal) {
           // En el próximo paso conectaremos
           // estos datos directamente con ProfileScreen.
@@ -620,7 +617,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.backgroundOf(context),
       body: _currentScreen(),
       extendBody: true,
       bottomNavigationBar: _buildBottomNavigation(),
@@ -640,10 +637,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 height: 62,
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: AppColors.deep,
+                  color: AppColors.deepOf(context),
                   borderRadius: BorderRadius.circular(31),
                   border: Border.all(
-                    color: AppColors.gold.withValues(alpha: 0.20),
+                    color: AppColors.goldOf(context).withValues(alpha: 0.20),
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -705,9 +702,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   shape: BoxShape.circle,
                   color: selectedIndex == 2
                       ? const Color(0xFFB58B3D)
-                      : AppColors.gold,
+                      : AppColors.goldOf(context),
                   border: Border.all(
-                    color: AppColors.deep,
+                    color: AppColors.deepOf(context),
                     width: selectedIndex == 2 ? 2 : 1,
                   ),
                   boxShadow: [
@@ -720,7 +717,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 ),
                 child: Icon(
                   selectedIndex == 2 ? Icons.edit_outlined : Icons.add_rounded,
-                  color: AppColors.deep,
+                  color: AppColors.deepOf(context),
                   size: 30,
                 ),
               ),
@@ -748,7 +745,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         duration: const Duration(milliseconds: 220),
         height: 50,
         decoration: BoxDecoration(
-          color: active ? AppColors.gold : Colors.transparent,
+          color: active ? AppColors.goldOf(context) : Colors.transparent,
           borderRadius: BorderRadius.circular(25),
         ),
         child: Column(
@@ -757,8 +754,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
             Icon(
               active ? activeIcon : icon,
               color: active
-                  ? AppColors.deep
-                  : AppColors.background.withValues(alpha: 0.68),
+                  ? AppColors.deepOf(context)
+                  : AppColors.backgroundOf(context).withValues(alpha: 0.68),
               size: 23,
             ),
             if (active) ...[
@@ -768,7 +765,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
-                  color: AppColors.deep,
+                  color: AppColors.deepOf(context),
                   fontSize: 8,
                   fontWeight: FontWeight.w700,
                 ),

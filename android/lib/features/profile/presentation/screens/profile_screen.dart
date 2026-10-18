@@ -36,6 +36,26 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
+
+  Color get _backgroundColor =>
+      _isDarkMode ? AppColors.darkBackground : AppColors.background;
+
+  Color get _surfaceColor =>
+      _isDarkMode ? AppColors.darkSurface : AppColors.surface;
+
+  Color get _textPrimaryColor =>
+      _isDarkMode ? AppColors.darkTextPrimary : AppColors.textPrimary;
+
+  Color get _textSecondaryColor =>
+      _isDarkMode ? AppColors.darkTextSecondary : AppColors.textSecondary;
+
+  Color get _headingColor =>
+      _isDarkMode ? AppColors.darkTextPrimary : AppColors.deep;
+
+  Color get _deepSurfaceColor =>
+      _isDarkMode ? AppColors.darkDeep : AppColors.deep;
+
   final ScrollController _moodController = ScrollController();
 
   String _selectedTab = 'favoritos';
@@ -177,7 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppColors.background,
+      color: _backgroundColor,
       child: SafeArea(
         bottom: false,
         child: ListView(
@@ -213,7 +233,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Text(
             'MI PERFIL LITERARIO',
             style: GoogleFonts.cinzel(
-              color: AppColors.deep,
+              color: _headingColor,
               fontSize: 16,
               fontWeight: FontWeight.w700,
             ),
@@ -226,13 +246,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 38,
             height: 36,
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: _surfaceColor,
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppColors.gold),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.settings_outlined,
-              color: AppColors.deep,
+              color: _headingColor,
               size: 18,
             ),
           ),
@@ -245,7 +265,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.gold, width: 1.3),
       ),
@@ -270,7 +290,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fit: BoxFit.cover,
                         errorBuilder: (_, _, _) {
                           return Container(
-                            color: AppColors.deep,
+                            color: _deepSurfaceColor,
                             alignment: Alignment.center,
                             child: Text(
                               'C',
@@ -292,7 +312,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color: AppColors.surface,
+                        color: _surfaceColor,
                         shape: BoxShape.circle,
                         border: Border.all(color: AppColors.gold, width: 2),
                         boxShadow: [
@@ -320,7 +340,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text(
                       'Constanza Mena',
                       style: GoogleFonts.merriweather(
-                        color: AppColors.textPrimary,
+                        color: _textPrimaryColor,
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
@@ -338,7 +358,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text(
                       'Miembro desde: Marzo 2024',
                       style: GoogleFonts.inter(
-                        color: AppColors.textSecondary,
+                        color: _textSecondaryColor,
                         fontSize: 8,
                       ),
                     ),
@@ -354,7 +374,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               'Amante de las novelas góticas victorianas y los clásicos de siempre 🌹 '
               'Estudiante de Ingeniería en Informática.',
               style: GoogleFonts.merriweather(
-                color: AppColors.textPrimary,
+                color: _textPrimaryColor,
                 fontSize: 10,
                 height: 1.55,
               ),
@@ -418,7 +438,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Text(
               value,
               style: GoogleFonts.inter(
-                color: highlighted ? AppColors.accent : AppColors.deep,
+                color: highlighted ? AppColors.accent : _headingColor,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -428,7 +448,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               label,
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
-                color: AppColors.textSecondary,
+                color: _textSecondaryColor,
                 fontSize: 7,
                 decoration: highlighted ? TextDecoration.underline : null,
               ),
@@ -453,7 +473,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text(
                       'ESTADO LECTOR',
                       style: GoogleFonts.cinzel(
-                        color: AppColors.deep,
+                        color: _headingColor,
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                       ),
@@ -461,7 +481,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text(
                       'Visible en tu perfil',
                       style: GoogleFonts.inter(
-                        color: AppColors.textSecondary,
+                        color: _textSecondaryColor,
                         fontSize: 7,
                       ),
                     ),
@@ -487,7 +507,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: _backgroundColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.gold.withValues(alpha: 0.35)),
             ),
@@ -505,7 +525,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Text(
                         _currentMood['label']!,
                         style: GoogleFonts.merriweather(
-                          color: AppColors.textPrimary,
+                          color: _textPrimaryColor,
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                         ),
@@ -514,7 +534,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Text(
                         _currentMood['detail']!,
                         style: GoogleFonts.inter(
-                          color: AppColors.textSecondary,
+                          color: _textSecondaryColor,
                           fontSize: 7.5,
                         ),
                       ),
@@ -558,7 +578,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         width: 30,
         height: 30,
         decoration: BoxDecoration(
-          color: AppColors.deep,
+          color: _deepSurfaceColor,
           shape: BoxShape.circle,
           border: Border.all(color: AppColors.gold.withValues(alpha: 0.55)),
         ),
@@ -578,7 +598,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         width: 116,
         padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(
-          color: selected ? AppColors.deep : AppColors.background,
+          color: selected ? _deepSurfaceColor : _backgroundColor,
           borderRadius: BorderRadius.circular(11),
           border: Border.all(
             color: selected
@@ -596,9 +616,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
-                  color: selected
-                      ? AppColors.background
-                      : AppColors.textPrimary,
+                  color: selected ? AppColors.background : _textPrimaryColor,
                   fontSize: 7.5,
                   fontWeight: FontWeight.w700,
                 ),
@@ -638,7 +656,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: _backgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -657,7 +675,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text(
                 'ESTADO PERSONALIZADO',
                 style: GoogleFonts.cinzel(
-                  color: AppColors.deep,
+                  color: _headingColor,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
@@ -734,7 +752,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Text(
                   'MIS CLUBES DE LECTURA',
                   style: GoogleFonts.cinzel(
-                    color: AppColors.deep,
+                    color: _headingColor,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                   ),
@@ -755,14 +773,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppColors.background,
+              color: _backgroundColor,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: AppColors.gold.withValues(alpha: 0.25)),
             ),
             child: Text(
               'Aún no te has unido a un club desde Inicio.',
               style: GoogleFonts.merriweather(
-                color: AppColors.textSecondary,
+                color: _textSecondaryColor,
                 fontSize: 8.5,
                 fontStyle: FontStyle.italic,
               ),
@@ -780,7 +798,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(16),
         border: const Border(
           left: BorderSide(color: AppColors.gold, width: 4),
@@ -811,7 +829,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Text(
                       'CITA FAVORITA ANCLADA',
                       style: GoogleFonts.cinzel(
-                        color: AppColors.deep,
+                        color: _headingColor,
                         fontSize: 9,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
@@ -847,7 +865,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Text(
                   '“${quote['text']}”',
                   style: GoogleFonts.merriweather(
-                    color: AppColors.textPrimary,
+                    color: _textPrimaryColor,
                     fontSize: 10,
                     fontStyle: FontStyle.italic,
                     height: 1.55,
@@ -858,7 +876,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text(
                 '— ${quote['author']}${work.isEmpty ? '' : ' · $work'}',
                 style: GoogleFonts.inter(
-                  color: AppColors.textSecondary,
+                  color: _textSecondaryColor,
                   fontSize: 7,
                 ),
               ),
@@ -879,7 +897,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Text(
             'GÉNEROS MÁS LEÍDOS',
             style: GoogleFonts.cinzel(
-              color: AppColors.deep,
+              color: _headingColor,
               fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
@@ -888,10 +906,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (genres.isEmpty)
             Text(
               'Cuando finalices libros, aquí aparecerá tu ADN lector.',
-              style: GoogleFonts.inter(
-                color: AppColors.textSecondary,
-                fontSize: 8,
-              ),
+              style: GoogleFonts.inter(color: _textSecondaryColor, fontSize: 8),
             )
           else
             ...genres.map((entry) {
@@ -907,7 +922,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: Text(
                             entry.key,
                             style: GoogleFonts.inter(
-                              color: AppColors.textPrimary,
+                              color: _textPrimaryColor,
                               fontSize: 8.5,
                               fontWeight: FontWeight.w600,
                             ),
@@ -941,7 +956,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return Container(
           height: height,
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: _surfaceColor,
             borderRadius: BorderRadius.circular(height),
             border: Border.all(color: AppColors.gold.withValues(alpha: 0.25)),
           ),
@@ -981,7 +996,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Text(
                   'RETO DE LECTURA ANUAL',
                   style: GoogleFonts.cinzel(
-                    color: AppColors.deep,
+                    color: _headingColor,
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1006,7 +1021,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Text(
                   '${(progress * 100).round()}% completado',
                   style: GoogleFonts.inter(
-                    color: AppColors.textSecondary,
+                    color: _textSecondaryColor,
                     fontSize: 8,
                   ),
                 ),
@@ -1044,7 +1059,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: _backgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -1058,7 +1073,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text(
                 'REGISTRAR LIBRO FINALIZADO',
                 style: GoogleFonts.cinzel(
-                  color: AppColors.deep,
+                  color: _headingColor,
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1067,7 +1082,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Text(
                 'Elige un libro de tu biblioteca. Al marcarlo como leído se sumará automáticamente al reto y al estante.',
                 style: GoogleFonts.inter(
-                  color: AppColors.textSecondary,
+                  color: _textSecondaryColor,
                   fontSize: 8.5,
                   height: 1.4,
                 ),
@@ -1080,7 +1095,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Text(
                       'Todos tus libros actuales ya están finalizados.',
                       style: GoogleFonts.merriweather(
-                        color: AppColors.textSecondary,
+                        color: _textSecondaryColor,
                         fontSize: 9,
                       ),
                     ),
@@ -1107,7 +1122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             errorBuilder: (_, _, _) => Container(
                               width: 38,
                               height: 52,
-                              color: AppColors.deep,
+                              color: _deepSurfaceColor,
                               child: const Icon(
                                 Icons.menu_book,
                                 color: AppColors.gold,
@@ -1182,7 +1197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Text(
                   tab['label']!,
                   style: GoogleFonts.inter(
-                    color: active ? AppColors.accent : AppColors.textSecondary,
+                    color: active ? AppColors.accent : _textSecondaryColor,
                     fontSize: 8,
                     fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -1235,7 +1250,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: _surfaceColor,
               borderRadius: BorderRadius.circular(13),
               border: Border.all(color: AppColors.gold.withValues(alpha: 0.38)),
             ),
@@ -1251,7 +1266,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         book.cover,
                         fit: BoxFit.cover,
                         errorBuilder: (_, _, _) => Container(
-                          color: AppColors.deep,
+                          color: _deepSurfaceColor,
                           child: const Icon(
                             Icons.menu_book,
                             color: AppColors.gold,
@@ -1267,7 +1282,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.merriweather(
-                    color: AppColors.textPrimary,
+                    color: _textPrimaryColor,
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1278,7 +1293,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.inter(
-                    color: AppColors.textSecondary,
+                    color: _textSecondaryColor,
                     fontSize: 7,
                   ),
                 ),
@@ -1324,7 +1339,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: _surfaceColor,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: AppColors.gold.withValues(alpha: 0.36),
@@ -1343,7 +1358,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       errorBuilder: (_, _, _) => Container(
                         width: 52,
                         height: 74,
-                        color: AppColors.deep,
+                        color: _deepSurfaceColor,
                         child: const Icon(
                           Icons.menu_book,
                           color: AppColors.gold,
@@ -1359,7 +1374,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Text(
                           book.title,
                           style: GoogleFonts.merriweather(
-                            color: AppColors.textPrimary,
+                            color: _textPrimaryColor,
                             fontSize: 9.5,
                             fontWeight: FontWeight.w700,
                           ),
@@ -1378,7 +1393,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.merriweather(
-                            color: AppColors.textSecondary,
+                            color: _textSecondaryColor,
                             fontSize: 7.7,
                             height: 1.4,
                           ),
@@ -1416,13 +1431,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.deep.withValues(alpha: 0.08),
+        color: _headingColor.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         text,
         style: GoogleFonts.inter(
-          color: AppColors.deep,
+          color: _headingColor,
           fontSize: 6.5,
           fontWeight: FontWeight.w700,
         ),
@@ -1446,7 +1461,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text(
                       'MI ESTANTE LEÍDO',
                       style: GoogleFonts.cinzel(
-                        color: AppColors.deep,
+                        color: _headingColor,
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1455,7 +1470,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text(
                       'Cada lectura terminada deja un libro en tu colección.',
                       style: GoogleFonts.inter(
-                        color: AppColors.textSecondary,
+                        color: _textSecondaryColor,
                         fontSize: 7,
                       ),
                     ),
@@ -1503,7 +1518,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Text(
               'Cuando finalices un libro desde Mi Biblioteca aparecerá automáticamente aquí.',
               style: GoogleFonts.merriweather(
-                color: AppColors.textSecondary,
+                color: _textSecondaryColor,
                 fontSize: 8,
                 fontStyle: FontStyle.italic,
               ),
@@ -1945,7 +1960,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showExpandedShelf() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.background,
+      backgroundColor: _backgroundColor,
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
@@ -1968,7 +1983,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text(
                             'MI BIBLIOTECA PERSONAL',
                             style: GoogleFonts.inter(
-                              color: AppColors.textSecondary,
+                              color: _textSecondaryColor,
                               fontSize: 7.5,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1977,7 +1992,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text(
                             'MIS LECTURAS',
                             style: GoogleFonts.cinzel(
-                              color: AppColors.deep,
+                              color: _headingColor,
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
                             ),
@@ -1986,7 +2001,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Text(
                             'Portadas, lomos y pequeñas historias de una colección que sigue creciendo.',
                             style: GoogleFonts.merriweather(
-                              color: AppColors.textSecondary,
+                              color: _textSecondaryColor,
                               fontSize: 8,
                               height: 1.35,
                             ),
@@ -2045,7 +2060,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text(
                       'Los libros del usuario son interactivos.',
                       style: GoogleFonts.inter(
-                        color: AppColors.textSecondary,
+                        color: _textSecondaryColor,
                         fontSize: 6.5,
                       ),
                     ),
@@ -2077,7 +2092,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Text(
             'MIS OBRAS',
             style: GoogleFonts.cinzel(
-              color: AppColors.deep,
+              color: _headingColor,
               fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
@@ -2090,7 +2105,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               height: 56,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: AppColors.deep,
+                color: _deepSurfaceColor,
                 borderRadius: BorderRadius.circular(7),
               ),
               child: const Icon(Icons.auto_stories, color: AppColors.gold),
@@ -2138,7 +2153,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: _surfaceColor,
             borderRadius: BorderRadius.circular(13),
             border: Border.all(color: AppColors.gold.withValues(alpha: 0.32)),
           ),
@@ -2147,7 +2162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             badges[index],
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
-              color: AppColors.deep,
+              color: _headingColor,
               fontSize: 8,
               fontWeight: FontWeight.w700,
               height: 1.4,
@@ -2163,7 +2178,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.gold.withValues(alpha: 0.35)),
       ),
@@ -2171,7 +2186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         text,
         textAlign: TextAlign.center,
         style: GoogleFonts.merriweather(
-          color: AppColors.textSecondary,
+          color: _textSecondaryColor,
           fontSize: 8.5,
           fontStyle: FontStyle.italic,
         ),
@@ -2186,7 +2201,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.gold.withValues(alpha: 0.38)),
       ),
@@ -2220,7 +2235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: _backgroundColor,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
@@ -2243,7 +2258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: Text(
                             title.toUpperCase(),
                             style: GoogleFonts.cinzel(
-                              color: AppColors.deep,
+                              color: _headingColor,
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                             ),
@@ -2264,7 +2279,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
                             leading: CircleAvatar(
-                              backgroundColor: AppColors.deep,
+                              backgroundColor: _deepSurfaceColor,
                               foregroundColor: AppColors.gold,
                               child: Text(user['initial']!),
                             ),
@@ -2314,7 +2329,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: _backgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -2326,7 +2341,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               CircleAvatar(
                 radius: 34,
-                backgroundColor: AppColors.deep,
+                backgroundColor: _deepSurfaceColor,
                 foregroundColor: AppColors.gold,
                 child: Text(
                   user['initial']!,
@@ -2409,6 +2424,26 @@ class _ProfileBookDetailScreen extends StatefulWidget {
 }
 
 class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
+  bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
+
+  Color get _backgroundColor =>
+      _isDarkMode ? AppColors.darkBackground : AppColors.background;
+
+  Color get _surfaceColor =>
+      _isDarkMode ? AppColors.darkSurface : AppColors.surface;
+
+  Color get _textPrimaryColor =>
+      _isDarkMode ? AppColors.darkTextPrimary : AppColors.textPrimary;
+
+  Color get _textSecondaryColor =>
+      _isDarkMode ? AppColors.darkTextSecondary : AppColors.textSecondary;
+
+  Color get _headingColor =>
+      _isDarkMode ? AppColors.darkTextPrimary : AppColors.deep;
+
+  Color get _deepSurfaceColor =>
+      _isDarkMode ? AppColors.darkDeep : AppColors.deep;
+
   late BookStatus? _status;
   late int _progress;
   late BookReview? _review;
@@ -2441,18 +2476,18 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _backgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.background,
+        backgroundColor: _backgroundColor,
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.deep),
+          icon: Icon(Icons.arrow_back_rounded, color: _headingColor),
         ),
         title: Text(
           'DETALLE DEL LIBRO',
           style: GoogleFonts.cinzel(
-            color: AppColors.deep,
+            color: _headingColor,
             fontSize: 13,
             fontWeight: FontWeight.w700,
           ),
@@ -2460,7 +2495,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
         actions: [
           IconButton(
             onPressed: _shareBook,
-            icon: const Icon(Icons.ios_share_rounded, color: AppColors.deep),
+            icon: Icon(Icons.ios_share_rounded, color: _headingColor),
           ),
           IconButton(
             onPressed: () {
@@ -2471,7 +2506,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
               _favorite
                   ? Icons.favorite_rounded
                   : Icons.favorite_border_rounded,
-              color: _favorite ? AppColors.accent : AppColors.deep,
+              color: _favorite ? AppColors.accent : _headingColor,
             ),
           ),
         ],
@@ -2501,7 +2536,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: AppColors.gold.withValues(alpha: 0.38)),
       ),
@@ -2524,7 +2559,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
               errorBuilder: (_, _, _) => Container(
                 width: 92,
                 height: 132,
-                color: AppColors.deep,
+                color: _deepSurfaceColor,
                 child: const Icon(
                   Icons.menu_book_rounded,
                   color: AppColors.gold,
@@ -2541,7 +2576,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
                 Text(
                   widget.book.title,
                   style: GoogleFonts.merriweather(
-                    color: AppColors.textPrimary,
+                    color: _textPrimaryColor,
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                   ),
@@ -2587,10 +2622,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
           Expanded(
             child: Text(
               text,
-              style: GoogleFonts.inter(
-                color: AppColors.textSecondary,
-                fontSize: 8,
-              ),
+              style: GoogleFonts.inter(color: _textSecondaryColor, fontSize: 8),
             ),
           ),
         ],
@@ -2608,7 +2640,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
           Text(
             widget.book.synopsis,
             style: GoogleFonts.merriweather(
-              color: AppColors.textPrimary,
+              color: _textPrimaryColor,
               fontSize: 9,
               height: 1.55,
             ),
@@ -2651,7 +2683,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
             child: Text(
               label,
               style: GoogleFonts.inter(
-                color: AppColors.textSecondary,
+                color: _textSecondaryColor,
                 fontSize: 8,
                 fontWeight: FontWeight.w600,
               ),
@@ -2661,7 +2693,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
             child: Text(
               value,
               style: GoogleFonts.inter(
-                color: AppColors.textPrimary,
+                color: _textPrimaryColor,
                 fontSize: 8,
                 fontWeight: FontWeight.w700,
               ),
@@ -2748,8 +2780,8 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
         }
       },
       style: OutlinedButton.styleFrom(
-        foregroundColor: selected ? AppColors.background : AppColors.deep,
-        backgroundColor: selected ? AppColors.accent : AppColors.surface,
+        foregroundColor: selected ? AppColors.background : _headingColor,
+        backgroundColor: selected ? AppColors.accent : _surfaceColor,
         side: BorderSide(color: selected ? AppColors.accent : AppColors.gold),
         padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
         textStyle: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w700),
@@ -2766,7 +2798,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
         icon: const Icon(Icons.menu_book_rounded, size: 18),
         label: const Text('Leer gratis'),
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.deep,
+          backgroundColor: _deepSurfaceColor,
           foregroundColor: AppColors.background,
           padding: const EdgeInsets.symmetric(vertical: 13),
           shape: RoundedRectangleBorder(
@@ -2796,7 +2828,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
             Text(
               'Todavía no has reseñado este libro.',
               style: GoogleFonts.merriweather(
-                color: AppColors.textSecondary,
+                color: _textSecondaryColor,
                 fontSize: 8.5,
                 fontStyle: FontStyle.italic,
               ),
@@ -2841,7 +2873,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.background,
+                  color: _backgroundColor,
                   borderRadius: BorderRadius.circular(11),
                   border: Border.all(
                     color: AppColors.gold.withValues(alpha: 0.25),
@@ -2888,7 +2920,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
                           style: TextButton.styleFrom(
                             foregroundColor: (comment['liked'] as bool)
                                 ? AppColors.accent
-                                : AppColors.textSecondary,
+                                : _textSecondaryColor,
                             textStyle: GoogleFonts.inter(fontSize: 7.5),
                           ),
                         ),
@@ -2919,7 +2951,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
     return Text(
       text,
       style: GoogleFonts.cinzel(
-        color: AppColors.deep,
+        color: _headingColor,
         fontSize: 9.5,
         fontWeight: FontWeight.w700,
       ),
@@ -2942,7 +2974,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
       context: context,
       useSafeArea: true,
       isScrollControlled: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: _backgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -2959,7 +2991,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
                       child: Text(
                         widget.book.title,
                         style: GoogleFonts.cinzel(
-                          color: AppColors.deep,
+                          color: _headingColor,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
@@ -2981,7 +3013,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
                       '${widget.book.synopsis}\n\n'
                       '— Fin de la muestra —',
                       style: GoogleFonts.merriweather(
-                        color: AppColors.textPrimary,
+                        color: _textPrimaryColor,
                         fontSize: 12,
                         height: 1.8,
                       ),
@@ -3005,7 +3037,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: _backgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
@@ -3026,7 +3058,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
                   Text(
                     'CALIFICAR Y RESEÑAR',
                     style: GoogleFonts.cinzel(
-                      color: AppColors.deep,
+                      color: _headingColor,
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
                     ),

@@ -50,6 +50,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
   final Set<int> joinedClubs = {};
 
+  // Colores adaptativos al tema global.
+  Color get _background => AppColors.backgroundOf(context);
+  Color get _surface => AppColors.surfaceOf(context);
+  Color get _surfaceSoft => AppColors.surfaceSoftOf(context);
+  Color get _deepSurface => AppColors.deepOf(context);
+  Color get _deepAltSurface => AppColors.deepAltOf(context);
+  Color get _textPrimary => AppColors.textPrimaryOf(context);
+  Color get _textSecondary => AppColors.textSecondaryOf(context);
+  Color get _gold => AppColors.goldOf(context);
+  Color get _accent => AppColors.accentOf(context);
+
+  // Colores de contenido sobre fondos oscuros, burdeos o dorados.
+  Color get _onDeep => AppColors.isDark(context)
+      ? AppColors.darkTextPrimary
+      : AppColors.background;
+  Color get _onAccent => AppColors.isDark(context)
+      ? AppColors.darkTextPrimary
+      : AppColors.background;
+  Color get _goldInk => AppColors.deep;
+
   final List<Map<String, String>> quotes = [
     {
       'text': 'No hay encanto igual a la ternura del corazón.',
@@ -84,10 +104,8 @@ class _HomeScreenState extends State<HomeScreen> {
       'genre': 'Romance Clásico',
       'availability': 'GRATIS',
       'isbn': '978-84-9105-027-8',
-      'cover':
-      'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=560&fit=crop&auto=format',
-      'synopsis':
-      'Elizabeth Bennet y el enigmático señor Darcy se encuentran envueltos en un juego de prejuicios, primeras impresiones y sentimientos inesperados.',
+      'cover': 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=560&fit=crop&auto=format',
+      'synopsis': 'Elizabeth Bennet y el enigmático señor Darcy se encuentran envueltos en un juego de prejuicios, primeras impresiones y sentimientos inesperados.',
     },
     {
       'id': 2,
@@ -99,10 +117,8 @@ class _HomeScreenState extends State<HomeScreen> {
       'genre': 'Ficción Gótica',
       'availability': 'GRATIS',
       'isbn': '978-84-206-6415-6',
-      'cover':
-      'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=560&fit=crop&auto=format',
-      'synopsis':
-      'En los páramos de Yorkshire, el amor tortuoso entre Heathcliff y Catherine trasciende el tiempo en una historia oscura y apasionada.',
+      'cover': 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=560&fit=crop&auto=format',
+      'synopsis': 'En los páramos de Yorkshire, el amor tortuoso entre Heathcliff y Catherine trasciende el tiempo en una historia oscura y apasionada.',
     },
     {
       'id': 3,
@@ -114,10 +130,8 @@ class _HomeScreenState extends State<HomeScreen> {
       'genre': 'Romance Victoriano',
       'availability': 'GRATIS',
       'isbn': '978-84-9794-061-0',
-      'cover':
-      'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&h=560&fit=crop&auto=format',
-      'synopsis':
-      'Huérfana y sin fortuna, Jane Eyre descubre en Thornfield Hall secretos oscuros y un amor prohibido.',
+      'cover': 'https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&h=560&fit=crop&auto=format',
+      'synopsis': 'Huérfana y sin fortuna, Jane Eyre descubre en Thornfield Hall secretos oscuros y un amor prohibido.',
     },
     {
       'id': 4,
@@ -129,10 +143,8 @@ class _HomeScreenState extends State<HomeScreen> {
       'genre': 'Drama Clásico',
       'availability': 'GRATIS',
       'isbn': '978-84-9105-028-5',
-      'cover':
-      'https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=400&h=560&fit=crop&auto=format',
-      'synopsis':
-      'Las hermanas Dashwood experimentan las dificultades del amor, la decepción y el matrimonio en la sociedad inglesa.',
+      'cover': 'https://images.unsplash.com/photo-1495640388908-05fa85288e61?w=400&h=560&fit=crop&auto=format',
+      'synopsis': 'Las hermanas Dashwood experimentan las dificultades del amor, la decepción y el matrimonio en la sociedad inglesa.',
     },
     {
       'id': 5,
@@ -144,10 +156,8 @@ class _HomeScreenState extends State<HomeScreen> {
       'genre': 'Terror Gótico',
       'availability': 'GRATIS',
       'isbn': '978-84-670-4965-7',
-      'cover':
-      'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&h=560&fit=crop&auto=format',
-      'synopsis':
-      'Un científico obsesionado desafía las leyes naturales creando una criatura que deberá enfrentarse al rechazo del mundo.',
+      'cover': 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&h=560&fit=crop&auto=format',
+      'synopsis': 'Un científico obsesionado desafía las leyes naturales creando una criatura que deberá enfrentarse al rechazo del mundo.',
     },
   ];
 
@@ -158,8 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'members': 342,
       'book': 'Cumbres Borrascosas',
       'date': 'Viernes 20:00',
-      'description':
-      'Un espacio para quienes aman los grandes clásicos de la literatura universal. Cada semana conversamos sobre capítulos, personajes y contexto histórico.',
+      'description': 'Un espacio para quienes aman los grandes clásicos de la literatura universal. Cada semana conversamos sobre capítulos, personajes y contexto histórico.',
     },
     {
       'id': 2,
@@ -167,8 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'members': 189,
       'book': 'Jane Eyre',
       'date': 'Sábado 18:30',
-      'description':
-      'Para amantes de la literatura gótica y victoriana. Misterio, romanticismo oscuro y personajes inolvidables.',
+      'description': 'Para amantes de la literatura gótica y victoriana. Misterio, romanticismo oscuro y personajes inolvidables.',
     },
     {
       'id': 3,
@@ -176,8 +184,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'members': 98,
       'book': 'El Jardín de los Recuerdos',
       'date': 'Miércoles 19:00',
-      'description':
-      'Club dedicado a literatura latinoamericana contemporánea y autores independientes.',
+      'description': 'Club dedicado a literatura latinoamericana contemporánea y autores independientes.',
     },
   ];
 
@@ -186,13 +193,11 @@ class _HomeScreenState extends State<HomeScreen> {
       'title': 'El Jardín de los Recuerdos',
       'author': 'Valentina Cruz',
       'user': '@valentinacruz',
-      'bio':
-      'Escritora independiente. Historias de memoria, naturaleza y pequeños lugares que guardan grandes recuerdos.',
+      'bio': 'Escritora independiente. Historias de memoria, naturaleza y pequeños lugares que guardan grandes recuerdos.',
       'memberSince': 'Enero 2025',
-      'extract':
-      '“Las flores que plantamos en silencio son las que más fragantes florecen cuando nadie las mira...”',
+      'extract': '“Las flores que plantamos en silencio son las que más fragantes florecen cuando nadie las mira...”',
       'full':
-      'Capítulo 1: El silencio del rosal\n\n'
+          'Capítulo 1: El silencio del rosal\n\n'
           'Las flores que plantamos en silencio son las que más fragantes florecen cuando nadie las mira. '
           'Caminé entre los senderos de piedra húmeda recordando que cada hoja caída guardaba una promesa rota.\n\n'
           'Capítulo 2: La memoria del jardín\n\n'
@@ -202,13 +207,11 @@ class _HomeScreenState extends State<HomeScreen> {
       'title': 'Cartas desde el Faro',
       'author': '@MarcoIbanez17',
       'user': '@MarcoIbanez17',
-      'bio':
-      'Autor independiente de relatos melancólicos, mar, distancia y personajes que escriben para no olvidar.',
+      'bio': 'Autor independiente de relatos melancólicos, mar, distancia y personajes que escriben para no olvidar.',
       'memberSince': 'Agosto 2024',
-      'extract':
-      '“Cada noche enciendo la luz para los barcos perdidos, sin saber que yo mismo soy el más perdido de todos...”',
+      'extract': '“Cada noche enciendo la luz para los barcos perdidos, sin saber que yo mismo soy el más perdido de todos...”',
       'full':
-      'El faro despertaba cada tarde antes que el sol desapareciera detrás del horizonte.\n\n'
+          'El faro despertaba cada tarde antes que el sol desapareciera detrás del horizonte.\n\n'
           'Yo encendía su luz sin saber si alguien realmente la estaba esperando. '
           'Las cartas seguían llegando, aunque ninguna llevaba remitente.',
     },
@@ -216,13 +219,11 @@ class _HomeScreenState extends State<HomeScreen> {
       'title': 'Sombras bajo la lluvia',
       'author': '@constanza.lectora',
       'user': '@constanza.lectora',
-      'bio':
-      'Amante de las novelas góticas victorianas y los clásicos de siempre 🌹 Estudiante de Ingeniería en Informática.',
+      'bio': 'Amante de las novelas góticas victorianas y los clásicos de siempre 🌹 Estudiante de Ingeniería en Informática.',
       'memberSince': 'Marzo 2024',
-      'extract':
-      'Una estudiante encuentra cartas anónimas escondidas entre los libros de una vieja biblioteca y descubre que todas parecen dirigidas a ella.',
+      'extract': 'Una estudiante encuentra cartas anónimas escondidas entre los libros de una vieja biblioteca y descubre que todas parecen dirigidas a ella.',
       'full':
-      'La lluvia golpeaba los ventanales de la biblioteca cuando encontré la primera carta.\n\n'
+          'La lluvia golpeaba los ventanales de la biblioteca cuando encontré la primera carta.\n\n'
           'No tenía nombre ni fecha. Solo una frase escrita con tinta oscura: '
           '“Si estás leyendo esto, llegaste antes de que fuera demasiado tarde.”',
     },
@@ -234,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     quoteTimer = Timer.periodic(
       const Duration(seconds: 40),
-          (_) => _changeQuote(),
+      (_) => _changeQuote(),
     );
   }
 
@@ -290,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (searchFilter == 'calificados') {
       result.sort(
-            (a, b) => (b['rating'] as double).compareTo(a['rating'] as double),
+        (a, b) => (b['rating'] as double).compareTo(a['rating'] as double),
       );
     }
 
@@ -299,34 +300,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
   ButtonStyle _accentButtonStyle({double height = 31}) {
     return FilledButton.styleFrom(
-      backgroundColor: AppColors.accent,
-      foregroundColor: AppColors.background,
+      backgroundColor: _accent,
+      foregroundColor: _onAccent,
       minimumSize: Size(0, height),
       padding: const EdgeInsets.symmetric(horizontal: 11),
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(7),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
     );
   }
 
   ButtonStyle _outlineButtonStyle({double height = 31}) {
     return OutlinedButton.styleFrom(
-      foregroundColor: AppColors.deep,
+      foregroundColor: _textPrimary,
       minimumSize: Size(0, height),
       padding: const EdgeInsets.symmetric(horizontal: 10),
       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      side: const BorderSide(color: AppColors.gold),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(7),
-      ),
+      side: BorderSide(color: _gold),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppColors.background,
+      color: _background,
       child: SafeArea(
         bottom: false,
         child: ListView(
@@ -353,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildTopHeader() {
     return Container(
-      color: AppColors.deep,
+      color: _deepSurface,
       padding: const EdgeInsets.fromLTRB(15, 10, 13, 10),
       child: Row(
         children: [
@@ -368,7 +365,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Text(
               'CAPÍTULO 0',
               style: GoogleFonts.cinzel(
-                color: AppColors.gold,
+                color: _gold,
                 fontSize: 17,
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.7,
@@ -381,7 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Text(
                 'Invitado',
                 style: GoogleFonts.inter(
-                  color: AppColors.gold,
+                  color: _gold,
                   fontSize: 8,
                   fontWeight: FontWeight.w700,
                 ),
@@ -418,12 +415,10 @@ class _HomeScreenState extends State<HomeScreen> {
           height: 36,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: AppColors.gold.withValues(alpha: 0.28),
-            ),
-            color: AppColors.deepAlt,
+            border: Border.all(color: _gold.withValues(alpha: 0.28)),
+            color: _deepAltSurface,
           ),
-          child: Icon(icon, size: 18, color: AppColors.gold),
+          child: Icon(icon, size: 18, color: _gold),
         ),
       ),
     );
@@ -440,7 +435,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? 'Bienvenida a Capítulo 0 ✦'
                 : 'Bienvenida, Constanza Mena ✦',
             style: GoogleFonts.cinzel(
-              color: AppColors.deep,
+              color: _textPrimary,
               fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
@@ -449,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             '¿Qué historia quieres descubrir hoy?',
             style: GoogleFonts.merriweather(
-              color: AppColors.textSecondary,
+              color: _textSecondary,
               fontSize: 10,
               fontStyle: FontStyle.italic,
             ),
@@ -468,29 +463,22 @@ class _HomeScreenState extends State<HomeScreen> {
             height: 42,
             padding: const EdgeInsets.fromLTRB(10, 0, 5, 0),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: _surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.gold, width: 1.2),
+              border: Border.all(color: _gold, width: 1.2),
             ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.search_rounded,
-                  color: AppColors.gold,
-                  size: 16,
-                ),
+                Icon(Icons.search_rounded, color: _gold, size: 16),
                 const SizedBox(width: 7),
                 Expanded(
                   child: TextField(
                     controller: searchController,
-                    style: GoogleFonts.inter(
-                      color: AppColors.textPrimary,
-                      fontSize: 10,
-                    ),
+                    style: GoogleFonts.inter(color: _textPrimary, fontSize: 10),
                     decoration: InputDecoration.collapsed(
                       hintText: 'Buscar libros...',
                       hintStyle: GoogleFonts.inter(
-                        color: AppColors.textSecondary,
+                        color: _textSecondary,
                         fontSize: 10,
                       ),
                     ),
@@ -517,11 +505,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       });
                     },
                     style: TextButton.styleFrom(
-                      foregroundColor: AppColors.deep,
+                      foregroundColor: _textPrimary,
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       minimumSize: const Size(0, 27),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      side: const BorderSide(color: AppColors.gold),
+                      side: BorderSide(color: _gold),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6),
                       ),
@@ -546,8 +534,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       });
                     },
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      foregroundColor: AppColors.background,
+                      backgroundColor: _accent,
+                      foregroundColor: _onAccent,
                       padding: const EdgeInsets.symmetric(horizontal: 9),
                       minimumSize: const Size(0, 27),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -573,11 +561,9 @@ class _HomeScreenState extends State<HomeScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.surface,
+                color: _surface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: AppColors.gold.withValues(alpha: 0.45),
-                ),
+                border: Border.all(color: _gold.withValues(alpha: 0.45)),
               ),
               child: Wrap(
                 spacing: 6,
@@ -609,14 +595,14 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? AppColors.deep : AppColors.background,
+          color: selected ? _deepSurface : _background,
           borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: AppColors.gold),
+          border: Border.all(color: _gold),
         ),
         child: Text(
           label,
           style: GoogleFonts.inter(
-            color: selected ? AppColors.gold : AppColors.deep,
+            color: selected ? _gold : _textPrimary,
             fontSize: 8,
             fontWeight: FontWeight.w700,
           ),
@@ -639,7 +625,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text(
                   'Resultados',
                   style: GoogleFonts.cinzel(
-                    color: AppColors.deep,
+                    color: _textPrimary,
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                   ),
@@ -657,7 +643,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.arrow_back_rounded, size: 15),
                 label: const Text('Volver'),
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.accent,
+                  foregroundColor: _accent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(7),
                   ),
@@ -667,10 +653,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           Text(
             '${results.length} obra(s)',
-            style: GoogleFonts.inter(
-              color: AppColors.textSecondary,
-              fontSize: 9,
-            ),
+            style: GoogleFonts.inter(color: _textSecondary, fontSize: 9),
           ),
           const SizedBox(height: 10),
           if (results.isEmpty)
@@ -687,25 +670,18 @@ class _HomeScreenState extends State<HomeScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: _surface,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
+        border: Border.all(color: _gold.withValues(alpha: 0.4)),
       ),
       child: Column(
         children: [
-          const Icon(
-            Icons.menu_book_outlined,
-            color: AppColors.gold,
-            size: 32,
-          ),
+          Icon(Icons.menu_book_outlined, color: _gold, size: 32),
           const SizedBox(height: 10),
           Text(
             'No encontramos libros con esa búsqueda.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              color: AppColors.textSecondary,
-              fontSize: 10,
-            ),
+            style: GoogleFonts.inter(color: _textSecondary, fontSize: 10),
           ),
         ],
       ),
@@ -720,11 +696,9 @@ class _HomeScreenState extends State<HomeScreen> {
         margin: const EdgeInsets.only(bottom: 9),
         padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: _surface,
           borderRadius: BorderRadius.circular(13),
-          border: Border.all(
-            color: AppColors.gold.withValues(alpha: 0.42),
-          ),
+          border: Border.all(color: _gold.withValues(alpha: 0.42)),
         ),
         child: Row(
           children: [
@@ -737,7 +711,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     book['title'] as String,
                     style: GoogleFonts.merriweather(
-                      color: AppColors.textPrimary,
+                      color: _textPrimary,
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                     ),
@@ -746,23 +720,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     book['authorReal'] as String,
                     style: GoogleFonts.inter(
-                      color: AppColors.textSecondary,
+                      color: _textSecondary,
                       fontSize: 9,
                     ),
                   ),
                   const SizedBox(height: 5),
                   Row(
                     children: [
-                      const Icon(
-                        Icons.star_rounded,
-                        color: AppColors.gold,
-                        size: 13,
-                      ),
+                      Icon(Icons.star_rounded, color: _gold, size: 13),
                       const SizedBox(width: 2),
                       Text(
                         '${book['rating']}',
                         style: GoogleFonts.inter(
-                          color: AppColors.gold,
+                          color: _gold,
                           fontWeight: FontWeight.w700,
                           fontSize: 9,
                         ),
@@ -774,7 +744,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded, color: AppColors.gold),
+            Icon(Icons.chevron_right_rounded, color: _gold),
           ],
         ),
       ),
@@ -790,18 +760,16 @@ class _HomeScreenState extends State<HomeScreen> {
         key: ValueKey(currentQuote),
         margin: const EdgeInsets.fromLTRB(16, 4, 16, 14),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [AppColors.deep, Color(0xFF63252D), Color(0xFF3A1D17)],
+            colors: [_deepSurface, const Color(0xFF63252D), _deepAltSurface],
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: AppColors.gold.withValues(alpha: 0.4),
-          ),
+          border: Border.all(color: _gold.withValues(alpha: 0.4)),
           boxShadow: [
             BoxShadow(
-              color: AppColors.deep.withValues(alpha: 0.12),
+              color: _deepSurface.withValues(alpha: 0.12),
               blurRadius: 16,
               offset: const Offset(0, 6),
             ),
@@ -818,7 +786,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: GoogleFonts.merriweather(
                   fontSize: 84,
                   height: 1,
-                  color: AppColors.gold.withValues(alpha: 0.09),
+                  color: _gold.withValues(alpha: 0.09),
                 ),
               ),
             ),
@@ -830,7 +798,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Icon(
                   Icons.edit_note_rounded,
                   size: 54,
-                  color: AppColors.gold.withValues(alpha: 0.06),
+                  color: _gold.withValues(alpha: 0.06),
                 ),
               ),
             ),
@@ -844,9 +812,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       Container(
                         width: 5,
                         height: 5,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.gold,
+                          color: _gold,
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -854,7 +822,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Text(
                           'CITA DEL DÍA',
                           style: GoogleFonts.cinzel(
-                            color: AppColors.gold,
+                            color: _gold,
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
                             letterSpacing: 1.2,
@@ -877,13 +845,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(6),
                             border: Border.all(
-                              color: AppColors.gold.withValues(alpha: 0.45),
+                              color: _gold.withValues(alpha: 0.45),
                             ),
                           ),
                           child: Text(
                             showQuoteShare ? 'Cerrar' : 'Compartir',
                             style: GoogleFonts.inter(
-                              color: AppColors.gold,
+                              color: _gold,
                               fontSize: 7.5,
                               fontWeight: FontWeight.w700,
                             ),
@@ -907,10 +875,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     alignment: Alignment.centerRight,
                     child: Text(
                       '— ${quote['author']}'
-                          '${quote['work']!.isEmpty ? '' : ', ${quote['work']}'}',
+                      '${quote['work']!.isEmpty ? '' : ', ${quote['work']}'}',
                       textAlign: TextAlign.right,
                       style: GoogleFonts.inter(
-                        color: AppColors.gold,
+                        color: _gold,
                         fontSize: 7.5,
                         fontWeight: FontWeight.w600,
                       ),
@@ -924,11 +892,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: GestureDetector(
                   onTap: quoteSharedOn == null
                       ? () {
-                    setState(() {
-                      showQuoteShare = false;
-                      quoteSharedOn = null;
-                    });
-                  }
+                          setState(() {
+                            showQuoteShare = false;
+                            quoteSharedOn = null;
+                          });
+                        }
                       : null,
                   child: BackdropFilter(
                     filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
@@ -955,7 +923,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Text(
           'COMPARTIR',
           style: GoogleFonts.cinzel(
-            color: AppColors.background,
+            color: _onDeep,
             fontSize: 9,
             fontWeight: FontWeight.w700,
             letterSpacing: 1.2,
@@ -1027,7 +995,7 @@ class _HomeScreenState extends State<HomeScreen> {
           width: 38,
           height: 38,
           decoration: BoxDecoration(
-            color: AppColors.gold,
+            color: _gold,
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
@@ -1037,17 +1005,13 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          child: const Icon(
-            Icons.check_rounded,
-            color: AppColors.deep,
-            size: 23,
-          ),
+          child: Icon(Icons.check_rounded, color: _goldInk, size: 23),
         ),
         const SizedBox(height: 7),
         Text(
           'COMPARTIDO',
           style: GoogleFonts.cinzel(
-            color: AppColors.background,
+            color: _onDeep,
             fontSize: 9,
             fontWeight: FontWeight.w700,
             letterSpacing: 1.1,
@@ -1057,7 +1021,7 @@ class _HomeScreenState extends State<HomeScreen> {
         Text(
           'en $platform',
           style: GoogleFonts.inter(
-            color: AppColors.background.withValues(alpha: 0.82),
+            color: _onDeep.withValues(alpha: 0.82),
             fontSize: 7,
             fontWeight: FontWeight.w500,
           ),
@@ -1108,10 +1072,10 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(11),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: _surface,
               borderRadius: BorderRadius.circular(15),
               border: Border.all(
-                color: AppColors.gold.withValues(alpha: 0.6),
+                color: _gold.withValues(alpha: 0.6),
                 width: 1.2,
               ),
             ),
@@ -1130,7 +1094,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         'Cumbres Borrascosas',
                         style: GoogleFonts.merriweather(
-                          color: AppColors.textPrimary,
+                          color: _textPrimary,
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1139,7 +1103,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         'Capítulo $currentChapter de 12',
                         style: GoogleFonts.inter(
-                          color: AppColors.textSecondary,
+                          color: _textSecondary,
                           fontSize: 8,
                         ),
                       ),
@@ -1150,7 +1114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Text(
                               'Progreso',
                               style: GoogleFonts.inter(
-                                color: AppColors.textSecondary,
+                                color: _textSecondary,
                                 fontSize: 8,
                               ),
                             ),
@@ -1158,7 +1122,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(
                             '$currentProgress%',
                             style: GoogleFonts.inter(
-                              color: AppColors.accent,
+                              color: _accent,
                               fontSize: 8,
                               fontWeight: FontWeight.w700,
                             ),
@@ -1171,10 +1135,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: LinearProgressIndicator(
                           value: currentProgress / 100,
                           minHeight: 5,
-                          backgroundColor: AppColors.surfaceSoft,
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                            AppColors.accent,
-                          ),
+                          backgroundColor: _surfaceSoft,
+                          valueColor: AlwaysStoppedAnimation<Color>(_accent),
                         ),
                       ),
                       const SizedBox(height: 9),
@@ -1222,8 +1184,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: const Icon(Icons.check_rounded, size: 15),
                           label: const Text('Marcar como leído'),
                           style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.gold,
-                            foregroundColor: AppColors.deep,
+                            backgroundColor: _gold,
+                            foregroundColor: _goldInk,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(7),
                             ),
@@ -1336,10 +1298,10 @@ class _HomeScreenState extends State<HomeScreen> {
           height: 27,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: enabled ? AppColors.deep : AppColors.surface,
-            border: Border.all(color: AppColors.gold),
+            color: enabled ? _deepSurface : _surface,
+            border: Border.all(color: _gold),
           ),
-          child: Icon(icon, color: AppColors.gold, size: 16),
+          child: Icon(icon, color: _gold, size: 16),
         ),
       ),
     );
@@ -1352,9 +1314,9 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         height: double.infinity,
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: _surface,
           borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: AppColors.gold),
+          border: Border.all(color: _gold),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -1384,7 +1346,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.merriweather(
-                          color: AppColors.textPrimary,
+                          color: _textPrimary,
                           fontSize: 8,
                           fontWeight: FontWeight.w700,
                           height: 1.3,
@@ -1400,8 +1362,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
                           color: (book['author'] as String).startsWith('@')
-                              ? AppColors.accent
-                              : AppColors.textSecondary,
+                              ? _accent
+                              : _textSecondary,
                           fontSize: 7,
                           fontWeight: (book['author'] as String).startsWith('@')
                               ? FontWeight.w700
@@ -1412,15 +1374,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Spacer(),
                     Row(
                       children: [
-                        const Icon(
-                          Icons.star_rounded,
-                          color: AppColors.gold,
-                          size: 11,
-                        ),
+                        Icon(Icons.star_rounded, color: _gold, size: 11),
                         Text(
                           ' ${book['rating']}',
                           style: GoogleFonts.inter(
-                            color: AppColors.gold,
+                            color: _gold,
                             fontSize: 7,
                             fontWeight: FontWeight.w700,
                           ),
@@ -1467,7 +1425,7 @@ class _HomeScreenState extends State<HomeScreen> {
               TextButton(
                 onPressed: _showAllClubs,
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.accent,
+                  foregroundColor: _accent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(7),
                   ),
@@ -1475,7 +1433,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text(
                   'Ver todos',
                   style: GoogleFonts.inter(
-                    color: AppColors.accent,
+                    color: _accent,
                     fontSize: 8,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1500,9 +1458,9 @@ class _HomeScreenState extends State<HomeScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: _surface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.45)),
+        border: Border.all(color: _gold.withValues(alpha: 0.45)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1510,7 +1468,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             club['name'] as String,
             style: GoogleFonts.merriweather(
-              color: AppColors.textPrimary,
+              color: _textPrimary,
               fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
@@ -1518,18 +1476,12 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 3),
           Text(
             'Leyendo: ${club['book']}',
-            style: GoogleFonts.inter(
-              color: AppColors.textSecondary,
-              fontSize: 8,
-            ),
+            style: GoogleFonts.inter(color: _textSecondary, fontSize: 8),
           ),
           const SizedBox(height: 4),
           Text(
             '📅 Debate: ${club['date']} · ${club['members']} lectores',
-            style: GoogleFonts.inter(
-              color: AppColors.accent,
-              fontSize: 7,
-            ),
+            style: GoogleFonts.inter(color: _accent, fontSize: 7),
           ),
           const SizedBox(height: 9),
           Row(
@@ -1553,10 +1505,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: FilledButton(
                   onPressed: () => _toggleClub(id),
                   style: FilledButton.styleFrom(
-                    backgroundColor:
-                    joined ? AppColors.surfaceSoft : AppColors.accent,
-                    foregroundColor:
-                    joined ? AppColors.deep : AppColors.background,
+                    backgroundColor: joined ? _surfaceSoft : _accent,
+                    foregroundColor: joined ? _textPrimary : _onAccent,
                     minimumSize: const Size(0, 31),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
@@ -1611,7 +1561,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   widget.onOpenWriter();
                 },
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.accent,
+                  foregroundColor: _accent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(7),
                   ),
@@ -1619,7 +1569,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text(
                   '✦ Escribir',
                   style: GoogleFonts.inter(
-                    color: AppColors.accent,
+                    color: _accent,
                     fontSize: 8,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1640,9 +1590,9 @@ class _HomeScreenState extends State<HomeScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: _surface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.45)),
+        border: Border.all(color: _gold.withValues(alpha: 0.45)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1650,7 +1600,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             story['title']!,
             style: GoogleFonts.merriweather(
-              color: AppColors.textPrimary,
+              color: _textPrimary,
               fontSize: 10,
               fontWeight: FontWeight.w700,
             ),
@@ -1668,11 +1618,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text(
                     story['author']!,
                     style: GoogleFonts.inter(
-                      color: AppColors.accent,
+                      color: _accent,
                       fontSize: 7,
                       fontWeight: FontWeight.w700,
                       decoration: TextDecoration.underline,
-                      decorationColor: AppColors.accent,
+                      decorationColor: _accent,
                     ),
                   ),
                 ),
@@ -1680,13 +1630,13 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppColors.deep,
+                  color: _deepSurface,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   'Autor Independiente',
                   style: GoogleFonts.inter(
-                    color: AppColors.gold,
+                    color: _gold,
                     fontSize: 6,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1698,7 +1648,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             story['extract']!,
             style: GoogleFonts.merriweather(
-              color: AppColors.textPrimary,
+              color: _textPrimary,
               fontSize: 8,
               fontStyle: FontStyle.italic,
               height: 1.5,
@@ -1731,11 +1681,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
-              color: AppColors.deep,
+              color: _deepSurface,
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: AppColors.gold.withValues(alpha: 0.45),
-              ),
+              border: Border.all(color: _gold.withValues(alpha: 0.45)),
             ),
             child: Row(
               children: [
@@ -1753,7 +1701,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         'CAFÉ LITERARIO PARQUE BALMACEDA',
                         style: GoogleFonts.cinzel(
-                          color: AppColors.gold,
+                          color: _gold,
                           fontSize: 8,
                           fontWeight: FontWeight.w700,
                           height: 1.35,
@@ -1762,10 +1710,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(height: 4),
                       Text(
                         'Providencia · A 1.2 km de ti',
-                        style: GoogleFonts.inter(
-                          color: AppColors.background,
-                          fontSize: 7,
-                        ),
+                        style: GoogleFonts.inter(color: _onDeep, fontSize: 7),
                       ),
                       const SizedBox(height: 6),
                       Wrap(
@@ -1782,8 +1727,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 FilledButton(
                   onPressed: widget.onOpenPoints,
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.gold,
-                    foregroundColor: AppColors.deep,
+                    backgroundColor: _gold,
+                    foregroundColor: _goldInk,
                     minimumSize: const Size(54, 35),
                     padding: const EdgeInsets.symmetric(horizontal: 7),
                     shape: RoundedRectangleBorder(
@@ -1810,20 +1755,16 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
       decoration: BoxDecoration(
-        color: accent
-            ? AppColors.accent
-            : AppColors.gold.withValues(alpha: 0.15),
+        color: accent ? _accent : _gold.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(5),
         border: Border.all(
-          color: accent
-              ? AppColors.accent
-              : AppColors.gold.withValues(alpha: 0.28),
+          color: accent ? _accent : _gold.withValues(alpha: 0.28),
         ),
       ),
       child: Text(
         text,
         style: GoogleFonts.inter(
-          color: accent ? AppColors.background : AppColors.gold,
+          color: accent ? _onAccent : _gold,
           fontSize: 6,
           fontWeight: FontWeight.w600,
         ),
@@ -1840,7 +1781,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Text(
               text,
               style: GoogleFonts.cinzel(
-                color: AppColors.deep,
+                color: _textPrimary,
                 fontSize: 11,
                 fontWeight: FontWeight.w700,
               ),
@@ -1849,10 +1790,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Container(
             width: 4,
             height: 4,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.gold,
-            ),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: _gold),
           ),
         ],
       ),
@@ -1860,11 +1798,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _networkCover(
-      String url, {
-        required double width,
-        required double height,
-        double radius = 8,
-      }) {
+    String url, {
+    required double width,
+    required double height,
+    double radius = 8,
+  }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: SizedBox(
@@ -1875,12 +1813,9 @@ class _HomeScreenState extends State<HomeScreen> {
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return Container(
-              color: AppColors.deep,
+              color: _deepSurface,
               alignment: Alignment.center,
-              child: const Icon(
-                Icons.menu_book_rounded,
-                color: AppColors.gold,
-              ),
+              child: Icon(Icons.menu_book_rounded, color: _gold),
             );
           },
         ),
@@ -1891,7 +1826,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showBookDetails(Map<String, dynamic> book) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.background,
+      backgroundColor: _background,
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
@@ -1910,7 +1845,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Text(
                         'Detalle del libro',
                         style: GoogleFonts.cinzel(
-                          color: AppColors.deep,
+                          color: _textPrimary,
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1939,7 +1874,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(
                             book['title'] as String,
                             style: GoogleFonts.merriweather(
-                              color: AppColors.textPrimary,
+                              color: _textPrimary,
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                             ),
@@ -1948,7 +1883,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(
                             book['authorReal'] as String,
                             style: GoogleFonts.inter(
-                              color: AppColors.textSecondary,
+                              color: _textSecondary,
                               fontSize: 10,
                             ),
                           ),
@@ -1956,7 +1891,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(
                             '★ ${book['rating']}',
                             style: GoogleFonts.inter(
-                              color: AppColors.gold,
+                              color: _gold,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -1964,7 +1899,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(
                             '${book['genre']} · ${book['year']}',
                             style: GoogleFonts.inter(
-                              color: AppColors.textSecondary,
+                              color: _textSecondary,
                               fontSize: 9,
                             ),
                           ),
@@ -1972,7 +1907,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           Text(
                             'ISBN: ${book['isbn']}',
                             style: GoogleFonts.inter(
-                              color: AppColors.textSecondary,
+                              color: _textSecondary,
                               fontSize: 8,
                             ),
                           ),
@@ -1985,7 +1920,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   'Sinopsis',
                   style: GoogleFonts.cinzel(
-                    color: AppColors.deep,
+                    color: _textPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -1994,7 +1929,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   book['synopsis'] as String,
                   style: GoogleFonts.merriweather(
-                    color: AppColors.textPrimary,
+                    color: _textPrimary,
                     fontSize: 10,
                     height: 1.6,
                   ),
@@ -2014,8 +1949,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: const Icon(Icons.menu_book_rounded),
                     label: const Text('Ver en Mi Biblioteca'),
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.accent,
-                      foregroundColor: AppColors.background,
+                      backgroundColor: _accent,
+                      foregroundColor: _onAccent,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
@@ -2039,12 +1974,13 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (dialogContext) {
         return Dialog(
           backgroundColor: const Color(0xFF120C0A),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 28),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 22,
+            vertical: 28,
+          ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
-            side: BorderSide(
-              color: AppColors.gold.withValues(alpha: 0.55),
-            ),
+            side: BorderSide(color: _gold.withValues(alpha: 0.55)),
           ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(18, 17, 18, 18),
@@ -2053,17 +1989,13 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      Icons.qr_code_scanner_rounded,
-                      color: AppColors.gold,
-                      size: 22,
-                    ),
+                    Icon(Icons.qr_code_scanner_rounded, color: _gold, size: 22),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         'Escáner ISBN',
                         style: GoogleFonts.cinzel(
-                          color: AppColors.background,
+                          color: _onDeep,
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                         ),
@@ -2084,26 +2016,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 190,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: AppColors.gold,
-                      width: 1.5,
-                    ),
+                    border: Border.all(color: _gold, width: 1.5),
                     color: Colors.black,
                   ),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
                       Positioned.fill(
-                        child: CustomPaint(
-                          painter: _ScannerFramePainter(),
-                        ),
+                        child: CustomPaint(painter: _ScannerFramePainter()),
                       ),
                       Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.document_scanner_outlined,
-                            color: AppColors.gold,
+                            color: _gold,
                             size: 44,
                           ),
                           const SizedBox(height: 10),
@@ -2125,33 +2052,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 TextField(
                   controller: isbnController,
                   keyboardType: TextInputType.number,
-                  style: GoogleFonts.inter(
-                    color: AppColors.textPrimary,
-                    fontSize: 11,
-                  ),
+                  style: GoogleFonts.inter(color: _textPrimary, fontSize: 11),
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: AppColors.surface,
+                    fillColor: _surface,
                     hintText: 'O escribe un ISBN',
                     hintStyle: GoogleFonts.inter(
-                      color: AppColors.textSecondary,
+                      color: _textSecondary,
                       fontSize: 10,
                     ),
-                    prefixIcon: const Icon(
+                    prefixIcon: Icon(
                       Icons.numbers_rounded,
-                      color: AppColors.gold,
+                      color: _gold,
                       size: 18,
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.gold),
+                      borderSide: BorderSide(color: _gold),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(
-                        color: AppColors.gold,
-                        width: 1.5,
-                      ),
+                      borderSide: BorderSide(color: _gold, width: 1.5),
                     ),
                   ),
                 ),
@@ -2165,8 +2086,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           _openBookFromIsbn(isbnController.text);
                         },
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.gold,
-                          side: const BorderSide(color: AppColors.gold),
+                          foregroundColor: _gold,
+                          side: BorderSide(color: _gold),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -2182,8 +2103,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           _showBookDetails(books.first);
                         },
                         style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.accent,
-                          foregroundColor: AppColors.background,
+                          backgroundColor: _accent,
+                          foregroundColor: _onAccent,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -2211,7 +2132,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
     Map<String, dynamic>? found;
     for (final book in books) {
-      final bookIsbn = book['isbn'].toString().replaceAll(RegExp(r'[^0-9Xx]'), '');
+      final bookIsbn = book['isbn'].toString().replaceAll(
+        RegExp(r'[^0-9Xx]'),
+        '',
+      );
       if (bookIsbn == normalized) {
         found = book;
         break;
@@ -2232,8 +2156,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final messages = <Map<String, String>>[
       {
         'role': 'assistant',
-        'text':
-        'Hola ✦ Soy tu asistente literario. Puedo recomendarte lecturas, ayudarte a elegir tu próxima historia o conversar sobre géneros y autores.',
+        'text': 'Hola ✦ Soy tu asistente literario. Puedo recomendarte lecturas, ayudarte a elegir tu próxima historia o conversar sobre géneros y autores.',
       },
     ];
 
@@ -2267,14 +2190,10 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               child: Container(
                 height: MediaQuery.of(context).size.height * 0.72,
-                decoration: const BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(24),
-                  ),
-                  border: Border(
-                    top: BorderSide(color: AppColors.gold, width: 1.5),
-                  ),
+                decoration: BoxDecoration(
+                  color: _background,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  border: Border(top: BorderSide(color: _gold, width: 1.5)),
                 ),
                 child: Column(
                   children: [
@@ -2286,15 +2205,15 @@ class _HomeScreenState extends State<HomeScreen> {
                             width: 34,
                             height: 34,
                             decoration: BoxDecoration(
-                              color: AppColors.deepAlt,
+                              color: _deepAltSurface,
                               borderRadius: BorderRadius.circular(9),
                               border: Border.all(
-                                color: AppColors.gold.withValues(alpha: 0.45),
+                                color: _gold.withValues(alpha: 0.45),
                               ),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.auto_awesome_rounded,
-                              color: AppColors.gold,
+                              color: _gold,
                               size: 18,
                             ),
                           ),
@@ -2306,7 +2225,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Text(
                                   'Gemini AI Literario',
                                   style: GoogleFonts.cinzel(
-                                    color: AppColors.deep,
+                                    color: _textPrimary,
                                     fontSize: 14,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -2314,7 +2233,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Text(
                                   'Asistente de Capítulo 0',
                                   style: GoogleFonts.inter(
-                                    color: AppColors.textSecondary,
+                                    color: _textSecondary,
                                     fontSize: 8,
                                   ),
                                 ),
@@ -2349,24 +2268,18 @@ class _HomeScreenState extends State<HomeScreen> {
                                 vertical: 9,
                               ),
                               decoration: BoxDecoration(
-                                color: isUser
-                                    ? AppColors.accent
-                                    : AppColors.surface,
+                                color: isUser ? _accent : _surface,
                                 borderRadius: BorderRadius.circular(10),
                                 border: isUser
                                     ? null
                                     : Border.all(
-                                  color: AppColors.gold.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                ),
+                                        color: _gold.withValues(alpha: 0.4),
+                                      ),
                               ),
                               child: Text(
                                 message['text']!,
                                 style: GoogleFonts.inter(
-                                  color: isUser
-                                      ? AppColors.background
-                                      : AppColors.textPrimary,
+                                  color: isUser ? _onAccent : _textPrimary,
                                   fontSize: 10,
                                   height: 1.45,
                                 ),
@@ -2386,15 +2299,15 @@ class _HomeScreenState extends State<HomeScreen> {
                               textInputAction: TextInputAction.send,
                               onSubmitted: (_) => sendMessage(),
                               style: GoogleFonts.inter(
-                                color: AppColors.textPrimary,
+                                color: _textPrimary,
                                 fontSize: 10,
                               ),
                               decoration: InputDecoration(
                                 filled: true,
-                                fillColor: AppColors.surface,
+                                fillColor: _surface,
                                 hintText: 'Pregúntale a Gemini...',
                                 hintStyle: GoogleFonts.inter(
-                                  color: AppColors.textSecondary,
+                                  color: _textSecondary,
                                   fontSize: 9,
                                 ),
                                 contentPadding: const EdgeInsets.symmetric(
@@ -2404,14 +2317,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(9),
                                   borderSide: BorderSide(
-                                    color: AppColors.gold.withValues(alpha: 0.5),
+                                    color: _gold.withValues(alpha: 0.5),
                                   ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(9),
-                                  borderSide: const BorderSide(
-                                    color: AppColors.gold,
-                                  ),
+                                  borderSide: BorderSide(color: _gold),
                                 ),
                               ),
                             ),
@@ -2423,17 +2334,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: FilledButton(
                               onPressed: sendMessage,
                               style: FilledButton.styleFrom(
-                                backgroundColor: AppColors.accent,
-                                foregroundColor: AppColors.background,
+                                backgroundColor: _accent,
+                                foregroundColor: _onAccent,
                                 padding: EdgeInsets.zero,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(9),
                                 ),
                               ),
-                              child: const Icon(
-                                Icons.send_rounded,
-                                size: 17,
-                              ),
+                              child: const Icon(Icons.send_rounded, size: 17),
                             ),
                           ),
                         ],
@@ -2474,7 +2382,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: _background,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -2492,7 +2400,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Text(
                         'Perfil literario',
                         style: GoogleFonts.cinzel(
-                          color: AppColors.deep,
+                          color: _textPrimary,
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
@@ -2509,11 +2417,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: _surface,
                     borderRadius: BorderRadius.circular(15),
-                    border: Border.all(
-                      color: AppColors.gold.withValues(alpha: 0.55),
-                    ),
+                    border: Border.all(color: _gold.withValues(alpha: 0.55)),
                   ),
                   child: Column(
                     children: [
@@ -2522,11 +2428,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         children: [
                           CircleAvatar(
                             radius: 30,
-                            backgroundColor: AppColors.surfaceSoft,
+                            backgroundColor: _surfaceSoft,
                             child: Text(
                               _initials(story['author']!),
                               style: GoogleFonts.cinzel(
-                                color: AppColors.deep,
+                                color: _textPrimary,
                                 fontSize: 15,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -2540,7 +2446,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Text(
                                   story['author']!,
                                   style: GoogleFonts.merriweather(
-                                    color: AppColors.textPrimary,
+                                    color: _textPrimary,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -2549,7 +2455,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Text(
                                   story['user']!,
                                   style: GoogleFonts.inter(
-                                    color: AppColors.accent,
+                                    color: _accent,
                                     fontSize: 9,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -2558,7 +2464,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Text(
                                   'Miembro desde ${story['memberSince']}',
                                   style: GoogleFonts.inter(
-                                    color: AppColors.textSecondary,
+                                    color: _textSecondary,
                                     fontSize: 8,
                                   ),
                                 ),
@@ -2571,7 +2477,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         story['bio']!,
                         style: GoogleFonts.merriweather(
-                          color: AppColors.textPrimary,
+                          color: _textPrimary,
                           fontSize: 9,
                           height: 1.55,
                         ),
@@ -2584,10 +2490,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             isOwnProfile ? '142' : '86',
                             'Seguidores',
                           ),
-                          _profileStat(
-                            isOwnProfile ? '89' : '51',
-                            'Siguiendo',
-                          ),
+                          _profileStat(isOwnProfile ? '89' : '51', 'Siguiendo'),
                         ],
                       ),
                     ],
@@ -2598,11 +2501,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(13),
                   decoration: BoxDecoration(
-                    color: AppColors.surface,
+                    color: _surface,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: AppColors.gold.withValues(alpha: 0.4),
-                    ),
+                    border: Border.all(color: _gold.withValues(alpha: 0.4)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2610,7 +2511,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         'OBRA DESTACADA',
                         style: GoogleFonts.cinzel(
-                          color: AppColors.deep,
+                          color: _textPrimary,
                           fontSize: 9,
                           fontWeight: FontWeight.w700,
                         ),
@@ -2619,7 +2520,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         story['title']!,
                         style: GoogleFonts.merriweather(
-                          color: AppColors.textPrimary,
+                          color: _textPrimary,
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
@@ -2628,7 +2529,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text(
                         story['extract']!,
                         style: GoogleFonts.merriweather(
-                          color: AppColors.textPrimary,
+                          color: _textPrimary,
                           fontSize: 9,
                           fontStyle: FontStyle.italic,
                           height: 1.5,
@@ -2661,7 +2562,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(
             value,
             style: GoogleFonts.cinzel(
-              color: AppColors.accent,
+              color: _accent,
               fontSize: 13,
               fontWeight: FontWeight.w700,
             ),
@@ -2669,10 +2570,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 2),
           Text(
             label,
-            style: GoogleFonts.inter(
-              color: AppColors.textSecondary,
-              fontSize: 7,
-            ),
+            style: GoogleFonts.inter(color: _textSecondary, fontSize: 7),
           ),
         ],
       ),
@@ -2691,7 +2589,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showClubDetails(Map<String, dynamic> club) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.background,
+      backgroundColor: _background,
       useSafeArea: true,
       showDragHandle: true,
       builder: (sheetContext) {
@@ -2710,7 +2608,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     club['name'] as String,
                     style: GoogleFonts.cinzel(
-                      color: AppColors.deep,
+                      color: _textPrimary,
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
@@ -2719,7 +2617,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     'Leyendo: ${club['book']}',
                     style: GoogleFonts.inter(
-                      color: AppColors.accent,
+                      color: _accent,
                       fontSize: 10,
                       fontWeight: FontWeight.w700,
                     ),
@@ -2728,7 +2626,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     '📅 ${club['date']} · ${club['members']} lectores',
                     style: GoogleFonts.inter(
-                      color: AppColors.textSecondary,
+                      color: _textSecondary,
                       fontSize: 9,
                     ),
                   ),
@@ -2736,7 +2634,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Text(
                     club['description'] as String,
                     style: GoogleFonts.merriweather(
-                      color: AppColors.textPrimary,
+                      color: _textPrimary,
                       fontSize: 10,
                       height: 1.6,
                     ),
@@ -2762,19 +2660,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         setSheetState(() {});
                       },
                       style: FilledButton.styleFrom(
-                        backgroundColor: joined
-                            ? AppColors.surfaceSoft
-                            : AppColors.accent,
-                        foregroundColor: joined
-                            ? AppColors.deep
-                            : AppColors.background,
+                        backgroundColor: joined ? _surfaceSoft : _accent,
+                        foregroundColor: joined ? _textPrimary : _onAccent,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: Text(
-                        joined ? 'Salir del club' : 'Unirme al club',
-                      ),
+                      child: Text(joined ? 'Salir del club' : 'Unirme al club'),
                     ),
                   ),
                 ],
@@ -2789,7 +2681,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showAllClubs() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.background,
+      backgroundColor: _background,
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
@@ -2808,7 +2700,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Text(
                           'Clubes de Lectura',
                           style: GoogleFonts.cinzel(
-                            color: AppColors.deep,
+                            color: _textPrimary,
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
                           ),
@@ -2833,10 +2725,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         return Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
+                            color: _surface,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: AppColors.gold.withValues(alpha: 0.4),
+                              color: _gold.withValues(alpha: 0.4),
                             ),
                           ),
                           child: Column(
@@ -2853,7 +2745,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               Text(
                                 'Leyendo: ${club['book']}',
                                 style: GoogleFonts.inter(
-                                  color: AppColors.textSecondary,
+                                  color: _textSecondary,
                                   fontSize: 9,
                                 ),
                               ),
@@ -2892,13 +2784,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                       },
                                       style: FilledButton.styleFrom(
                                         backgroundColor: joined
-                                            ? AppColors.surfaceSoft
-                                            : AppColors.accent,
+                                            ? _surfaceSoft
+                                            : _accent,
                                         foregroundColor: joined
-                                            ? AppColors.deep
-                                            : AppColors.background,
+                                            ? _textPrimary
+                                            : _onAccent,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(7),
+                                          borderRadius: BorderRadius.circular(
+                                            7,
+                                          ),
                                         ),
                                       ),
                                       child: Text(
@@ -2926,7 +2820,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showStory(Map<String, String> story) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.background,
+      backgroundColor: _background,
       isScrollControlled: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
@@ -2945,7 +2839,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Text(
                         story['title']!,
                         style: GoogleFonts.cinzel(
-                          color: AppColors.deep,
+                          color: _textPrimary,
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                         ),
@@ -2965,7 +2859,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text(
                     '${story['author']} · Autor Independiente',
                     style: GoogleFonts.inter(
-                      color: AppColors.accent,
+                      color: _accent,
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
                       decoration: TextDecoration.underline,
@@ -2976,7 +2870,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Text(
                   story['full']!,
                   style: GoogleFonts.merriweather(
-                    color: AppColors.textPrimary,
+                    color: _textPrimary,
                     fontSize: 11,
                     height: 1.8,
                   ),
@@ -3001,10 +2895,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
-        SnackBar(
-          content: Text(text),
-          duration: const Duration(seconds: 2),
-        ),
+        SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
       );
   }
 }
