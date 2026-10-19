@@ -6,6 +6,7 @@ import '../../../library/presentation/screens/library_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../profile/presentation/screens/settings_screen.dart';
 import 'home_screen.dart';
+import '../../../writer/presentation/screens/writer_screen.dart';
 
 import 'package:android/features/maps/presentation/screens/maps_screen.dart';
 
@@ -520,12 +521,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         );
 
       case 2:
-        return _buildPlaceholder(
-          icon: Icons.edit_outlined,
-          title: 'Escribir',
-          description:
-              'Aquí construiremos la creación y publicación de historias.',
-        );
+        return const WriterScreen();
 
       case 3:
         return const MapsScreen();
@@ -551,49 +547,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
       default:
         return const SizedBox.shrink();
     }
-  }
-
-  Widget _buildPlaceholder({
-    required IconData icon,
-    required String title,
-    required String description,
-  }) {
-    return ColoredBox(
-      color: AppColors.backgroundOf(context),
-      child: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(28, 28, 28, 130),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 54, color: AppColors.goldOf(context)),
-                const SizedBox(height: 18),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.cinzel(
-                    color: AppColors.deepOf(context),
-                    fontSize: 23,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  description,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    color: AppColors.textSecondaryOf(context),
-                    fontSize: 13,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   @override
