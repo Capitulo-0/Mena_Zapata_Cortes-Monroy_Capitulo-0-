@@ -6,9 +6,15 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../library/presentation/screens/library_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
+
   const ProfileScreen({
     super.key,
     required this.onOpenSettings,
+    required this.name,
+    required this.username,
+    required this.biography,
+    required this.readingFormat,
+    required this.annualGoal,
     required this.books,
     required this.statuses,
     required this.progresses,
@@ -21,11 +27,19 @@ class ProfileScreen extends StatefulWidget {
   });
 
   final VoidCallback onOpenSettings;
+
+  final String name;
+  final String username;
+  final String biography;
+  final String readingFormat;
+  final int annualGoal;
+
   final List<LibraryBook> books;
   final Map<int, BookStatus> statuses;
   final Map<int, int> progresses;
   final Map<int, BookReview> reviews;
   final Set<int> favorites;
+
   final void Function(int bookId, BookStatus status) onStatusChanged;
   final void Function(int bookId, int progress) onProgressChanged;
   final void Function(int bookId, BookReview review) onReviewSaved;
@@ -65,7 +79,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _customMoodLabel = 'Mi propio estado';
   String _customMoodDetail = 'Una lectura a mi manera';
 
-  static const int _annualGoal = 25;
 
   final List<Map<String, String>> _favoriteQuotes = [
     {
@@ -293,7 +306,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             color: _deepSurfaceColor,
                             alignment: Alignment.center,
                             child: Text(
-                              'C',
+                              widget.name.trim().isEmpty
+                              ? '?'
+                              : widget.name.trim()[0].toUpperCase(),
                               style: GoogleFonts.cinzel(
                                 color: AppColors.gold,
                                 fontSize: 26,
@@ -338,7 +353,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Constanza Mena',
+                      widget.name,
                       style: GoogleFonts.merriweather(
                         color: _textPrimaryColor,
                         fontSize: 15,
@@ -347,7 +362,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '@constanza.lectora',
+                      widget.username,
                       style: GoogleFonts.inter(
                         color: AppColors.accent,
                         fontSize: 10,
@@ -371,8 +386,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'Amante de las novelas góticas victorianas y los clásicos de siempre 🌹 '
-              'Estudiante de Ingeniería en Informática.',
+              widget.biography,
               style: GoogleFonts.merriweather(
                 color: _textPrimaryColor,
                 fontSize: 10,
@@ -983,9 +997,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildReadingChallenge() {
-    final progress = (_booksReadThisYear / _annualGoal)
-        .clamp(0.0, 1.0)
-        .toDouble();
+    final progress = widget.annualGoal > 0
+        ? (_booksReadThisYear / widget.annualGoal).clamp(0.0, 1.0).toDouble()
+        : 0.0;
     return _sectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1003,7 +1017,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               Text(
-                '$_booksReadThisYear / $_annualGoal libros',
+                '$_booksReadThisYear / ${widget.annualGoal} libros',
                 style: GoogleFonts.inter(
                   color: AppColors.accent,
                   fontSize: 8.5,
@@ -2214,6 +2228,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         .push(
           MaterialPageRoute<void>(
             builder: (_) => _ProfileBookDetailScreen(
+              name: widget.name,
               book: book,
               initialStatus: widget.statuses[book.id],
               initialProgress: widget.progresses[book.id] ?? 0,
@@ -2397,6 +2412,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 class _ProfileBookDetailScreen extends StatefulWidget {
   const _ProfileBookDetailScreen({
+    required this.name,
     required this.book,
     required this.initialStatus,
     required this.initialProgress,
@@ -2407,6 +2423,8 @@ class _ProfileBookDetailScreen extends StatefulWidget {
     required this.onReviewSaved,
     required this.onToggleFavorite,
   });
+
+  final String name;
 
   final LibraryBook book;
   final BookStatus? initialStatus;
@@ -3168,7 +3186,7 @@ class _ProfileBookDetailScreenState extends State<_ProfileBookDetailScreen> {
                 if (text.isEmpty) return;
                 setState(() {
                   _comments.add({
-                    'name': 'Constanza Mena · respuesta',
+                    'name': '${widget.name} · respuesta',
                     'text': text,
                     'likes': 0,
                     'liked': false,
