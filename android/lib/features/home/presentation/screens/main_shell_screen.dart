@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../clubs/models/reading_club.dart';
 import '../../../library/presentation/screens/library_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../profile/presentation/screens/settings_screen.dart';
@@ -39,6 +40,40 @@ class _MainShellScreenState extends State<MainShellScreen> {
       'Entre libros, café y lugares tranquilos para leer.';
   String _readingFormat = 'Ambos';
   int _annualGoal = 25;
+
+
+  // Estado compartido de clubes de lectura.
+  final List<ReadingClub> _clubs = const [
+    ReadingClub(
+      id: 1,
+      name: 'Adictos a los Clásicos ☕',
+      members: 342,
+      book: 'Cumbres Borrascosas',
+      date: 'Viernes 20:00',
+      description:
+          'Un espacio para quienes aman los grandes clásicos de la literatura universal. Cada semana conversamos sobre capítulos, personajes y contexto histórico.',
+    ),
+    ReadingClub(
+      id: 2,
+      name: 'Mansión Gótica 🕯️',
+      members: 189,
+      book: 'Jane Eyre',
+      date: 'Sábado 18:30',
+      description:
+          'Para amantes de la literatura gótica y victoriana. Misterio, romanticismo oscuro y personajes inolvidables.',
+    ),
+    ReadingClub(
+      id: 3,
+      name: 'Plumas del Sur ✍️',
+      members: 98,
+      book: 'El Jardín de los Recuerdos',
+      date: 'Miércoles 19:00',
+      description:
+          'Club dedicado a literatura latinoamericana contemporánea y autores independientes.',
+    ),
+  ];
+
+  final Set<int> _joinedClubIds = <int>{};
 
   // Estado compartido de Biblioteca. En el siguiente paso Perfil consumirá
   // exactamente estas mismas colecciones para mantener contadores, reto y estante
@@ -383,6 +418,17 @@ class _MainShellScreenState extends State<MainShellScreen> {
     });
   }
 
+
+  void _toggleClub(int clubId) {
+    setState(() {
+      if (_joinedClubIds.contains(clubId)) {
+        _joinedClubIds.remove(clubId);
+      } else {
+        _joinedClubIds.add(clubId);
+      }
+    });
+  }
+
   void _selectTab(int index) {
     if (widget.isGuest && (index == 1 || index == 2 || index == 4)) {
       _showGuestAccessDialog(index);
@@ -503,6 +549,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
       case 0:
         return HomeScreen(
           isGuest: widget.isGuest,
+          clubs: _clubs,
+          joinedClubIds: _joinedClubIds,
+          onToggleClub: _toggleClub,
           onOpenLibrary: () {
             _selectTab(1);
           },
@@ -545,6 +594,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
           biography: _profileBiography,
           readingFormat: _readingFormat,
           annualGoal: _annualGoal,
+          clubs: _clubs,
+          joinedClubIds: _joinedClubIds,
+          onToggleClub: _toggleClub,
 
           books: _libraryBooks,
           statuses: _bookStatuses,

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../clubs/models/reading_club.dart';
 import '../../../library/presentation/screens/library_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -15,6 +16,9 @@ class ProfileScreen extends StatefulWidget {
     required this.biography,
     required this.readingFormat,
     required this.annualGoal,
+    required this.clubs,
+    required this.joinedClubIds,
+    required this.onToggleClub,
     required this.books,
     required this.statuses,
     required this.progresses,
@@ -33,6 +37,10 @@ class ProfileScreen extends StatefulWidget {
   final String biography;
   final String readingFormat;
   final int annualGoal;
+
+  final List<ReadingClub> clubs;
+  final Set<int> joinedClubIds;
+  final ValueChanged<int> onToggleClub;
 
   final List<LibraryBook> books;
   final Map<int, BookStatus> statuses;
@@ -182,6 +190,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   List<LibraryBook> get _favoriteBooks =>
       widget.books.where((book) => widget.favorites.contains(book.id)).toList();
+
+  List<ReadingClub> get _joinedClubs => widget.clubs
+      .where((club) => widget.joinedClubIds.contains(club.id))
+      .toList();
 
   int get _followerCount => 142 - _blockedUsers.length;
   int get _followingCount => 89;
@@ -756,6 +768,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildClubsCard() {
+    final joinedClubs = _joinedClubs;
+
     return _sectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -773,7 +787,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
               Text(
-                '0 miembros',
+                '${joinedClubs.length} ${joinedClubs.length == 1 ? 'club' : 'clubes'}',
                 style: GoogleFonts.inter(
                   color: AppColors.accent,
                   fontSize: 8,
@@ -783,23 +797,92 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: _backgroundColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.gold.withValues(alpha: 0.25)),
-            ),
-            child: Text(
-              'Aún no te has unido a un club desde Inicio.',
-              style: GoogleFonts.merriweather(
-                color: _textSecondaryColor,
-                fontSize: 8.5,
-                fontStyle: FontStyle.italic,
+          if (joinedClubs.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.gold.withValues(alpha: 0.25),
+                ),
               ),
-            ),
-          ),
+              child: Text(
+                'Aún no te has unido a un club desde Inicio.',
+                style: GoogleFonts.merriweather(
+                  color: _textSecondaryColor,
+                  fontSize: 8.5,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            )
+          else
+            ...joinedClubs.map((club) {
+              return Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(11),
+                decoration: BoxDecoration(
+                  color: _backgroundColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.gold.withValues(alpha: 0.30),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            club.name,
+                            style: GoogleFonts.merriweather(
+                              color: _textPrimaryColor,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () => widget.onToggleClub(club.id),
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.accent,
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            minimumSize: const Size(0, 28),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            textStyle: GoogleFonts.inter(
+                              fontSize: 7,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          child: const Text('Salir'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Leyendo: ${club.book}',
+                      style: GoogleFonts.inter(
+                        color: _textSecondaryColor,
+                        fontSize: 7.5,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '📅 ${club.date} · ${club.members} lectores',
+                      style: GoogleFonts.inter(
+                        color: AppColors.accent,
+                        fontSize: 7,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );
