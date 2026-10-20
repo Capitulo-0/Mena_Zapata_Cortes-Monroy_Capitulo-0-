@@ -33,6 +33,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   bool showSettings = false;
 
+  String _profileName = 'Constanza Mena';
+  String _profileUsername = '@constanza.lectora';
+  String _profileBiography =
+      'Entre libros, café y lugares tranquilos para leer.';
+  String _readingFormat = 'Ambos';
+  int _annualGoal = 25;
+
   // Estado compartido de Biblioteca. En el siguiente paso Perfil consumirá
   // exactamente estas mismas colecciones para mantener contadores, reto y estante
   // sincronizados con los cambios realizados en Mi Biblioteca.
@@ -533,6 +540,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
               showSettings = true;
             });
           },
+          name: _profileName,
+          username: _profileUsername,
+          biography: _profileBiography,
+          readingFormat: _readingFormat,
+          annualGoal: _annualGoal,
+
           books: _libraryBooks,
           statuses: _bookStatuses,
           progresses: _bookProgresses,
@@ -560,11 +573,30 @@ class _MainShellScreenState extends State<MainShellScreen> {
         },
         onLogout: widget.onLogout,
         onDeleteAccount: widget.onLogout,
+
         isDarkMode: widget.isDarkMode,
         onDarkModeChanged: widget.onDarkModeChanged,
-        onProfileSaved: (name, username, biography, readingFormat, annualGoal) {
-          // En el próximo paso conectaremos
-          // estos datos directamente con ProfileScreen.
+
+        initialName: _profileName,
+        initialUsername: _profileUsername,
+        initialBiography: _profileBiography,
+        initialReadingFormat: _readingFormat,
+        initialAnnualGoal: _annualGoal,
+        
+        onProfileSaved: (
+          name,
+          username,
+          biography,
+          readingFormat,
+          annualGoal,
+        ) {
+          setState(() {
+            _profileName = name;
+            _profileUsername = username;
+            _profileBiography = biography;
+            _readingFormat = readingFormat;
+            _annualGoal = annualGoal;
+          });
         },
       );
     }
