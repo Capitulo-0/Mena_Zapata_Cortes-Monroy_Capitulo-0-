@@ -732,30 +732,62 @@ class _MainShellScreenState extends State<MainShellScreen> {
               },
               customBorder: const CircleBorder(),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 220),
-                width: 62,
-                height: 62,
+                duration: const Duration(milliseconds: 320),
+                curve: Curves.easeOutCubic,
+                width: selectedIndex == 2 ? 68 : 62,
+                height: selectedIndex == 2 ? 68 : 62,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: selectedIndex == 2
-                      ? const Color(0xFFB58B3D)
+                      ? const Color(0xFFC3963F)
                       : AppColors.goldOf(context),
                   border: Border.all(
                     color: AppColors.deepOf(context),
-                    width: selectedIndex == 2 ? 2 : 1,
+                    width: selectedIndex == 2 ? 1.6 : 1,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.24),
-                      blurRadius: 18,
+                      color: Colors.black.withValues(
+                        alpha: selectedIndex == 2 ? 0.28 : 0.22,
+                      ),
+                      blurRadius: selectedIndex == 2 ? 21 : 17,
                       offset: const Offset(0, 7),
                     ),
                   ],
                 ),
-                child: Icon(
-                  selectedIndex == 2 ? Icons.edit_outlined : Icons.add_rounded,
-                  color: AppColors.deepOf(context),
-                  size: 30,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  switchInCurve: Curves.easeOutBack,
+                  switchOutCurve: Curves.easeInCubic,
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(
+                        scale: Tween<double>(
+                          begin: 0.72,
+                          end: 1,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: selectedIndex == 2
+                      ? SizedBox(
+                          key: const ValueKey('writer-quill'),
+                          width: 31,
+                          height: 31,
+                          child: CustomPaint(
+                            painter: _QuillPainter(
+                              color: AppColors.deepOf(context),
+                            ),
+                          ),
+                        )
+                      : Icon(
+                          Icons.add_rounded,
+                          key: const ValueKey('writer-add'),
+                          color: AppColors.deepOf(context),
+                          size: 31,
+                        ),
                 ),
               ),
             ),
@@ -812,5 +844,100 @@ class _MainShellScreenState extends State<MainShellScreen> {
         ),
       ),
     );
+  }
+}
+
+
+class _QuillPainter extends CustomPainter {
+  const _QuillPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.15
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final fill = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final feather = Path()
+      ..moveTo(size.width * 0.24, size.height * 0.78)
+      ..cubicTo(
+        size.width * 0.31,
+        size.height * 0.51,
+        size.width * 0.50,
+        size.height * 0.22,
+        size.width * 0.79,
+        size.height * 0.16,
+      )
+      ..cubicTo(
+        size.width * 0.82,
+        size.height * 0.43,
+        size.width * 0.68,
+        size.height * 0.68,
+        size.width * 0.43,
+        size.height * 0.72,
+      )
+      ..cubicTo(
+        size.width * 0.35,
+        size.height * 0.73,
+        size.width * 0.29,
+        size.height * 0.76,
+        size.width * 0.24,
+        size.height * 0.78,
+      );
+
+    canvas.drawPath(feather, stroke);
+
+    final shaft = Path()
+      ..moveTo(size.width * 0.23, size.height * 0.84)
+      ..cubicTo(
+        size.width * 0.39,
+        size.height * 0.66,
+        size.width * 0.54,
+        size.height * 0.49,
+        size.width * 0.74,
+        size.height * 0.25,
+      );
+    canvas.drawPath(shaft, stroke);
+
+    final barb1 = Path()
+      ..moveTo(size.width * 0.39, size.height * 0.65)
+      ..lineTo(size.width * 0.31, size.height * 0.54);
+    final barb2 = Path()
+      ..moveTo(size.width * 0.49, size.height * 0.54)
+      ..lineTo(size.width * 0.40, size.height * 0.43);
+    final barb3 = Path()
+      ..moveTo(size.width * 0.59, size.height * 0.43)
+      ..lineTo(size.width * 0.52, size.height * 0.32);
+    final barb4 = Path()
+      ..moveTo(size.width * 0.46, size.height * 0.58)
+      ..lineTo(size.width * 0.62, size.height * 0.57);
+    final barb5 = Path()
+      ..moveTo(size.width * 0.57, size.height * 0.46)
+      ..lineTo(size.width * 0.71, size.height * 0.43);
+
+    canvas.drawPath(barb1, stroke);
+    canvas.drawPath(barb2, stroke);
+    canvas.drawPath(barb3, stroke);
+    canvas.drawPath(barb4, stroke);
+    canvas.drawPath(barb5, stroke);
+
+    canvas.drawCircle(
+      Offset(size.width * 0.22, size.height * 0.85),
+      1.45,
+      fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _QuillPainter oldDelegate) {
+    return oldDelegate.color != color;
   }
 }

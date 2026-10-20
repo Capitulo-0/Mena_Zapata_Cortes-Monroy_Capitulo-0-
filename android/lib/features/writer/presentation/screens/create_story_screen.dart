@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../models/writer_story.dart';
 import '../../services/writer_local_service.dart';
 
@@ -33,17 +34,34 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
   String? _selectedGenre;
   String? _selectedCover;
-
   bool _isSaving = false;
 
   bool get _isEditing => widget.story != null;
+
+  bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
+
+  Color get _backgroundColor =>
+      _isDarkMode ? AppColors.darkBackground : AppColors.background;
+
+  Color get _surfaceColor =>
+      _isDarkMode ? AppColors.darkSurface : AppColors.surface;
+
+  Color get _textPrimaryColor =>
+      _isDarkMode ? AppColors.darkTextPrimary : AppColors.textPrimary;
+
+  Color get _textSecondaryColor =>
+      _isDarkMode ? AppColors.darkTextSecondary : AppColors.textSecondary;
+
+  Color get _headingColor =>
+      _isDarkMode ? AppColors.darkTextPrimary : AppColors.deep;
+
+  Color get _deepColor => _isDarkMode ? AppColors.darkDeep : AppColors.deep;
 
   @override
   void initState() {
     super.initState();
 
     _titleController = TextEditingController(text: widget.story?.title ?? '');
-
     _synopsisController = TextEditingController(
       text: widget.story?.synopsis ?? '',
     );
@@ -62,18 +80,13 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   void dispose() {
     _titleController.removeListener(_refreshForm);
     _synopsisController.removeListener(_refreshForm);
-
     _titleController.dispose();
     _synopsisController.dispose();
-
     super.dispose();
   }
 
   void _refreshForm() {
-    if (!mounted) {
-      return;
-    }
-
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -89,23 +102,10 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
   int get _completedSteps {
     var completed = 0;
-
-    if (_hasCover) {
-      completed++;
-    }
-
-    if (_hasTitle) {
-      completed++;
-    }
-
-    if (_hasGenre) {
-      completed++;
-    }
-
-    if (_hasSynopsis) {
-      completed++;
-    }
-
+    if (_hasCover) completed++;
+    if (_hasTitle) completed++;
+    if (_hasGenre) completed++;
+    if (_hasSynopsis) completed++;
     return completed;
   }
 
@@ -117,9 +117,8 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     final selectedCover = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
+      backgroundColor: _surfaceColor,
       builder: (bottomSheetContext) {
-        final theme = Theme.of(bottomSheetContext);
-
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
@@ -130,19 +129,18 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                 Text(
                   'ELIGE UNA PORTADA',
                   style: GoogleFonts.cinzel(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: theme.colorScheme.onSurface,
+                    color: _headingColor,
                   ),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Por ahora puedes elegir una portada base. '
-                  'Después conectaremos la carga de imágenes con Cloudinary.',
+                  'Por ahora puedes elegir una portada base. Más adelante conectaremos la carga de imágenes.',
                   style: GoogleFonts.inter(
-                    fontSize: 11,
+                    fontSize: 10,
                     height: 1.45,
-                    color: theme.colorScheme.onSurfaceVariant,
+                    color: _textSecondaryColor,
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -188,9 +186,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       },
     );
 
-    if (selectedCover == null || !mounted) {
-      return;
-    }
+    if (selectedCover == null || !mounted) return;
 
     setState(() {
       _selectedCover = selectedCover;
@@ -205,9 +201,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     final colors = _coverColors(id);
 
     return InkWell(
-      onTap: () {
-        Navigator.of(context).pop(id);
-      },
+      onTap: () => Navigator.of(context).pop(id),
       borderRadius: BorderRadius.circular(12),
       child: Column(
         children: [
@@ -219,6 +213,9 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: colors,
+              ),
+              border: Border.all(
+                color: AppColors.gold.withValues(alpha: 0.35),
               ),
             ),
             child: const Center(
@@ -233,7 +230,11 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           Text(
             label,
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w600),
+            style: GoogleFonts.inter(
+              fontSize: 8.5,
+              fontWeight: FontWeight.w600,
+              color: _textPrimaryColor,
+            ),
           ),
         ],
       ),
@@ -244,13 +245,10 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     switch (cover) {
       case 'preset:gold':
         return const [Color(0xFF9A6D2F), Color(0xFF3B2414)];
-
       case 'preset:forest':
         return const [Color(0xFF405A49), Color(0xFF18241E)];
-
       case 'preset:night':
         return const [Color(0xFF34354A), Color(0xFF171821)];
-
       case 'preset:classic':
       default:
         return const [Color(0xFF7D2430), Color(0xFF35130F)];
@@ -258,9 +256,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   }
 
   Future<WriterStory?> _saveStory({required bool closeAfterSaving}) async {
-    if (_isSaving) {
-      return null;
-    }
+    if (_isSaving) return null;
 
     setState(() {
       _isSaving = true;
@@ -285,9 +281,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
     await _writerService.createStory(story);
 
-    if (!mounted) {
-      return story;
-    }
+    if (!mounted) return story;
 
     setState(() {
       _isSaving = false;
@@ -306,44 +300,46 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   }
 
   Future<void> _continue() async {
-    if (!_canContinue) {
-      return;
-    }
-
+    if (!_canContinue) return;
     await _saveStory(closeAfterSaving: true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: _backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 100),
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 120),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildBackButton(context),
+              _buildBackButton(),
               const SizedBox(height: 8),
-              _buildHeading(context),
-              const SizedBox(height: 26),
-              _buildSectionTitle(context, 'PORTADA'),
-              const SizedBox(height: 10),
-              _buildCoverSection(context),
-              const SizedBox(height: 28),
-              _buildSectionTitle(context, 'IDENTIDAD DE LA OBRA'),
-              const SizedBox(height: 14),
-              _buildIdentitySection(context),
-              const SizedBox(height: 30),
-              _buildSectionTitle(context, 'VISTA PREVIA'),
+              _buildHeading(),
+              const SizedBox(height: 20),
+
+              _buildSectionTitle('PORTADA'),
               const SizedBox(height: 12),
-              _buildPreview(context),
-              const SizedBox(height: 30),
-              _buildProgressSection(context),
-              const SizedBox(height: 22),
-              _buildActions(context),
+              _buildCoverSection(),
+              const SizedBox(height: 25),
+
+              _buildSectionTitle('IDENTIDAD DE LA OBRA'),
+              const SizedBox(height: 14),
+              _buildIdentitySection(),
+              const SizedBox(height: 28),
+
+              _buildSectionTitle('VISTA PREVIA'),
+              const SizedBox(height: 12),
+              _buildPreview(),
+              const SizedBox(height: 28),
+
+              _buildSectionTitle('CREANDO TU HISTORIA'),
+              const SizedBox(height: 12),
+              _buildProgressSection(),
+              const SizedBox(height: 18),
+
+              _buildActions(),
             ],
           ),
         ),
@@ -351,187 +347,211 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     );
   }
 
-  Widget _buildBackButton(BuildContext context) {
+  Widget _buildBackButton() {
     return TextButton.icon(
-      onPressed: () {
-        Navigator.of(context).pop();
-      },
-      icon: const Icon(Icons.arrow_back_rounded, size: 18),
+      onPressed: () => Navigator.of(context).pop(),
+      icon: const Icon(Icons.arrow_back_rounded, size: 16),
       label: Text(
-        'Volver',
-        style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600),
+        _isEditing ? 'Volver' : 'Volver',
+        style: GoogleFonts.inter(
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
+        ),
       ),
-      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+      style: TextButton.styleFrom(
+        foregroundColor: AppColors.accent,
+        padding: EdgeInsets.zero,
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
     );
   }
 
-  Widget _buildHeading(BuildContext context) {
-    final theme = Theme.of(context);
-
+  Widget _buildHeading() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _isEditing ? 'EDITAR HISTORIA' : 'CREAR HISTORIA',
+          _isEditing ? 'EDICIÓN DE OBRA' : 'CREAR HISTORIA',
           style: GoogleFonts.cinzel(
-            fontSize: 20,
+            fontSize: 9,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.8,
-            color: theme.colorScheme.onSurface,
+            color: AppColors.accent,
           ),
         ),
-        const SizedBox(height: 14),
-        Text(
-          'DA FORMA A UNA NUEVA OBRA.',
-          style: GoogleFonts.merriweather(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            height: 1.35,
-            color: theme.colorScheme.onSurface,
-          ),
+        const SizedBox(height: 10),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                _isEditing ? 'EDITAR HISTORIA' : 'DA FORMA A UNA NUEVA OBRA.',
+                style: GoogleFonts.merriweather(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  height: 1.3,
+                  color: _headingColor,
+                ),
+              ),
+            ),
+            if (_isEditing) ...[
+              const SizedBox(width: 8),
+              _buildStatusPill(widget.story!.isPublished),
+            ],
+          ],
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 6),
         Text(
-          'Empieza por su identidad, género y la idea que quieres contar.',
+          _isEditing
+              ? 'Actualiza la identidad y presentación de tu obra.'
+              : 'Empieza por su identidad, género y la idea que quieres contar.',
           style: GoogleFonts.inter(
-            fontSize: 11,
-            height: 1.5,
-            color: theme.colorScheme.onSurfaceVariant,
+            fontSize: 9.5,
+            height: 1.45,
+            color: _textSecondaryColor,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSectionTitle(BuildContext context, String title) {
-    final theme = Theme.of(context);
-
-    return Text(
-      title,
-      style: GoogleFonts.cinzel(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.7,
-        color: theme.colorScheme.onSurface,
-      ),
+  Widget _buildSectionTitle(String title) {
+    return Row(
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.cinzel(
+            fontSize: 9.2,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.65,
+            color: _headingColor,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.gold.withValues(alpha: 0.55),
+                  AppColors.gold.withValues(alpha: 0.06),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          '◆',
+          style: TextStyle(
+            color: AppColors.gold.withValues(alpha: 0.75),
+            fontSize: 7,
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildCoverSection(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _buildCoverPreview(context),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                FilledButton.icon(
-                  onPressed: _chooseCover,
-                  icon: const Icon(
-                    Icons.add_photo_alternate_outlined,
-                    size: 18,
-                  ),
-                  label: Text(
-                    _hasCover ? 'Cambiar portada' : 'Elegir portada',
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Añade una portada que represente la identidad de tu historia.',
-                  style: GoogleFonts.inter(
-                    fontSize: 9,
-                    height: 1.5,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                if (_hasCover) ...[
-                  const SizedBox(height: 7),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle_rounded,
-                        size: 15,
-                        color: theme.colorScheme.primary,
-                      ),
-                      const SizedBox(width: 5),
-                      Text(
-                        'Portada seleccionada',
-                        style: GoogleFonts.inter(
-                          fontSize: 9,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
+  Widget _buildCoverSection() {
+    return Column(
+      children: [
+        Center(child: _buildLargeCoverPreview()),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: _chooseCover,
+          icon: const Icon(Icons.auto_awesome_rounded, size: 14),
+          label: Text(
+            _hasCover ? 'Cambiar portada' : 'Elegir portada',
+            style: GoogleFonts.inter(
+              fontSize: 8,
+              fontWeight: FontWeight.w700,
             ),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _headingColor,
+            side: BorderSide(
+              color: AppColors.gold.withValues(alpha: 0.55),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(9),
+            ),
+          ),
+        ),
+        const SizedBox(height: 5),
+        Text(
+          'Añade una imagen mediante URL',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            fontSize: 6.8,
+            color: _textSecondaryColor,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLargeCoverPreview() {
+    return Container(
+      width: 96,
+      height: 136,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(
+          color: AppColors.gold.withValues(alpha: 0.48),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
+      clipBehavior: Clip.antiAlias,
+      child: _hasCover
+          ? _buildPresetCover()
+          : Container(
+              color: _surfaceColor,
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    '✦',
+                    style: TextStyle(
+                      color: AppColors.gold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    'TU HISTORIA',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.cinzel(
+                      fontSize: 7.5,
+                      fontWeight: FontWeight.w700,
+                      color: _textSecondaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 28,
+                    height: 1,
+                    color: AppColors.gold.withValues(alpha: 0.55),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 
-  Widget _buildCoverPreview(BuildContext context) {
-    final theme = Theme.of(context);
-
-    if (!_hasCover) {
-      return Container(
-        width: 100,
-        height: 145,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceContainerLow,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: theme.colorScheme.outlineVariant),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.auto_stories_outlined,
-              size: 31,
-              color: theme.colorScheme.primary,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'TU\nHISTORIA',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.cinzel(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
+  Widget _buildPresetCover() {
     return Container(
-      width: 100,
-      height: 145,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -541,18 +561,20 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.auto_stories_rounded, size: 31, color: Colors.white),
-          const SizedBox(height: 12),
+          const Icon(
+            Icons.auto_stories_rounded,
+            color: Colors.white,
+            size: 26,
+          ),
+          const SizedBox(height: 10),
           Text(
-            _titleController.text.trim().isEmpty
-                ? 'TU HISTORIA'
-                : _titleController.text.trim().toUpperCase(),
+            _hasTitle ? _titleController.text.trim().toUpperCase() : 'TU HISTORIA',
             maxLines: 4,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
             style: GoogleFonts.cinzel(
-              fontSize: 8,
-              height: 1.35,
+              fontSize: 7,
+              height: 1.3,
               fontWeight: FontWeight.w700,
               color: Colors.white,
             ),
@@ -562,29 +584,31 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     );
   }
 
-  Widget _buildIdentitySection(BuildContext context) {
-    final theme = Theme.of(context);
-
+  Widget _buildIdentitySection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('TÍTULO', style: _fieldLabelStyle(context)),
+        Text('TÍTULO', style: _fieldLabelStyle()),
         const SizedBox(height: 7),
         TextField(
           controller: _titleController,
           maxLength: 80,
           textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(
-            hintText: 'Ej: Sombras bajo la lluvia',
-            counterText: '${_titleController.text.length}/80',
+          style: GoogleFonts.merriweather(
+            fontSize: 11,
+            color: _textPrimaryColor,
+          ),
+          decoration: _inputDecoration(
+            hintText: 'Título de la historia',
+            counterText: '${_titleController.text.length} / 80',
           ),
         ),
-        const SizedBox(height: 20),
-        Text('GÉNERO', style: _fieldLabelStyle(context)),
-        const SizedBox(height: 10),
+        const SizedBox(height: 18),
+        Text('GÉNERO', style: _fieldLabelStyle()),
+        const SizedBox(height: 9),
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: 7,
+          runSpacing: 7,
           children: _genres.map((genre) {
             final selected = _selectedGenre == genre;
 
@@ -592,7 +616,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
               label: Text(
                 genre,
                 style: GoogleFonts.inter(
-                  fontSize: 9.5,
+                  fontSize: 8,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
@@ -602,11 +626,26 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                   _selectedGenre = genre;
                 });
               },
+              selectedColor: AppColors.accent,
+              backgroundColor: _surfaceColor,
+              side: BorderSide(
+                color: selected
+                    ? AppColors.accent
+                    : AppColors.gold.withValues(alpha: 0.28),
+              ),
+              labelStyle: TextStyle(
+                color: selected ? AppColors.background : _textPrimaryColor,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(999),
+              ),
+              showCheckmark: false,
             );
           }).toList(),
         ),
-        const SizedBox(height: 22),
-        Text('SINOPSIS', style: _fieldLabelStyle(context)),
+        const SizedBox(height: 20),
+        Text('SINOPSIS', style: _fieldLabelStyle()),
         const SizedBox(height: 7),
         TextField(
           controller: _synopsisController,
@@ -614,125 +653,187 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           minLines: 6,
           maxLines: 10,
           textCapitalization: TextCapitalization.sentences,
-          decoration: InputDecoration(
-            hintText: 'Cuenta brevemente de qué trata tu historia...',
-            alignLabelWithHint: true,
-            counterText: '${_synopsisController.text.length}/600',
+          style: GoogleFonts.merriweather(
+            fontSize: 10,
+            height: 1.55,
+            color: _textPrimaryColor,
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'La sinopsis ayudará a otros lectores a descubrir tu obra.',
-          style: GoogleFonts.inter(
-            fontSize: 8.5,
-            color: theme.colorScheme.onSurfaceVariant,
+          decoration: _inputDecoration(
+            hintText: 'Escribe una breve sinopsis...',
+            counterText: '${_synopsisController.text.length} / 600',
           ),
         ),
       ],
     );
   }
 
-  TextStyle _fieldLabelStyle(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return GoogleFonts.inter(
-      fontSize: 10,
-      fontWeight: FontWeight.w800,
-      letterSpacing: 0.5,
-      color: theme.colorScheme.onSurface,
+  InputDecoration _inputDecoration({
+    required String hintText,
+    required String counterText,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      counterText: counterText,
+      filled: true,
+      fillColor: _surfaceColor,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
+      hintStyle: GoogleFonts.merriweather(
+        fontSize: 9.5,
+        color: _textSecondaryColor,
+      ),
+      counterStyle: GoogleFonts.inter(
+        fontSize: 6.8,
+        color: _textSecondaryColor,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(
+          color: AppColors.gold.withValues(alpha: 0.48),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: const BorderSide(
+          color: AppColors.gold,
+          width: 1.2,
+        ),
+      ),
     );
   }
 
-  Widget _buildPreview(BuildContext context) {
-    final theme = Theme.of(context);
+  TextStyle _fieldLabelStyle() {
+    return GoogleFonts.inter(
+      fontSize: 8.5,
+      fontWeight: FontWeight.w800,
+      letterSpacing: 0.45,
+      color: _textSecondaryColor,
+    );
+  }
 
+  Widget _buildPreview() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
+        color: _surfaceColor,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
+          color: AppColors.gold.withValues(alpha: 0.28),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Transform.scale(
-            scale: 0.78,
-            alignment: Alignment.topLeft,
-            child: _buildCoverPreview(context),
+          SizedBox(
+            width: 62,
+            height: 86,
+            child: _hasCover
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: _buildPresetCover(),
+                  )
+                : Container(
+                    decoration: BoxDecoration(
+                      color: _isDarkMode
+                          ? _deepColor.withValues(alpha: 0.35)
+                          : const Color(0xFFF1E8DA),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: AppColors.gold.withValues(alpha: 0.45),
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'SIN PORTADA',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.cinzel(
+                        fontSize: 5.5,
+                        color: _textSecondaryColor,
+                      ),
+                    ),
+                  ),
           ),
-          const SizedBox(width: 2),
+          const SizedBox(width: 10),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _hasTitle
-                        ? _titleController.text.trim()
-                        : 'Título de tu historia',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.merriweather(
-                      fontSize: 13,
-                      height: 1.35,
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _hasGenre ? _selectedGenre! : 'Género',
-                    style: GoogleFonts.inter(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w600,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    _hasSynopsis
-                        ? _synopsisController.text.trim()
-                        : 'Aquí aparecerá la sinopsis de tu obra.',
-                    maxLines: 5,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      fontSize: 9,
-                      height: 1.5,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 11),
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 10,
-                        backgroundColor: theme.colorScheme.primary.withValues(
-                          alpha: 0.12,
-                        ),
-                        child: Icon(
-                          Icons.person_outline_rounded,
-                          size: 13,
-                          color: theme.colorScheme.primary,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _hasTitle
+                            ? _titleController.text.trim()
+                            : 'Título de la historia',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.merriweather(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: _textPrimaryColor,
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Tu perfil de autor',
-                        style: GoogleFonts.inter(
-                          fontSize: 8.5,
-                          fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
+                    ),
+                    const SizedBox(width: 6),
+                    _buildStatusPill(false),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _hasGenre ? _selectedGenre! : 'Sin género',
+                  style: GoogleFonts.inter(
+                    fontSize: 7.2,
+                    color: _textSecondaryColor,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  _hasSynopsis
+                      ? _synopsisController.text.trim()
+                      : 'Tu sinopsis aparecerá aquí mientras escribes.',
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.merriweather(
+                    fontSize: 7.3,
+                    height: 1.45,
+                    color: _textSecondaryColor,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Container(
+                      width: 14,
+                      height: 1,
+                      color: AppColors.gold.withValues(alpha: 0.65),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'por ',
+                      style: GoogleFonts.inter(
+                        fontSize: 6.5,
+                        color: _textSecondaryColor,
+                      ),
+                    ),
+                    Text(
+                      '@constanza.lectora',
+                      style: GoogleFonts.inter(
+                        fontSize: 6.5,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.gold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -740,170 +841,201 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     );
   }
 
-  Widget _buildProgressSection(BuildContext context) {
-    final theme = Theme.of(context);
-
-    final percentage = (_progress * 100).round();
-
+  Widget _buildStatusPill(bool published) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
-        ),
+        color: published
+            ? AppColors.accent.withValues(alpha: 0.08)
+            : AppColors.gold.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'CREANDO TU HISTORIA',
-            style: GoogleFonts.cinzel(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-              color: theme.colorScheme.onSurface,
+          Container(
+            width: 4,
+            height: 4,
+            decoration: BoxDecoration(
+              color: published ? AppColors.accent : AppColors.gold,
+              shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '$_completedSteps de 4 datos completados',
-                  style: GoogleFonts.inter(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+          const SizedBox(width: 3),
+          Text(
+            published ? 'PUBLICADA' : 'BORRADOR',
+            style: GoogleFonts.inter(
+              color: published ? AppColors.accent : AppColors.gold,
+              fontSize: 5.3,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.25,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProgressSection() {
+    final percentage = (_progress * 100).round();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '$_completedSteps de 4 datos completados',
+                style: GoogleFonts.inter(
+                  fontSize: 7.7,
+                  fontWeight: FontWeight.w600,
+                  color: _textSecondaryColor,
                 ),
               ),
+            ),
+            Text(
+              '$percentage%',
+              style: GoogleFonts.inter(
+                fontSize: 7.7,
+                fontWeight: FontWeight.w800,
+                color: AppColors.accent,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 7),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(999),
+          child: LinearProgressIndicator(
+            value: _progress,
+            minHeight: 5,
+            backgroundColor: AppColors.gold.withValues(alpha: 0.12),
+            valueColor: const AlwaysStoppedAnimation<Color>(AppColors.accent),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: _progressLabel('Portada', _hasCover)),
+            Expanded(child: _progressLabel('Título', _hasTitle)),
+            Expanded(child: _progressLabel('Género', _hasGenre)),
+            Expanded(child: _progressLabel('Sinopsis', _hasSynopsis)),
+          ],
+        ),
+        if (!_canContinue) ...[
+          const SizedBox(height: 13),
+          Row(
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(
+                  color: AppColors.accent,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
               Text(
-                '$percentage%',
+                'Faltan datos por completar',
                 style: GoogleFonts.inter(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: theme.colorScheme.primary,
+                  fontSize: 7.5,
+                  fontWeight: FontWeight.w600,
+                  color: _textSecondaryColor,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 9),
-          LinearProgressIndicator(
-            value: _progress,
-            minHeight: 7,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          const SizedBox(height: 16),
-          _buildProgressItem(context, label: 'Portada', completed: _hasCover),
-          _buildProgressItem(context, label: 'Título', completed: _hasTitle),
-          _buildProgressItem(context, label: 'Género', completed: _hasGenre),
-          _buildProgressItem(
-            context,
-            label: 'Sinopsis',
-            completed: _hasSynopsis,
-          ),
-          if (!_canContinue) ...[
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  size: 16,
-                  color: theme.colorScheme.error,
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Faltan datos por completar',
-                  style: GoogleFonts.inter(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w700,
-                    color: theme.colorScheme.error,
-                  ),
-                ),
-              ],
-            ),
-          ],
         ],
-      ),
+      ],
     );
   }
 
-  Widget _buildProgressItem(
-    BuildContext context, {
-    required String label,
-    required bool completed,
-  }) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Icon(
-            completed
-                ? Icons.check_circle_rounded
-                : Icons.radio_button_unchecked_rounded,
-            size: 17,
+  Widget _progressLabel(String label, bool completed) {
+    return Column(
+      children: [
+        Container(
+          width: 4,
+          height: 4,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
             color: completed
-                ? theme.colorScheme.primary
-                : theme.colorScheme.onSurfaceVariant,
+                ? AppColors.accent
+                : AppColors.gold.withValues(alpha: 0.18),
           ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 9.5,
-              fontWeight: completed ? FontWeight.w700 : FontWeight.w500,
-              color: theme.colorScheme.onSurface,
-            ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            fontSize: 5.8,
+            color: completed ? _textPrimaryColor : _textSecondaryColor,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildActions(BuildContext context) {
+  Widget _buildActions() {
     return Column(
       children: [
         SizedBox(
           width: double.infinity,
-          child: FilledButton.icon(
+          child: FilledButton(
             onPressed: _canContinue && !_isSaving ? _continue : null,
-            icon: _isSaving
-                ? const SizedBox(
-                    width: 17,
-                    height: 17,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.arrow_forward_rounded),
-            label: Text(
-              'Continuar',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-            ),
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              backgroundColor: AppColors.accent,
+              disabledBackgroundColor: AppColors.accent.withValues(alpha: 0.24),
+              foregroundColor: AppColors.background,
+              disabledForegroundColor:
+                  AppColors.background.withValues(alpha: 0.92),
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
+            child: _isSaving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    _isEditing ? 'Guardar cambios' : 'Continuar →',
+                    style: GoogleFonts.inter(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
           ),
         ),
-        const SizedBox(height: 9),
-        SizedBox(
-          width: double.infinity,
-          child: OutlinedButton.icon(
-            onPressed: _isSaving
-                ? null
-                : () {
-                    _saveStory(closeAfterSaving: false);
-                  },
-            icon: const Icon(Icons.save_outlined),
-            label: Text(
-              'Guardar borrador',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: _isSaving
+              ? null
+              : () {
+                  _saveStory(closeAfterSaving: false);
+                },
+          icon: const Icon(Icons.save_outlined, size: 13),
+          label: Text(
+            _isEditing ? 'Guardar borrador' : 'Guardar borrador',
+            style: GoogleFonts.inter(
+              fontSize: 7.8,
+              fontWeight: FontWeight.w600,
             ),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+          ),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _textSecondaryColor,
+            side: BorderSide(
+              color: AppColors.gold.withValues(alpha: 0.20),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(9),
             ),
           ),
         ),
