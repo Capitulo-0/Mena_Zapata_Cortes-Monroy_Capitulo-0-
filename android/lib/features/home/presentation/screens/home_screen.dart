@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../clubs/models/reading_club.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -15,12 +16,19 @@ class HomeScreen extends StatefulWidget {
     required this.onOpenLibrary,
     required this.onOpenWriter,
     required this.onOpenPoints,
+    required this.clubs,
+    required this.joinedClubIds,
+    required this.onToggleClub,
   });
 
   final bool isGuest;
   final VoidCallback onOpenLibrary;
   final VoidCallback onOpenWriter;
   final VoidCallback onOpenPoints;
+
+  final List<ReadingClub> clubs;
+  final Set<int> joinedClubIds;
+  final ValueChanged<int> onToggleClub;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -48,7 +56,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int currentChapter = 4;
   int currentProgress = 65;
 
-  final Set<int> joinedClubs = {};
 
   // Colores adaptativos al tema global.
   Color get _background => AppColors.backgroundOf(context);
@@ -158,33 +165,6 @@ class _HomeScreenState extends State<HomeScreen> {
       'isbn': '978-84-670-4965-7',
       'cover': 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&h=560&fit=crop&auto=format',
       'synopsis': 'Un científico obsesionado desafía las leyes naturales creando una criatura que deberá enfrentarse al rechazo del mundo.',
-    },
-  ];
-
-  final List<Map<String, dynamic>> clubs = [
-    {
-      'id': 1,
-      'name': 'Adictos a los Clásicos ☕',
-      'members': 342,
-      'book': 'Cumbres Borrascosas',
-      'date': 'Viernes 20:00',
-      'description': 'Un espacio para quienes aman los grandes clásicos de la literatura universal. Cada semana conversamos sobre capítulos, personajes y contexto histórico.',
-    },
-    {
-      'id': 2,
-      'name': 'Mansión Gótica 🕯️',
-      'members': 189,
-      'book': 'Jane Eyre',
-      'date': 'Sábado 18:30',
-      'description': 'Para amantes de la literatura gótica y victoriana. Misterio, romanticismo oscuro y personajes inolvidables.',
-    },
-    {
-      'id': 3,
-      'name': 'Plumas del Sur ✍️',
-      'members': 98,
-      'book': 'El Jardín de los Recuerdos',
-      'date': 'Miércoles 19:00',
-      'description': 'Club dedicado a literatura latinoamericana contemporánea y autores independientes.',
     },
   ];
 
@@ -1442,17 +1422,17 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 3),
-          _clubCard(clubs[0]),
+          _clubCard(widget.clubs[0]),
           const SizedBox(height: 8),
-          _clubCard(clubs[1]),
+          _clubCard(widget.clubs[1]),
         ],
       ),
     );
   }
 
-  Widget _clubCard(Map<String, dynamic> club) {
-    final id = club['id'] as int;
-    final joined = joinedClubs.contains(id);
+  Widget _clubCard(ReadingClub club) {
+    final id = club.id;
+    final joined = widget.joinedClubIds.contains(id);
 
     return Container(
       width: double.infinity,
@@ -1466,7 +1446,7 @@ class _HomeScreenState extends State<HomeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            club['name'] as String,
+            club.name,
             style: GoogleFonts.merriweather(
               color: _textPrimary,
               fontSize: 10,
@@ -1475,12 +1455,12 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 3),
           Text(
-            'Leyendo: ${club['book']}',
+            'Leyendo: ${club.book}',
             style: GoogleFonts.inter(color: _textSecondary, fontSize: 8),
           ),
           const SizedBox(height: 4),
           Text(
-            '📅 Debate: ${club['date']} · ${club['members']} lectores',
+            '📅 Debate: ${club.date} · ${club.members} lectores',
             style: GoogleFonts.inter(color: _accent, fontSize: 7),
           ),
           const SizedBox(height: 9),
@@ -1535,13 +1515,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    setState(() {
-      if (joinedClubs.contains(id)) {
-        joinedClubs.remove(id);
-      } else {
-        joinedClubs.add(id);
-      }
-    });
+    widget.onToggleClub(id);
   }
 
   Widget _buildCommunityStories() {
@@ -2586,18 +2560,18 @@ class _HomeScreenState extends State<HomeScreen> {
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 
-  void _showClubDetails(Map<String, dynamic> club) {
+  void _showClubDetails(ReadingClub club) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: _background,
       useSafeArea: true,
       showDragHandle: true,
       builder: (sheetContext) {
-        final id = club['id'] as int;
+        final id = club.id;
 
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            final joined = joinedClubs.contains(id);
+            final joined = widget.joinedClubIds.contains(id);
 
             return Padding(
               padding: const EdgeInsets.fromLTRB(20, 5, 20, 25),
@@ -2606,7 +2580,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    club['name'] as String,
+                    club.name,
                     style: GoogleFonts.cinzel(
                       color: _textPrimary,
                       fontSize: 16,
@@ -2615,7 +2589,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 7),
                   Text(
-                    'Leyendo: ${club['book']}',
+                    'Leyendo: ${club.book}',
                     style: GoogleFonts.inter(
                       color: _accent,
                       fontSize: 10,
@@ -2624,7 +2598,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 5),
                   Text(
-                    '📅 ${club['date']} · ${club['members']} lectores',
+                    '📅 ${club.date} · ${club.members} lectores',
                     style: GoogleFonts.inter(
                       color: _textSecondary,
                       fontSize: 9,
@@ -2632,7 +2606,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    club['description'] as String,
+                    club.description,
                     style: GoogleFonts.merriweather(
                       color: _textPrimary,
                       fontSize: 10,
@@ -2650,13 +2624,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           return;
                         }
 
-                        setState(() {
-                          if (joinedClubs.contains(id)) {
-                            joinedClubs.remove(id);
-                          } else {
-                            joinedClubs.add(id);
-                          }
-                        });
+                        widget.onToggleClub(id);
                         setSheetState(() {});
                       },
                       style: FilledButton.styleFrom(
@@ -2715,12 +2683,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 8),
                   Expanded(
                     child: ListView.separated(
-                      itemCount: clubs.length,
+                      itemCount: widget.clubs.length,
                       separatorBuilder: (_, _) => const SizedBox(height: 9),
                       itemBuilder: (context, index) {
-                        final club = clubs[index];
-                        final id = club['id'] as int;
-                        final joined = joinedClubs.contains(id);
+                        final club = widget.clubs[index];
+                        final id = club.id;
+                        final joined = widget.joinedClubIds.contains(id);
 
                         return Container(
                           padding: const EdgeInsets.all(12),
@@ -2735,7 +2703,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                club['name'] as String,
+                                club.name,
                                 style: GoogleFonts.merriweather(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
@@ -2743,7 +2711,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Leyendo: ${club['book']}',
+                                'Leyendo: ${club.book}',
                                 style: GoogleFonts.inter(
                                   color: _textSecondary,
                                   fontSize: 9,
@@ -2773,13 +2741,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           return;
                                         }
 
-                                        setState(() {
-                                          if (joinedClubs.contains(id)) {
-                                            joinedClubs.remove(id);
-                                          } else {
-                                            joinedClubs.add(id);
-                                          }
-                                        });
+                                        widget.onToggleClub(id);
                                         setSheetState(() {});
                                       },
                                       style: FilledButton.styleFrom(
