@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../models/writer_story.dart';
 import '../../services/writer_local_service.dart';
 import 'create_story_screen.dart';
 import 'manage_story_screen.dart';
+import 'published_story_screen.dart';
 
 enum _StoryFilter { all, published, drafts }
 
@@ -19,10 +21,27 @@ class _WriterScreenState extends State<WriterScreen> {
   final WriterLocalService _writerService = WriterLocalService();
 
   List<WriterStory> _stories = [];
-
   _StoryFilter _selectedFilter = _StoryFilter.all;
-
   bool _isLoading = true;
+
+  bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
+
+  Color get _backgroundColor =>
+      _isDarkMode ? AppColors.darkBackground : AppColors.background;
+
+  Color get _surfaceColor =>
+      _isDarkMode ? AppColors.darkSurface : AppColors.surface;
+
+  Color get _textPrimaryColor =>
+      _isDarkMode ? AppColors.darkTextPrimary : AppColors.textPrimary;
+
+  Color get _textSecondaryColor =>
+      _isDarkMode ? AppColors.darkTextSecondary : AppColors.textSecondary;
+
+  Color get _headingColor =>
+      _isDarkMode ? AppColors.darkTextPrimary : AppColors.deep;
+
+  Color get _deepColor => _isDarkMode ? AppColors.darkDeep : AppColors.deep;
 
   @override
   void initState() {
@@ -31,15 +50,11 @@ class _WriterScreenState extends State<WriterScreen> {
   }
 
   Future<void> _loadStories() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     final stories = await _writerService.getStories();
 
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
 
     setState(() {
       _stories = stories;
@@ -51,99 +66,18 @@ class _WriterScreenState extends State<WriterScreen> {
     switch (_selectedFilter) {
       case _StoryFilter.all:
         return _stories;
-
       case _StoryFilter.published:
         return _stories.where((story) => story.isPublished).toList();
-
       case _StoryFilter.drafts:
         return _stories.where((story) => story.isDraft).toList();
     }
   }
 
-  int get _publishedCount {
-    return _stories.where((story) => story.isPublished).length;
-  }
+  int get _publishedCount =>
+      _stories.where((story) => story.isPublished).length;
 
-  int get _draftCount {
-    return _stories.where((story) => story.isDraft).length;
-  }
+  int get _draftCount => _stories.where((story) => story.isDraft).length;
 
-  Future<void> _togglePublish(WriterStory story) async {
-    final updatedStory = story.copyWith(
-      status: story.isPublished
-          ? WriterStoryStatus.draft
-          : WriterStoryStatus.published,
-      updatedAt: DateTime.now(),
-    );
-
-    await _writerService.updateStory(updatedStory);
-
-    await _loadStories();
-
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          updatedStory.isPublished
-              ? 'Historia publicada.'
-              : 'Historia guardada como borrador.',
-        ),
-      ),
-    );
-  }
-
-  Future<void> _deleteStory(WriterStory story) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        final theme = Theme.of(dialogContext);
-
-        return AlertDialog(
-          backgroundColor: theme.colorScheme.surface,
-          title: Text(
-            'Eliminar historia',
-            style: GoogleFonts.cinzel(fontWeight: FontWeight.w700),
-          ),
-          content: Text(
-            '¿Quieres eliminar "${story.title}"? Esta acción no se puede deshacer.',
-            style: GoogleFonts.inter(height: 1.45),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(false);
-              },
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(true);
-              },
-              child: const Text('Eliminar'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true) {
-      return;
-    }
-
-    await _writerService.deleteStory(story.id);
-
-    await _loadStories();
-
-    if (!mounted) {
-      return;
-    }
-
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Historia eliminada.')));
-  }
 
   Future<void> _openCreateStory() async {
     final result = await Navigator.of(context).push<WriterStory>(
@@ -153,6 +87,26 @@ class _WriterScreenState extends State<WriterScreen> {
     if (result != null) {
       await _loadStories();
     }
+  }
+
+  Future<void> _openEditStory(WriterStory story) async {
+    final result = await Navigator.of(context).push<WriterStory>(
+      MaterialPageRoute(
+        builder: (_) => CreateStoryScreen(story: story),
+      ),
+    );
+
+    if (result != null) {
+      await _loadStories();
+    }
+  }
+
+  void _openPublishedStory(WriterStory story) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PublishedStoryScreen(story: story),
+      ),
+    );
   }
 
   Future<void> _openManageStory(WriterStory story) async {
@@ -166,49 +120,38 @@ class _WriterScreenState extends State<WriterScreen> {
   }
 
   String _formatUpdatedDate(DateTime date) {
-    final difference = DateTime.now().difference(date);
+    const months = [
+      'ene',
+      'feb',
+      'mar',
+      'abr',
+      'may',
+      'jun',
+      'jul',
+      'ago',
+      'sept',
+      'oct',
+      'nov',
+      'dic',
+    ];
 
-    if (difference.inMinutes < 1) {
-      return 'Ahora';
-    }
-
-    if (difference.inMinutes < 60) {
-      return 'Hace ${difference.inMinutes} min';
-    }
-
-    if (difference.inHours < 24) {
-      return 'Hace ${difference.inHours} h';
-    }
-
-    if (difference.inDays == 1) {
-      return 'Ayer';
-    }
-
-    if (difference.inDays < 7) {
-      return 'Hace ${difference.inDays} días';
-    }
-
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-
-    return '$day/$month/${date.year}';
+    return '${date.day} ${months[date.month - 1]}';
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: _backgroundColor,
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _loadStories,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              SliverToBoxAdapter(child: _buildHeader(context)),
-              SliverToBoxAdapter(child: _buildStats(context)),
-              SliverToBoxAdapter(child: _buildFilters(context)),
+              SliverToBoxAdapter(child: _buildHeader()),
+              SliverToBoxAdapter(child: _buildStats()),
+              SliverToBoxAdapter(child: _buildWorksSectionTitle()),
+              SliverToBoxAdapter(child: _buildFilters()),
               if (_isLoading)
                 const SliverFillRemaining(
                   hasScrollBody: false,
@@ -217,19 +160,17 @@ class _WriterScreenState extends State<WriterScreen> {
               else if (_filteredStories.isEmpty)
                 SliverFillRemaining(
                   hasScrollBody: false,
-                  child: _buildEmptyState(context),
+                  child: _buildEmptyState(),
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 120),
+                  padding: const EdgeInsets.fromLTRB(16, 2, 16, 130),
                   sliver: SliverList.separated(
                     itemCount: _filteredStories.length,
                     itemBuilder: (context, index) {
-                      return _buildStoryCard(context, _filteredStories[index]);
+                      return _buildStoryCard(_filteredStories[index]);
                     },
-                    separatorBuilder: (_, _) {
-                      return const SizedBox(height: 14);
-                    },
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                   ),
                 ),
             ],
@@ -239,115 +180,120 @@ class _WriterScreenState extends State<WriterScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // HEADER
-  // ─────────────────────────────────────────────────────────────
-
-  Widget _buildHeader(BuildContext context) {
-    final theme = Theme.of(context);
-
+  Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'MIS HISTORIAS',
+                  style: GoogleFonts.cinzel(
+                    color: _headingColor,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.7,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
                   children: [
                     Text(
-                      'MIS HISTORIAS',
-                      style: GoogleFonts.cinzel(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.7,
-                        color: theme.colorScheme.onSurface,
+                      'Tu espacio de escritura',
+                      style: GoogleFonts.merriweather(
+                        color: _textSecondaryColor,
+                        fontSize: 9,
+                        fontStyle: FontStyle.italic,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const Text(
+                      '✦',
+                      style: TextStyle(
+                        color: AppColors.gold,
+                        fontSize: 8,
+                      ),
+                    ),
                     Text(
-                      'Escribe, organiza y publica tus propias historias.',
+                      'Constanza',
                       style: GoogleFonts.inter(
-                        fontSize: 10,
-                        height: 1.4,
-                        color: theme.colorScheme.onSurfaceVariant,
+                        color: _textPrimaryColor,
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          FilledButton.icon(
+            onPressed: _openCreateStory,
+            icon: const Icon(Icons.add_rounded, size: 15),
+            label: Text(
+              'Crear historia',
+              style: GoogleFonts.inter(
+                fontSize: 8.5,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(width: 12),
-              FilledButton.icon(
-                onPressed: _openCreateStory,
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: Text(
-                  'Crear historia',
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 13,
-                    vertical: 11,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.accent,
+              foregroundColor: AppColors.background,
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+              minimumSize: const Size(0, 38),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(11),
               ),
-            ],
+              elevation: 2,
+            ),
           ),
         ],
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // ESTADÍSTICAS
-  // ─────────────────────────────────────────────────────────────
-
-  Widget _buildStats(BuildContext context) {
-    final theme = Theme.of(context);
-
+  Widget _buildStats() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 11),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.45),
+          border: Border.symmetric(
+            horizontal: BorderSide(
+              color: AppColors.gold.withValues(alpha: 0.24),
+            ),
           ),
         ),
         child: Row(
           children: [
             Expanded(
-              child: _buildStatItem(
-                context,
+              child: _buildStat(
                 value: '${_stories.length}',
-                label: 'Historias',
+                label: _stories.length == 1 ? 'historia' : 'historias',
+                valueColor: _headingColor,
               ),
             ),
-            _buildVerticalDivider(context),
+            _buildVerticalDivider(),
             Expanded(
-              child: _buildStatItem(
-                context,
+              child: _buildStat(
                 value: '$_publishedCount',
-                label: 'Publicadas',
+                label: _publishedCount == 1 ? 'publicada' : 'publicadas',
+                valueColor: AppColors.accent,
               ),
             ),
-            _buildVerticalDivider(context),
+            _buildVerticalDivider(),
             Expanded(
-              child: _buildStatItem(
-                context,
+              child: _buildStat(
                 value: '$_draftCount',
-                label: 'Borradores',
+                label: _draftCount == 1 ? 'borrador' : 'borradores',
+                valueColor: AppColors.gold,
               ),
             ),
           ],
@@ -356,76 +302,79 @@ class _WriterScreenState extends State<WriterScreen> {
     );
   }
 
-  Widget _buildStatItem(
-    BuildContext context, {
+  Widget _buildStat({
     required String value,
     required String label,
+    required Color valueColor,
   }) {
-    final theme = Theme.of(context);
-
-    return Column(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           value,
-          style: GoogleFonts.cinzel(
-            fontSize: 17,
+          style: GoogleFonts.merriweather(
+            color: valueColor,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
-            color: theme.colorScheme.primary,
           ),
         ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 9,
-            fontWeight: FontWeight.w500,
-            color: theme.colorScheme.onSurfaceVariant,
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              color: _textSecondaryColor,
+              fontSize: 7.5,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildVerticalDivider(BuildContext context) {
-    final theme = Theme.of(context);
-
+  Widget _buildVerticalDivider() {
     return Container(
       width: 1,
-      height: 32,
-      color: theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
+      height: 25,
+      color: AppColors.gold.withValues(alpha: 0.25),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // FILTROS
-  // ─────────────────────────────────────────────────────────────
-
-  Widget _buildFilters(BuildContext context) {
+  Widget _buildWorksSectionTitle() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+      padding: const EdgeInsets.fromLTRB(16, 2, 16, 9),
       child: Row(
         children: [
+          Text(
+            'TUS OBRAS',
+            style: GoogleFonts.cinzel(
+              color: _headingColor,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.7,
+            ),
+          ),
+          const SizedBox(width: 8),
           Expanded(
-            child: _buildFilterButton(
-              context,
-              label: 'Todas',
-              filter: _StoryFilter.all,
+            child: Container(
+              height: 1,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.gold.withValues(alpha: 0.55),
+                    AppColors.gold.withValues(alpha: 0.06),
+                  ],
+                ),
+              ),
             ),
           ),
           const SizedBox(width: 7),
-          Expanded(
-            child: _buildFilterButton(
-              context,
-              label: 'Publicadas',
-              filter: _StoryFilter.published,
-            ),
-          ),
-          const SizedBox(width: 7),
-          Expanded(
-            child: _buildFilterButton(
-              context,
-              label: 'Borradores',
-              filter: _StoryFilter.drafts,
+          Text(
+            '◆',
+            style: TextStyle(
+              color: AppColors.gold.withValues(alpha: 0.75),
+              fontSize: 7,
             ),
           ),
         ],
@@ -433,57 +382,64 @@ class _WriterScreenState extends State<WriterScreen> {
     );
   }
 
-  Widget _buildFilterButton(
-    BuildContext context, {
-    required String label,
-    required _StoryFilter filter,
-  }) {
-    final theme = Theme.of(context);
+  Widget _buildFilters() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: _isDarkMode
+              ? _surfaceColor
+              : AppColors.gold.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.gold.withValues(alpha: 0.34),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: _buildFilterButton('Todas', _StoryFilter.all),
+            ),
+            Expanded(
+              child: _buildFilterButton('Publicadas', _StoryFilter.published),
+            ),
+            Expanded(
+              child: _buildFilterButton('Borradores', _StoryFilter.drafts),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterButton(String label, _StoryFilter filter) {
     final selected = _selectedFilter == filter;
 
     return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedFilter = filter;
-        });
-      },
-      borderRadius: BorderRadius.circular(20),
+      onTap: () => setState(() => _selectedFilter = filter),
+      borderRadius: BorderRadius.circular(10),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
         decoration: BoxDecoration(
-          color: selected
-              ? theme.colorScheme.primary
-              : theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: selected
-                ? theme.colorScheme.primary
-                : theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
-          ),
+          color: selected ? AppColors.accent : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Text(
           label,
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
-            fontSize: 10,
+            color: selected ? AppColors.background : _textPrimaryColor,
+            fontSize: 8,
             fontWeight: FontWeight.w700,
-            color: selected
-                ? theme.colorScheme.onPrimary
-                : theme.colorScheme.onSurface,
           ),
         ),
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // EMPTY STATE
-  // ─────────────────────────────────────────────────────────────
-
-  Widget _buildEmptyState(BuildContext context) {
-    final theme = Theme.of(context);
-
+  Widget _buildEmptyState() {
     String title;
     String description;
 
@@ -492,64 +448,68 @@ class _WriterScreenState extends State<WriterScreen> {
         title = 'Aún no tienes historias';
         description = 'Crea tu primera obra y comienza a escribir capítulos.';
         break;
-
       case _StoryFilter.published:
         title = 'No tienes historias publicadas';
-        description =
-            'Cuando publiques una historia, aparecerá en esta sección.';
+        description = 'Cuando publiques una historia, aparecerá aquí.';
         break;
-
       case _StoryFilter.drafts:
         title = 'No tienes borradores';
-        description = 'Tus historias sin publicar aparecerán guardadas aquí.';
+        description = 'Tus historias sin publicar aparecerán aquí.';
         break;
     }
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(32, 30, 32, 100),
+        padding: const EdgeInsets.fromLTRB(28, 35, 28, 120),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 84,
-              height: 84,
+              width: 72,
+              height: 72,
               decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.10),
                 shape: BoxShape.circle,
+                color: AppColors.gold.withValues(alpha: 0.10),
+                border: Border.all(
+                  color: AppColors.gold.withValues(alpha: 0.32),
+                ),
               ),
               child: Icon(
                 Icons.auto_stories_outlined,
-                size: 40,
-                color: theme.colorScheme.primary,
+                color: _headingColor,
+                size: 32,
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 15),
             Text(
               title,
               textAlign: TextAlign.center,
               style: GoogleFonts.merriweather(
-                fontSize: 15,
+                color: _textPrimaryColor,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: theme.colorScheme.onSurface,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 7),
             Text(
               description,
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
-                fontSize: 11,
-                height: 1.5,
-                color: theme.colorScheme.onSurfaceVariant,
+                color: _textSecondaryColor,
+                fontSize: 9,
+                height: 1.45,
               ),
             ),
             if (_selectedFilter == _StoryFilter.all) ...[
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
               FilledButton.icon(
                 onPressed: _openCreateStory,
-                icon: const Icon(Icons.add_rounded),
+                icon: const Icon(Icons.add_rounded, size: 17),
                 label: const Text('Crear mi primera historia'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.accent,
+                  foregroundColor: AppColors.background,
+                ),
               ),
             ],
           ],
@@ -558,307 +518,317 @@ class _WriterScreenState extends State<WriterScreen> {
     );
   }
 
-  // ─────────────────────────────────────────────────────────────
-  // TARJETA DE HISTORIA
-  // ─────────────────────────────────────────────────────────────
-
-  Widget _buildStoryCard(BuildContext context, WriterStory story) {
-    final theme = Theme.of(context);
-
+  Widget _buildStoryCard(WriterStory story) {
     return Container(
+      padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
+        color: _surfaceColor,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: story.isPublished
-              ? theme.colorScheme.primary.withValues(alpha: 0.22)
-              : theme.colorScheme.outlineVariant.withValues(alpha: 0.55),
+          color: AppColors.gold.withValues(alpha: 0.34),
         ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(
-              alpha: theme.brightness == Brightness.dark ? 0.16 : 0.05,
+              alpha: _isDarkMode ? 0.14 : 0.055,
             ),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            blurRadius: 13,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(13),
-        child: Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildCover(context, story),
-                const SizedBox(width: 12),
-                Expanded(child: _buildStoryInformation(context, story)),
-                _buildStoryMenu(context, story),
-              ],
-            ),
-            const SizedBox(height: 13),
-            _buildStoryMetrics(context, story),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  _openManageStory(story);
-                },
-                icon: const Icon(Icons.edit_note_rounded, size: 19),
-                label: Text(
-                  'Administrar',
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 11),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(11),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildCover(story),
+              const SizedBox(width: 11),
+              Expanded(child: _buildStoryInformation(story)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              const SizedBox(width: 89),
+              Expanded(
+                child: SizedBox(
+                  height: 32,
+                  child: FilledButton(
+                    onPressed: () => _openManageStory(story),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.accent,
+                      foregroundColor: AppColors.background,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                    ),
+                    child: Text(
+                      'Administrar',
+                      style: GoogleFonts.inter(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
+              const SizedBox(width: 6),
+              _buildStoryMenu(story),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildCover(BuildContext context, WriterStory story) {
-    final theme = Theme.of(context);
+  Widget _buildCover(WriterStory story) {
+    final cover = story.coverPath?.trim() ?? '';
+    final hasNetworkCover =
+        cover.startsWith('http://') || cover.startsWith('https://');
 
     return Container(
       width: 78,
-      height: 112,
+      height: 108,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
+        color: _deepColor,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(
+          color: AppColors.gold.withValues(alpha: 0.38),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.10),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: hasNetworkCover
+          ? Image.network(
+              cover,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _buildCoverPlaceholder(story),
+            )
+          : _buildCoverPlaceholder(story),
+    );
+  }
+
+  Widget _buildCoverPlaceholder(WriterStory story) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            theme.colorScheme.primary,
-            theme.colorScheme.primary.withValues(alpha: 0.65),
+            _deepColor,
+            _deepColor.withValues(alpha: 0.76),
           ],
         ),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: Stack(
-        fit: StackFit.expand,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (story.coverPath == null || story.coverPath!.trim().isEmpty)
-            const SizedBox.shrink(),
-          if (story.coverPath == null || story.coverPath!.trim().isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.auto_stories_rounded,
-                    size: 28,
-                    color: theme.colorScheme.onPrimary,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    story.title.isEmpty
-                        ? 'MI HISTORIA'
-                        : story.title.toUpperCase(),
-                    textAlign: TextAlign.center,
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.cinzel(
-                      fontSize: 7.5,
-                      height: 1.3,
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.onPrimary,
-                    ),
-                  ),
-                ],
-              ),
+          const Icon(
+            Icons.auto_stories_rounded,
+            color: AppColors.gold,
+            size: 24,
+          ),
+          const SizedBox(height: 7),
+          Text(
+            story.title.trim().isEmpty
+                ? 'TU HISTORIA'
+                : story.title.toUpperCase(),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.cinzel(
+              color: AppColors.background,
+              fontSize: 6.5,
+              height: 1.3,
+              fontWeight: FontWeight.w700,
             ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStoryInformation(BuildContext context, WriterStory story) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          story.title.isEmpty ? 'Historia sin título' : story.title,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.merriweather(
-            fontSize: 13,
-            height: 1.3,
-            fontWeight: FontWeight.w700,
-            color: theme.colorScheme.onSurface,
+  Widget _buildStoryInformation(WriterStory story) {
+    return SizedBox(
+      height: 108,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  story.title.trim().isEmpty
+                      ? 'Historia sin título'
+                      : story.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.merriweather(
+                    color: _textPrimaryColor,
+                    fontSize: 12,
+                    height: 1.25,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              _buildStatusBadge(story),
+            ],
           ),
-        ),
-        const SizedBox(height: 5),
-        Text(
-          story.genre.isEmpty ? 'Sin género' : story.genre,
-          style: GoogleFonts.inter(
-            fontSize: 9.5,
-            fontWeight: FontWeight.w500,
-            color: theme.colorScheme.onSurfaceVariant,
+          const SizedBox(height: 3),
+          Text(
+            story.genre.trim().isEmpty ? 'Sin género' : story.genre,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(
+              color: _textSecondaryColor,
+              fontSize: 7.5,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        _buildStatusBadge(context, story),
-        const SizedBox(height: 9),
-        if (story.isPublished)
+          const SizedBox(height: 7),
+          Row(
+            children: [
+              _microMeta('${story.chapterCount} capítulos'),
+              _dotSeparator(),
+              _microMeta('${story.totalWordCount} palabras'),
+              _dotSeparator(),
+              _microMeta('${story.followers} seguidores'),
+            ],
+          ),
+          const Spacer(),
+          if (story.isPublished)
+            Row(
+              children: [
+                const Icon(
+                  Icons.star_rounded,
+                  color: AppColors.gold,
+                  size: 12,
+                ),
+                const SizedBox(width: 3),
+                Text(
+                  story.rating > 0
+                      ? story.rating.toStringAsFixed(1)
+                      : 'Sin valoración',
+                  style: GoogleFonts.inter(
+                    color: story.rating > 0
+                        ? AppColors.gold
+                        : _textSecondaryColor,
+                    fontSize: 7.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            )
+          else
+            Text(
+              '★ Sin valoración',
+              style: GoogleFonts.inter(
+                color: AppColors.gold,
+                fontSize: 7.3,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          const SizedBox(height: 5),
           Row(
             children: [
               Icon(
-                Icons.star_rounded,
-                size: 16,
-                color: theme.colorScheme.tertiary,
+                Icons.access_time_rounded,
+                color: _textSecondaryColor,
+                size: 10,
               ),
-              const SizedBox(width: 3),
-              Text(
-                story.rating > 0
-                    ? story.rating.toStringAsFixed(1)
-                    : 'Sin valoraciones',
-                style: GoogleFonts.inter(
-                  fontSize: 9.5,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Última edición: ${_formatUpdatedDate(story.updatedAt)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    color: _textSecondaryColor,
+                    fontSize: 6.8,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ),
             ],
-          )
-        else
-          Text(
-            'Última edición: ${_formatUpdatedDate(story.updatedAt)}',
-            style: GoogleFonts.inter(
-              fontSize: 8.5,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
           ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildStatusBadge(BuildContext context, WriterStory story) {
-    final theme = Theme.of(context);
-
-    final backgroundColor = story.isPublished
-        ? theme.colorScheme.primary.withValues(alpha: 0.13)
-        : theme.colorScheme.secondaryContainer;
-
-    final foregroundColor = story.isPublished
-        ? theme.colorScheme.primary
-        : theme.colorScheme.onSecondaryContainer;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(7),
-      ),
+  Widget _microMeta(String text) {
+    return Flexible(
       child: Text(
-        story.isPublished ? 'PUBLICADA' : 'BORRADOR',
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: GoogleFonts.inter(
-          fontSize: 7.5,
-          letterSpacing: 0.5,
-          fontWeight: FontWeight.w800,
-          color: foregroundColor,
+          color: _textSecondaryColor,
+          fontSize: 6.6,
         ),
       ),
     );
   }
 
-  Widget _buildStoryMenu(BuildContext context, WriterStory story) {
-    return PopupMenuButton<String>(
-      tooltip: 'Opciones',
-      icon: const Icon(Icons.more_vert_rounded, size: 21),
-      onSelected: (value) {
-        switch (value) {
-          case 'publish':
-            _togglePublish(story);
-            break;
-
-          case 'delete':
-            _deleteStory(story);
-            break;
-        }
-      },
-      itemBuilder: (context) {
-        return [
-          PopupMenuItem<String>(
-            value: 'publish',
-            child: Row(
-              children: [
-                Icon(
-                  story.isPublished
-                      ? Icons.unpublished_outlined
-                      : Icons.public_rounded,
-                  size: 19,
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  story.isPublished ? 'Volver a borrador' : 'Publicar historia',
-                ),
-              ],
-            ),
-          ),
-          const PopupMenuDivider(),
-          const PopupMenuItem<String>(
-            value: 'delete',
-            child: Row(
-              children: [
-                Icon(Icons.delete_outline_rounded, size: 19),
-                SizedBox(width: 10),
-                Text('Eliminar'),
-              ],
-            ),
-          ),
-        ];
-      },
+  Widget _dotSeparator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Text(
+        '·',
+        style: GoogleFonts.inter(
+          color: AppColors.gold,
+          fontSize: 8,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
     );
   }
 
-  Widget _buildStoryMetrics(BuildContext context, WriterStory story) {
-    final theme = Theme.of(context);
+  Widget _buildStatusBadge(WriterStory story) {
+    final published = story.isPublished;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(11),
+        color: published
+            ? AppColors.accent.withValues(alpha: 0.08)
+            : AppColors.gold.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: published
+              ? AppColors.accent.withValues(alpha: 0.34)
+              : AppColors.gold.withValues(alpha: 0.46),
+        ),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: _buildMetric(
-              context,
-              icon: Icons.format_list_numbered_rounded,
-              value: '${story.chapterCount}',
-              label: 'capítulos',
+          Container(
+            width: 4,
+            height: 4,
+            decoration: BoxDecoration(
+              color: published ? AppColors.accent : AppColors.gold,
+              shape: BoxShape.circle,
             ),
           ),
-          Expanded(
-            child: _buildMetric(
-              context,
-              icon: Icons.notes_rounded,
-              value: '${story.totalWordCount}',
-              label: 'palabras',
-            ),
-          ),
-          Expanded(
-            child: _buildMetric(
-              context,
-              icon: Icons.people_outline_rounded,
-              value: '${story.followers}',
-              label: 'seguidores',
+          const SizedBox(width: 4),
+          Text(
+            published ? 'PUBLICADA' : 'BORRADOR',
+            style: GoogleFonts.inter(
+              color: published ? AppColors.accent : AppColors.gold,
+              fontSize: 5.8,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.35,
             ),
           ),
         ],
@@ -866,37 +836,170 @@ class _WriterScreenState extends State<WriterScreen> {
     );
   }
 
-  Widget _buildMetric(
-    BuildContext context, {
-    required IconData icon,
-    required String value,
-    required String label,
-  }) {
-    final theme = Theme.of(context);
-
-    return Column(
-      children: [
-        Icon(icon, size: 16, color: theme.colorScheme.primary),
-        const SizedBox(height: 3),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.inter(
-            fontSize: 9.5,
-            fontWeight: FontWeight.w700,
-            color: theme.colorScheme.onSurface,
+  Widget _buildStoryMenu(WriterStory story) {
+    return SizedBox(
+      width: 34,
+      height: 32,
+      child: InkWell(
+        onTapDown: (details) {
+          _showStoryMenu(
+            story,
+            details.globalPosition,
+          );
+        },
+        borderRadius: BorderRadius.circular(9),
+        child: Container(
+          decoration: BoxDecoration(
+            color: _surfaceColor,
+            borderRadius: BorderRadius.circular(9),
+            border: Border.all(
+              color: AppColors.gold.withValues(alpha: 0.55),
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Icon(
+            Icons.more_horiz_rounded,
+            color: _headingColor,
+            size: 20,
           ),
         ),
-        const SizedBox(height: 1),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 7.5,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
+      ),
     );
   }
+
+  Future<void> _showStoryMenu(
+    WriterStory story,
+    Offset tapPosition,
+  ) async {
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Opciones de historia',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 140),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        final size = MediaQuery.of(dialogContext).size;
+        const menuWidth = 165.0;
+        final menuHeight = story.isPublished ? 94.0 : 52.0;
+
+        final left = (tapPosition.dx - menuWidth)
+            .clamp(12.0, size.width - menuWidth - 12.0);
+        final top = (tapPosition.dy + 6)
+            .clamp(12.0, size.height - menuHeight - 24.0);
+
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: () => Navigator.of(dialogContext).pop(),
+                child: const SizedBox.expand(),
+              ),
+            ),
+            Positioned(
+              left: left,
+              top: top,
+              width: menuWidth,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: _surfaceColor,
+                    borderRadius: BorderRadius.circular(13),
+                    border: Border.all(
+                      color: AppColors.gold.withValues(alpha: 0.24),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _storyMenuOption(
+                        icon: Icons.edit_outlined,
+                        label: 'Editar historia',
+                        onTap: () {
+                          Navigator.of(dialogContext).pop();
+                          _openEditStory(story);
+                        },
+                      ),
+                      if (story.isPublished) ...[
+                        Divider(
+                          height: 1,
+                          color: AppColors.gold.withValues(alpha: 0.16),
+                        ),
+                        _storyMenuOption(
+                          icon: Icons.visibility_outlined,
+                          label: 'Ver publicada',
+                          onTap: () {
+                            Navigator.of(dialogContext).pop();
+                            _openPublishedStory(story);
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      transitionBuilder: (
+        dialogContext,
+        animation,
+        secondaryAnimation,
+        child,
+      ) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOut,
+          ),
+          child: child,
+        );
+      },
+    );
+  }
+
+  Widget _storyMenuOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 13,
+          vertical: 12,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 15,
+              color: AppColors.gold,
+            ),
+            const SizedBox(width: 9),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 8.3,
+                fontWeight: FontWeight.w600,
+                color: _textPrimaryColor,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 }

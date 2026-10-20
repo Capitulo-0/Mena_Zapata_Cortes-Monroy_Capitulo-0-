@@ -10,7 +10,8 @@ class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  State<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
 }
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
@@ -51,9 +52,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       return;
     }
 
-    setState(() {
-      currentStep = RecoveryStep.code;
-    });
+    setState(() => currentStep = RecoveryStep.code);
   }
 
   void verifyCode() {
@@ -69,9 +68,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       return;
     }
 
-    setState(() {
-      currentStep = RecoveryStep.newPassword;
-    });
+    setState(() => currentStep = RecoveryStep.newPassword);
   }
 
   void changePassword() {
@@ -93,9 +90,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       return;
     }
 
-    setState(() {
-      currentStep = RecoveryStep.success;
-    });
+    setState(() => currentStep = RecoveryStep.success);
   }
 
   void goBack() {
@@ -108,15 +103,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       switch (currentStep) {
         case RecoveryStep.email:
           break;
-
         case RecoveryStep.code:
           currentStep = RecoveryStep.email;
           break;
-
         case RecoveryStep.newPassword:
           currentStep = RecoveryStep.code;
           break;
-
         case RecoveryStep.success:
           currentStep = RecoveryStep.newPassword;
           break;
@@ -128,13 +120,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     switch (currentStep) {
       case RecoveryStep.email:
         return 1;
-
       case RecoveryStep.code:
         return 2;
-
       case RecoveryStep.newPassword:
         return 3;
-
       case RecoveryStep.success:
         return 4;
     }
@@ -150,9 +139,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             _buildHeader(),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(22, 28, 22, 32),
+                padding: const EdgeInsets.fromLTRB(22, 22, 22, 32),
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 250),
+                  duration: const Duration(milliseconds: 260),
+                  switchInCurve: Curves.easeOutCubic,
+                  switchOutCurve: Curves.easeInCubic,
                   child: _buildCurrentStep(),
                 ),
               ),
@@ -166,61 +157,74 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 18),
+      padding: const EdgeInsets.fromLTRB(24, 22, 24, 24),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
           colors: [AppColors.deep, AppColors.deepAlt],
         ),
       ),
       child: Column(
         children: [
-          Row(
-            children: [
-              IconButton(
-                onPressed: goBack,
-                icon: const Icon(Icons.arrow_back_ios_new_rounded),
-                color: AppColors.background,
-              ),
-              const Spacer(),
-              Text(
-                'Recuperar contraseña',
-                style: GoogleFonts.cinzel(
-                  color: AppColors.background,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const Spacer(),
-              const SizedBox(width: 48),
-            ],
-          ),
-          const SizedBox(height: 14),
           Container(
-            width: 64,
-            height: 64,
+            width: 92,
+            height: 92,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: AppColors.gold.withValues(alpha: 0.55)),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppColors.gold.withValues(alpha: 0.55),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.16),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(19),
               child: Image.asset(
                 'assets/images/logo_capitulo0.png',
                 fit: BoxFit.cover,
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Text(
             'CAPÍTULO 0',
             style: GoogleFonts.cinzel(
               color: AppColors.gold,
-              fontSize: 19,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2,
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 3,
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 39,
+                height: 1,
+                color: AppColors.gold.withValues(alpha: 0.72),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '✦',
+                style: TextStyle(
+                  color: AppColors.gold.withValues(alpha: 0.88),
+                  fontSize: 8,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 39,
+                height: 1,
+                color: AppColors.gold.withValues(alpha: 0.72),
+              ),
+            ],
           ),
         ],
       ),
@@ -231,13 +235,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     switch (currentStep) {
       case RecoveryStep.email:
         return _buildEmailStep();
-
       case RecoveryStep.code:
         return _buildCodeStep();
-
       case RecoveryStep.newPassword:
         return _buildPasswordStep();
-
       case RecoveryStep.success:
         return _buildSuccessStep();
     }
@@ -252,7 +253,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               _buildStepCircle(index),
               if (index < 4)
                 Expanded(
-                  child: Container(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
                     height: 2,
                     color: index < stepNumber
                         ? AppColors.gold
@@ -262,12 +264,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ],
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Text(
           'Paso $stepNumber de 4',
           style: GoogleFonts.inter(
             color: AppColors.textSecondary,
-            fontSize: 12,
+            fontSize: 11.5,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -276,23 +278,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Widget _buildStepCircle(int index) {
-    final completed = index <= stepNumber;
+    final active = index <= stepNumber;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
       width: 30,
       height: 30,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: completed ? AppColors.accent : AppColors.surfaceSoft,
+        color: active ? AppColors.accent : AppColors.surfaceSoft,
       ),
       alignment: Alignment.center,
       child: Text(
         '$index',
         style: GoogleFonts.inter(
-          color: completed ? AppColors.background : AppColors.textSecondary,
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
+          color: active ? AppColors.background : AppColors.textSecondary,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -304,55 +307,57 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildStepIndicator(),
-        const SizedBox(height: 34),
+        const SizedBox(height: 28),
         const Icon(
           Icons.mark_email_read_outlined,
-          size: 54,
+          size: 48,
           color: AppColors.gold,
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
         Text(
-          '¿Olvidaste tu contraseña?',
+          '¿OLVIDASTE TU CONTRASEÑA?',
           textAlign: TextAlign.center,
           style: GoogleFonts.cinzel(
             color: AppColors.deep,
-            fontSize: 23,
-            fontWeight: FontWeight.w700,
+            fontSize: 21,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Text(
           'Ingresa el correo asociado a tu cuenta y te enviaremos un código de recuperación.',
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             color: AppColors.textSecondary,
-            fontSize: 13,
+            fontSize: 12,
             height: 1.5,
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 24),
         _buildLabel('Correo electrónico'),
         const SizedBox(height: 7),
         TextField(
           controller: emailController,
           keyboardType: TextInputType.emailAddress,
-          decoration: const InputDecoration(
+          decoration: _inputDecoration(
             hintText: 'correo@ejemplo.com',
-            prefixIcon: Icon(Icons.email_outlined),
+            prefixIcon: Icons.email_outlined,
           ),
         ),
-        const SizedBox(height: 26),
-        _buildPrimaryButton(text: 'Enviar código', onPressed: goToCode),
-        const SizedBox(height: 18),
+        const SizedBox(height: 22),
+        _buildPrimaryButton(
+          text: 'Enviar código',
+          onPressed: goToCode,
+        ),
+        const SizedBox(height: 12),
         TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
+          onPressed: () => Navigator.of(context).pop(),
           child: Text(
             'Volver al inicio de sesión',
             style: GoogleFonts.inter(
               color: AppColors.accent,
               fontWeight: FontWeight.w600,
+              fontSize: 11.5,
             ),
           ),
         ),
@@ -366,29 +371,33 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildStepIndicator(),
-        const SizedBox(height: 34),
-        const Icon(Icons.password_rounded, size: 54, color: AppColors.gold),
-        const SizedBox(height: 18),
+        const SizedBox(height: 28),
+        const Icon(
+          Icons.password_rounded,
+          size: 48,
+          color: AppColors.gold,
+        ),
+        const SizedBox(height: 16),
         Text(
-          'Verifica tu correo',
+          'VERIFICA TU CORREO',
           textAlign: TextAlign.center,
           style: GoogleFonts.cinzel(
             color: AppColors.deep,
-            fontSize: 23,
-            fontWeight: FontWeight.w700,
+            fontSize: 21,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Text(
           'Enviamos un código de 6 dígitos a ${emailController.text.trim()}.',
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             color: AppColors.textSecondary,
-            fontSize: 13,
+            fontSize: 12,
             height: 1.5,
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 24),
         _buildLabel('Código de verificación'),
         const SizedBox(height: 7),
         TextField(
@@ -399,18 +408,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           style: GoogleFonts.inter(
             color: AppColors.deep,
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 10,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 8,
           ),
-          decoration: const InputDecoration(
-            counterText: '',
-            hintText: '000000',
-          ),
+          decoration: _inputDecoration(
+            hintText: '0 0 0 0 0 0',
+          ).copyWith(counterText: ''),
         ),
-        const SizedBox(height: 26),
-        _buildPrimaryButton(text: 'Verificar código', onPressed: verifyCode),
-        const SizedBox(height: 14),
+        const SizedBox(height: 22),
+        _buildPrimaryButton(
+          text: 'Verificar código',
+          onPressed: verifyCode,
+        ),
+        const SizedBox(height: 10),
         TextButton(
           onPressed: () {
             showMessage('Código reenviado de forma simulada.');
@@ -420,6 +431,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             style: GoogleFonts.inter(
               color: AppColors.accent,
               fontWeight: FontWeight.w600,
+              fontSize: 11.5,
             ),
           ),
         ),
@@ -433,42 +445,44 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildStepIndicator(),
-        const SizedBox(height: 34),
-        const Icon(Icons.lock_reset_rounded, size: 56, color: AppColors.gold),
-        const SizedBox(height: 18),
+        const SizedBox(height: 28),
+        const Icon(
+          Icons.lock_reset_rounded,
+          size: 50,
+          color: AppColors.gold,
+        ),
+        const SizedBox(height: 16),
         Text(
-          'Crea una nueva contraseña',
+          'CREA UNA NUEVA CONTRASEÑA',
           textAlign: TextAlign.center,
           style: GoogleFonts.cinzel(
             color: AppColors.deep,
-            fontSize: 22,
-            fontWeight: FontWeight.w700,
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Text(
           'Tu nueva contraseña debe tener al menos 6 caracteres.',
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             color: AppColors.textSecondary,
-            fontSize: 13,
+            fontSize: 12,
             height: 1.5,
           ),
         ),
-        const SizedBox(height: 30),
+        const SizedBox(height: 24),
         _buildLabel('Nueva contraseña'),
         const SizedBox(height: 7),
         TextField(
           controller: newPasswordController,
           obscureText: obscurePassword,
-          decoration: InputDecoration(
+          decoration: _inputDecoration(
             hintText: 'Ingresa tu nueva contraseña',
-            prefixIcon: const Icon(Icons.lock_outline),
-            suffixIcon: IconButton(
+            prefixIcon: Icons.lock_outline,
+            suffix: IconButton(
               onPressed: () {
-                setState(() {
-                  obscurePassword = !obscurePassword;
-                });
+                setState(() => obscurePassword = !obscurePassword);
               },
               icon: Icon(
                 obscurePassword
@@ -478,20 +492,20 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
         _buildLabel('Confirmar contraseña'),
         const SizedBox(height: 7),
         TextField(
           controller: confirmPasswordController,
           obscureText: obscureConfirmPassword,
-          decoration: InputDecoration(
+          decoration: _inputDecoration(
             hintText: 'Repite tu nueva contraseña',
-            prefixIcon: const Icon(Icons.lock_outline),
-            suffixIcon: IconButton(
+            prefixIcon: Icons.lock_outline,
+            suffix: IconButton(
               onPressed: () {
-                setState(() {
-                  obscureConfirmPassword = !obscureConfirmPassword;
-                });
+                setState(
+                  () => obscureConfirmPassword = !obscureConfirmPassword,
+                );
               },
               icon: Icon(
                 obscureConfirmPassword
@@ -501,7 +515,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 26),
+        const SizedBox(height: 22),
         _buildPrimaryButton(
           text: 'Cambiar contraseña',
           onPressed: changePassword,
@@ -516,49 +530,86 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildStepIndicator(),
-        const SizedBox(height: 42),
-        Container(
-          width: 90,
-          height: 90,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: AppColors.gold.withValues(alpha: 0.16),
-          ),
+        const SizedBox(height: 34),
+        Align(
           alignment: Alignment.center,
-          child: const Icon(
-            Icons.check_circle_outline_rounded,
-            size: 62,
-            color: AppColors.gold,
+          child: Container(
+            width: 82,
+            height: 82,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.gold.withValues(alpha: 0.14),
+            ),
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.check_circle_outline_rounded,
+              size: 56,
+              color: AppColors.gold,
+            ),
           ),
         ),
-        const SizedBox(height: 26),
+        const SizedBox(height: 22),
         Text(
-          'Contraseña actualizada',
+          'CONTRASEÑA ACTUALIZADA',
           textAlign: TextAlign.center,
           style: GoogleFonts.cinzel(
             color: AppColors.deep,
-            fontSize: 23,
-            fontWeight: FontWeight.w700,
+            fontSize: 21,
+            fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Text(
           'Tu contraseña fue modificada correctamente. Ya puedes iniciar sesión con tus nuevas credenciales.',
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             color: AppColors.textSecondary,
-            fontSize: 13,
+            fontSize: 12,
             height: 1.5,
           ),
         ),
-        const SizedBox(height: 34),
+        const SizedBox(height: 28),
         _buildPrimaryButton(
           text: 'Volver al inicio de sesión',
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ],
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required String hintText,
+    IconData? prefixIcon,
+    Widget? suffix,
+  }) {
+    return InputDecoration(
+      hintText: hintText,
+      prefixIcon:
+          prefixIcon == null ? null : Icon(prefixIcon, size: 20),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: AppColors.surface,
+      hintStyle: GoogleFonts.inter(
+        color: AppColors.textSecondary,
+        fontSize: 12,
+      ),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 14,
+        vertical: 14,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(
+          color: AppColors.gold.withValues(alpha: 0.55),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(
+          color: AppColors.gold,
+          width: 1.2,
+        ),
+      ),
     );
   }
 
@@ -567,7 +618,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       text,
       style: GoogleFonts.inter(
         color: AppColors.deep,
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: FontWeight.w600,
       ),
     );
@@ -578,20 +629,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     required VoidCallback onPressed,
   }) {
     return SizedBox(
-      height: 50,
+      height: 48,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.accent,
           foregroundColor: AppColors.background,
-          elevation: 0,
+          elevation: 4,
+          shadowColor: AppColors.accent.withValues(alpha: 0.24),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(11),
           ),
         ),
         child: Text(
           text,
-          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700),
+          style: GoogleFonts.inter(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
     );
