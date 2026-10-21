@@ -11,7 +11,12 @@ import 'published_story_screen.dart';
 enum _StoryFilter { all, published, drafts }
 
 class WriterScreen extends StatefulWidget {
-  const WriterScreen({super.key});
+  const WriterScreen({
+    super.key,
+    this.onStoriesChanged,
+  });
+
+  final ValueChanged<List<WriterStory>>? onStoriesChanged;
 
   @override
   State<WriterScreen> createState() => _WriterScreenState();
@@ -49,7 +54,7 @@ class _WriterScreenState extends State<WriterScreen> {
     _loadStories();
   }
 
-  Future<void> _loadStories() async {
+  Future<void> _loadStories({bool notifyParent = false}) async {
     setState(() => _isLoading = true);
 
     final stories = await _writerService.getStories();
@@ -60,6 +65,12 @@ class _WriterScreenState extends State<WriterScreen> {
       _stories = stories;
       _isLoading = false;
     });
+
+    if (notifyParent) {
+      widget.onStoriesChanged?.call(
+        List<WriterStory>.unmodifiable(stories),
+      );
+    }
   }
 
   List<WriterStory> get _filteredStories {
@@ -85,7 +96,7 @@ class _WriterScreenState extends State<WriterScreen> {
     );
 
     if (result != null) {
-      await _loadStories();
+      await _loadStories(notifyParent: true);
     }
   }
 
@@ -97,7 +108,7 @@ class _WriterScreenState extends State<WriterScreen> {
     );
 
     if (result != null) {
-      await _loadStories();
+      await _loadStories(notifyParent: true);
     }
   }
 
@@ -110,13 +121,13 @@ class _WriterScreenState extends State<WriterScreen> {
   }
 
   Future<void> _openManageStory(WriterStory story) async {
-    final result = await Navigator.of(context).push<WriterStory>(
+    await Navigator.of(context).push<WriterStory>(
       MaterialPageRoute(builder: (_) => ManageStoryScreen(story: story)),
     );
 
-    if (result != null) {
-      await _loadStories();
-    }
+    if (!mounted) return;
+
+    await _loadStories(notifyParent: true);
   }
 
   String _formatUpdatedDate(DateTime date) {
@@ -144,7 +155,7 @@ class _WriterScreenState extends State<WriterScreen> {
       backgroundColor: _backgroundColor,
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: _loadStories,
+          onRefresh: () => _loadStories(notifyParent: true),
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [

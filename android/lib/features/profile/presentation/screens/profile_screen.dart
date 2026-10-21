@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../clubs/models/reading_club.dart';
 import '../../../library/presentation/screens/library_screen.dart';
+import '../../../writer/models/writer_story.dart';
+import '../../../writer/presentation/screens/published_story_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
 
@@ -28,6 +30,7 @@ class ProfileScreen extends StatefulWidget {
     required this.onProgressChanged,
     required this.onReviewSaved,
     required this.onToggleFavorite,
+    required this.publishedStories,
   });
 
   final VoidCallback onOpenSettings;
@@ -52,6 +55,8 @@ class ProfileScreen extends StatefulWidget {
   final void Function(int bookId, int progress) onProgressChanged;
   final void Function(int bookId, BookReview review) onReviewSaved;
   final void Function(int bookId) onToggleFavorite;
+
+  final List<WriterStory> publishedStories;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -1267,7 +1272,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       {'id': 'favoritos', 'label': 'Favoritos (${_favoriteBooks.length})'},
       {'id': 'resenas', 'label': 'Mis Reseñas (${widget.reviews.length})'},
       {'id': 'lecturas', 'label': 'Mis Lecturas'},
-      {'id': 'obras', 'label': 'Mis obras (1)'},
+      {
+        'id': 'obras',
+        'label': 'Mis obras (${widget.publishedStories.length})',
+      },
       {'id': 'insignias', 'label': 'Insignias (5)'},
     ];
 
@@ -2182,47 +2190,279 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildWorks() {
+    final stories = widget.publishedStories;
+
     return _sectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'MIS OBRAS',
-            style: GoogleFonts.cinzel(
-              color: _headingColor,
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'MIS OBRAS',
+                  style: GoogleFonts.cinzel(
+                    color: _headingColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              Text(
+                '${stories.length} ${stories.length == 1 ? 'obra' : 'obras'}',
+                style: GoogleFonts.inter(
+                  color: AppColors.accent,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Container(
-              width: 42,
-              height: 56,
-              alignment: Alignment.center,
+          if (stories.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 18,
+              ),
               decoration: BoxDecoration(
-                color: _deepSurfaceColor,
-                borderRadius: BorderRadius.circular(7),
+                color: _backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.gold.withValues(alpha: 0.25),
+                ),
               ),
-              child: const Icon(Icons.auto_stories, color: AppColors.gold),
-            ),
-            title: Text(
-              'Sombras bajo la lluvia',
-              style: GoogleFonts.merriweather(
-                fontSize: 9.5,
-                fontWeight: FontWeight.w700,
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.auto_stories_outlined,
+                    color: AppColors.gold.withValues(alpha: 0.85),
+                    size: 28,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Aún no has publicado obras.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.merriweather(
+                      color: _textPrimaryColor,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Cuando publiques una historia desde Escribir, aparecerá automáticamente aquí.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: _textSecondaryColor,
+                      fontSize: 7.5,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
               ),
+            )
+          else
+            ...stories.asMap().entries.map((entry) {
+              final story = entry.value;
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: entry.key == stories.length - 1 ? 0 : 9,
+                ),
+                child: InkWell(
+                  onTap: () => _openPublishedWork(story),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _backgroundColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: AppColors.gold.withValues(alpha: 0.30),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildWriterStoryCover(story),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                story.title.trim().isEmpty
+                                    ? 'Historia sin título'
+                                    : story.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.merriweather(
+                                  color: _textPrimaryColor,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.3,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                story.genre.trim().isEmpty
+                                    ? 'Sin género'
+                                    : story.genre,
+                                style: GoogleFonts.inter(
+                                  color: _textSecondaryColor,
+                                  fontSize: 7.2,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  _publishedWorkBadge(),
+                                  const SizedBox(width: 7),
+                                  Expanded(
+                                    child: Text(
+                                      '${story.publishedChapterCount} ${story.publishedChapterCount == 1 ? 'capítulo publicado' : 'capítulos publicados'}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.inter(
+                                        color: _textSecondaryColor,
+                                        fontSize: 6.8,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 7),
+                              Text(
+                                story.synopsis.trim().isEmpty
+                                    ? 'Sin sinopsis.'
+                                    : story.synopsis,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.merriweather(
+                                  color: _textSecondaryColor,
+                                  fontSize: 7.2,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: AppColors.gold.withValues(alpha: 0.90),
+                          size: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWriterStoryCover(WriterStory story) {
+    final cover = story.coverPath?.trim() ?? '';
+    final hasNetworkCover =
+        cover.startsWith('http://') || cover.startsWith('https://');
+
+    return Container(
+      width: 50,
+      height: 70,
+      decoration: BoxDecoration(
+        color: _deepSurfaceColor,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(
+          color: AppColors.gold.withValues(alpha: 0.35),
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: hasNetworkCover
+          ? Image.network(
+              cover,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _writerStoryCoverPlaceholder(story),
+            )
+          : _writerStoryCoverPlaceholder(story),
+    );
+  }
+
+  Widget _writerStoryCoverPlaceholder(WriterStory story) {
+    return Container(
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            _deepSurfaceColor,
+            _deepSurfaceColor.withValues(alpha: 0.78),
+          ],
+        ),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.auto_stories_rounded,
+            color: AppColors.gold,
+            size: 18,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            story.title.trim().isEmpty
+                ? 'TU OBRA'
+                : story.title.toUpperCase(),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.cinzel(
+              color: AppColors.background,
+              fontSize: 4.8,
+              fontWeight: FontWeight.w700,
+              height: 1.25,
             ),
-            subtitle: Text(
-              'Misterio · PUBLICADA',
-              style: GoogleFonts.inter(fontSize: 7.5),
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () =>
-                _showMessage('La obra se abrirá desde la sección Escribir.'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _publishedWorkBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 6,
+        vertical: 3,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.accent.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: AppColors.accent.withValues(alpha: 0.30),
+        ),
+      ),
+      child: Text(
+        'PUBLICADA',
+        style: GoogleFonts.inter(
+          color: AppColors.accent,
+          fontSize: 5.7,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+
+  void _openPublishedWork(WriterStory story) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PublishedStoryScreen(story: story),
       ),
     );
   }

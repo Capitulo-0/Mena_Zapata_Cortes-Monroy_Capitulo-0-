@@ -7,6 +7,8 @@ import '../../../library/presentation/screens/library_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../profile/presentation/screens/settings_screen.dart';
 import 'home_screen.dart';
+import '../../../writer/models/writer_story.dart';
+import '../../../writer/services/writer_local_service.dart';
 import '../../../writer/presentation/screens/writer_screen.dart';
 
 import 'package:android/features/maps/presentation/screens/maps_screen.dart';
@@ -32,6 +34,9 @@ class MainShellScreen extends StatefulWidget {
 class _MainShellScreenState extends State<MainShellScreen> {
   int selectedIndex = 0;
 
+  final WriterLocalService _writerService = WriterLocalService();
+  List<WriterStory> _writerStories = <WriterStory>[];
+
   bool showSettings = false;
 
   String _profileName = 'Constanza Mena';
@@ -41,6 +46,33 @@ class _MainShellScreenState extends State<MainShellScreen> {
   String _readingFormat = 'Ambos';
   int _annualGoal = 25;
 
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWriterStories();
+  }
+
+  Future<void> _loadWriterStories() async {
+    final stories = await _writerService.getStories();
+
+    if (!mounted) return;
+
+    setState(() {
+      _writerStories = stories;
+    });
+  }
+
+  void _handleWriterStoriesChanged(List<WriterStory> stories) {
+    // No hacemos setState aquí porque WriterScreen está actualmente visible.
+    // El cambio se reflejará cuando MainShell cambie de pestaña.
+    _writerStories = List<WriterStory>.from(stories);
+  }
+
+  List<WriterStory> get _publishedWriterStories => _writerStories
+      .where((story) => story.isPublished)
+      .toList()
+    ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
   // Estado compartido de clubes de lectura.
   final List<ReadingClub> _clubs = const [
@@ -577,7 +609,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
         );
 
       case 2:
-        return const WriterScreen();
+        return WriterScreen(
+          onStoriesChanged: _handleWriterStoriesChanged,
+        );
 
       case 3:
         return const MapsScreen();
@@ -607,6 +641,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
           onProgressChanged: _changeBookProgress,
           onReviewSaved: _saveBookReview,
           onToggleFavorite: _toggleFavoriteBook,
+          publishedStories: _publishedWriterStories,
         );
 
       default:
