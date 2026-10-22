@@ -1288,72 +1288,252 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Future<void> _confirmSessionAction({required bool deleteAccount}) async {
-    final confirmed = await showDialog<bool>(
+  Future<void> _confirmSessionAction({
+    required bool deleteAccount,
+  }) async {
+    var processing = false;
+    var dots = 1;
+
+    await showDialog<void>(
       context: context,
+      barrierDismissible: !processing,
       builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: _background,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: BorderSide(color: _accent, width: 1.5),
-          ),
-          title: Text(
-            deleteAccount
-                ? '¿Confirmar eliminación de cuenta?'
-                : '¿Confirmar cierre de sesión?',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.cinzel(
-              color: _textPrimary,
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          content: Text(
-            deleteAccount
-                ? 'Para esta demo volverás al inicio de sesión. '
-                      'La eliminación real se conectará posteriormente con el backend.'
-                : 'Tu sesión actual se cerrará y volverás al inicio de sesión.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              color: _textSecondary,
-              fontSize: 9,
-              height: 1.5,
-            ),
-          ),
-          actions: [
-            OutlinedButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(false);
-              },
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop(true);
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: _accent,
-                foregroundColor: AppColors.background,
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final title = deleteAccount
+                ? 'Eliminar cuenta'
+                : 'Cerrar sesión';
+
+            final description = deleteAccount
+                ? 'Esta acción eliminará tu cuenta de Capítulo 0. '
+                    'En esta demo volverás a la pantalla de autenticación.'
+                : 'Tu sesión actual se cerrará y volverás a la '
+                    'pantalla de autenticación.';
+
+            return PopScope(
+              canPop: !processing,
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                ),
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 390),
+                  padding: const EdgeInsets.fromLTRB(
+                    18,
+                    18,
+                    18,
+                    16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _background,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: deleteAccount
+                          ? _accent.withValues(alpha: 0.50)
+                          : _gold.withValues(alpha: 0.42),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.20),
+                        blurRadius: 28,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: deleteAccount
+                              ? _accent.withValues(alpha: 0.10)
+                              : _gold.withValues(alpha: 0.12),
+                          border: Border.all(
+                            color: deleteAccount
+                                ? _accent.withValues(alpha: 0.35)
+                                : _gold.withValues(alpha: 0.38),
+                          ),
+                        ),
+                        child: Icon(
+                          deleteAccount
+                              ? Icons.delete_outline_rounded
+                              : Icons.logout_rounded,
+                          color: deleteAccount ? _accent : _gold,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(height: 13),
+                      Text(
+                        title,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.cinzel(
+                          color: _textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        description,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          color: _textSecondary,
+                          fontSize: 9,
+                          height: 1.55,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 42,
+                              child: OutlinedButton(
+                                onPressed: processing
+                                    ? null
+                                    : () {
+                                        Navigator.of(
+                                          dialogContext,
+                                        ).pop();
+                                      },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: _textPrimary,
+                                  disabledForegroundColor:
+                                      _textSecondary.withValues(
+                                    alpha: 0.40,
+                                  ),
+                                  side: BorderSide(
+                                    color: _gold.withValues(
+                                      alpha: 0.38,
+                                    ),
+                                  ),
+                                  backgroundColor:
+                                      _surface.withValues(alpha: 0.48),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Cancelar',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 9),
+                          Expanded(
+                            child: SizedBox(
+                              height: 42,
+                              child: FilledButton(
+                                onPressed: processing
+                                    ? null
+                                    : () async {
+                                        if (deleteAccount) {
+                                          Navigator.of(
+                                            dialogContext,
+                                          ).pop();
+
+                                          if (mounted) {
+                                            widget.onDeleteAccount();
+                                          }
+                                          return;
+                                        }
+
+                                        setDialogState(() {
+                                          processing = true;
+                                          dots = 1;
+                                        });
+
+                                        for (
+                                          var step = 0;
+                                          step < 4;
+                                          step++
+                                        ) {
+                                          await Future<void>.delayed(
+                                            const Duration(
+                                              milliseconds: 250,
+                                            ),
+                                          );
+
+                                          if (!dialogContext.mounted) {
+                                            return;
+                                          }
+
+                                          setDialogState(() {
+                                            dots = (dots % 3) + 1;
+                                          });
+                                        }
+
+                                        if (!dialogContext.mounted) {
+                                          return;
+                                        }
+
+                                        Navigator.of(
+                                          dialogContext,
+                                        ).pop();
+
+                                        if (!mounted) return;
+
+                                        widget.onLogout();
+                                      },
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: processing
+                                      ? _accent.withValues(alpha: 0.62)
+                                      : _accent,
+                                  disabledBackgroundColor:
+                                      _accent.withValues(alpha: 0.62),
+                                  foregroundColor:
+                                      AppColors.background,
+                                  disabledForegroundColor:
+                                      AppColors.background.withValues(
+                                    alpha: 0.90,
+                                  ),
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: AnimatedSwitcher(
+                                  duration:
+                                      const Duration(milliseconds: 120),
+                                  child: Text(
+                                    processing
+                                        ? 'Cerrando${'.' * dots}'
+                                        : deleteAccount
+                                            ? 'Eliminar cuenta'
+                                            : 'Cerrar sesión',
+                                    key: ValueKey(
+                                      '$processing-$dots-$deleteAccount',
+                                    ),
+                                    style: GoogleFonts.inter(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              child: Text(
-                deleteAccount ? 'Eliminar → Login' : 'Cerrar → Login',
-              ),
-            ),
-          ],
+            );
+          },
         );
       },
     );
-
-    if (!mounted || confirmed != true) {
-      return;
-    }
-
-    if (deleteAccount) {
-      widget.onDeleteAccount();
-    } else {
-      widget.onLogout();
-    }
   }
 
   String _firstLetter(String text) {

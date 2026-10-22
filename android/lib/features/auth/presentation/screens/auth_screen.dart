@@ -23,6 +23,8 @@ class _AuthScreenState extends State<AuthScreen> {
   bool obscurePassword = true;
   bool obscureConfirmPassword = true;
   bool isGenderMenuOpen = false;
+  bool isLoggingIn = false;
+  int loginDots = 1;
 
   final loginEmailController = TextEditingController();
   final loginPasswordController = TextEditingController();
@@ -211,7 +213,7 @@ class _AuthScreenState extends State<AuthScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'BIENVENIDO DE NUEVO',
+          '¡Qué gusto verte!',
           style: GoogleFonts.cinzel(
             color: AppColors.deep,
             fontSize: 21,
@@ -236,7 +238,7 @@ class _AuthScreenState extends State<AuthScreen> {
           keyboardType: TextInputType.emailAddress,
           decoration: _inputDecoration(
             hintText: 'tu@correo.com',
-            prefixIcon: Icons.email_outlined,
+            prefixIcon: Icons.mail_outline_rounded,
           ),
         ),
         const SizedBox(height: 16),
@@ -247,17 +249,21 @@ class _AuthScreenState extends State<AuthScreen> {
           obscureText: obscurePassword,
           decoration: _inputDecoration(
             hintText: '••••••••',
-            prefixIcon: Icons.lock_outline,
+            prefixIcon: Icons.lock_outline_rounded,
             suffix: IconButton(
               onPressed: () {
                 setState(() {
                   obscurePassword = !obscurePassword;
                 });
               },
+              iconSize: 50,
+              splashRadius: 18,
               icon: Icon(
                 obscurePassword
                     ? Icons.visibility_outlined
                     : Icons.visibility_off_outlined,
+                color: AppColors.textSecondary.withValues(alpha: 0.35),
+                size: 23,
               ),
             ),
           ),
@@ -290,18 +296,42 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         const SizedBox(height: 4),
         _buildPrimaryButton(
-          text: 'Iniciar sesión',
-          onPressed: () {
-            if (loginEmailController.text.trim().isEmpty ||
-                loginPasswordController.text.isEmpty) {
-              showTemporaryMessage(
-                'Completa el correo y la contraseña.',
-              );
-              return;
-            }
+          text: isLoggingIn
+              ? 'Entrando${'.' * loginDots}'
+              : 'Iniciar sesión',
+          loading: isLoggingIn,
+          onPressed: isLoggingIn
+              ? null
+              : () async {
+                  if (loginEmailController.text.trim().isEmpty ||
+                      loginPasswordController.text.isEmpty) {
+                    showTemporaryMessage(
+                      'Completa el correo y la contraseña.',
+                    );
+                    return;
+                  }
 
-            widget.onAuthenticated(false);
-          },
+                  setState(() {
+                    isLoggingIn = true;
+                    loginDots = 1;
+                  });
+
+                  for (var step = 0; step < 4; step++) {
+                    await Future<void>.delayed(
+                      const Duration(milliseconds: 250),
+                    );
+
+                    if (!mounted) return;
+
+                    setState(() {
+                      loginDots = (loginDots % 3) + 1;
+                    });
+                  }
+
+                  if (!mounted) return;
+
+                  widget.onAuthenticated(false);
+                },
         ),
         const SizedBox(height: 12),
         _buildGuestOutlinedButton(),
@@ -385,7 +415,7 @@ class _AuthScreenState extends State<AuthScreen> {
           keyboardType: TextInputType.emailAddress,
           decoration: _inputDecoration(
             hintText: 'tu@correo.com',
-            prefixIcon: Icons.email_outlined,
+            prefixIcon: Icons.mail_outline_rounded,
           ),
         ),
         const SizedBox(height: 16),
@@ -396,7 +426,7 @@ class _AuthScreenState extends State<AuthScreen> {
           obscureText: obscurePassword,
           decoration: _inputDecoration(
             hintText: '••••••••',
-            prefixIcon: Icons.lock_outline,
+            prefixIcon: Icons.lock_outline_rounded,
             suffix: IconButton(
               onPressed: () {
                 setState(() {
@@ -419,7 +449,7 @@ class _AuthScreenState extends State<AuthScreen> {
           obscureText: obscureConfirmPassword,
           decoration: _inputDecoration(
             hintText: '••••••••',
-            prefixIcon: Icons.lock_outline,
+            prefixIcon: Icons.lock_outline_rounded,
             suffix: IconButton(
               onPressed: () {
                 setState(() {
@@ -633,9 +663,14 @@ class _AuthScreenState extends State<AuthScreen> {
       hintText: hintText,
       prefixIcon: Icon(
         prefixIcon,
-        size: 20,
+        size: 18,
+        color: AppColors.textSecondary.withValues(alpha: 0.68),
       ),
+      prefixIconColor:
+          AppColors.textSecondary.withValues(alpha: 0.72),
       suffixIcon: suffix,
+      suffixIconColor:
+          AppColors.textSecondary.withValues(alpha: 0.72),
       filled: true,
       fillColor: AppColors.surface,
       hintStyle: GoogleFonts.inter(
@@ -667,7 +702,7 @@ class _AuthScreenState extends State<AuthScreen> {
     return Text(
       text,
       style: GoogleFonts.inter(
-        color: AppColors.deep,
+        color: AppColors.textSecondary.withValues(alpha: 0.82),
         fontSize: 11.5,
         fontWeight: FontWeight.w500,
       ),
@@ -676,26 +711,50 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _buildPrimaryButton({
     required String text,
-    required VoidCallback onPressed,
+    required VoidCallback? onPressed,
+    bool loading = false,
   }) {
     return SizedBox(
       height: 48,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.accent,
-          foregroundColor: AppColors.background,
-          elevation: 4,
-          shadowColor: AppColors.accent.withValues(alpha: 0.24),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(11),
-          ),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(11),
+          boxShadow: loading
+              ? const []
+              : [
+                  BoxShadow(
+                    color: AppColors.accent.withValues(alpha: 0.24),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
         ),
-        child: Text(
-          text,
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w700,
-            fontSize: 13.5,
+        child: ElevatedButton(
+          onPressed: onPressed,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: loading
+                ? const Color(0xFF747474)
+                : AppColors.accent,
+            disabledBackgroundColor: const Color(0xFF747474),
+            foregroundColor: AppColors.background,
+            disabledForegroundColor:
+                AppColors.background.withValues(alpha: 0.92),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(11),
+            ),
+          ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 120),
+            child: Text(
+              text,
+              key: ValueKey(text),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w700,
+                fontSize: 13.5,
+              ),
+            ),
           ),
         ),
       ),
