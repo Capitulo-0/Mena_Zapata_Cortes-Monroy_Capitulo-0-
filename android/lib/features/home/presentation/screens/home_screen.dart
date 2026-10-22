@@ -7,7 +7,12 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../profile/presentation/widgets/profile_gender_preference.dart';
 import '../../../clubs/models/reading_club.dart';
+import '../../../library/presentation/screens/library_screen.dart';
+import '../../../writer/models/writer_chapter.dart';
+import '../../../writer/models/writer_story.dart';
+import '../../../writer/presentation/screens/published_story_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -16,6 +21,15 @@ class HomeScreen extends StatefulWidget {
     required this.onOpenLibrary,
     required this.onOpenWriter,
     required this.onOpenPoints,
+    required this.onOpenProfile,
+    required this.currentName,
+    required this.currentUsername,
+    required this.reviews,
+    required this.onReviewSaved,
+    required this.favoriteBookIds,
+    required this.onToggleFavoriteBook,
+    required this.favoriteCommunityStoryIds,
+    required this.onToggleCommunityStoryFavorite,
     required this.clubs,
     required this.joinedClubIds,
     required this.onToggleClub,
@@ -25,16 +39,27 @@ class HomeScreen extends StatefulWidget {
   final VoidCallback onOpenLibrary;
   final VoidCallback onOpenWriter;
   final VoidCallback onOpenPoints;
+  final VoidCallback onOpenProfile;
+  final String currentName;
+  final String currentUsername;
+  final Map<int, BookReview> reviews;
+  final void Function(int bookId, BookReview review) onReviewSaved;
+
+  final Set<int> favoriteBookIds;
+  final ValueChanged<int> onToggleFavoriteBook;
+
+  final Set<String> favoriteCommunityStoryIds;
+  final ValueChanged<WriterStory> onToggleCommunityStoryFavorite;
 
   final List<ReadingClub> clubs;
   final Set<int> joinedClubIds;
   final ValueChanged<int> onToggleClub;
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<HomeScreen> createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class HomeScreenState extends State<HomeScreen> {
   final TextEditingController searchController = TextEditingController();
   final TextEditingController geminiController = TextEditingController();
   final TextEditingController isbnController = TextEditingController();
@@ -141,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'synopsis': 'Huérfana y sin fortuna, Jane Eyre descubre en Thornfield Hall secretos oscuros y un amor prohibido.',
     },
     {
-      'id': 4,
+      'id': 14,
       'title': 'Sentido y Sensibilidad',
       'author': 'Jane Austen',
       'authorReal': 'Jane Austen',
@@ -154,7 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'synopsis': 'Las hermanas Dashwood experimentan las dificultades del amor, la decepción y el matrimonio en la sociedad inglesa.',
     },
     {
-      'id': 5,
+      'id': 4,
       'title': 'Frankenstein',
       'author': 'Mary Shelley',
       'authorReal': 'Mary Shelley',
@@ -309,7 +334,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 130),
           children: [
-            _buildTopHeader(),
             _buildWelcome(),
             _buildSearch(),
             if (searchSubmitted)
@@ -328,97 +352,42 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTopHeader() {
-    return Container(
-      color: _deepSurface,
-      padding: const EdgeInsets.fromLTRB(15, 10, 13, 10),
-      child: Row(
-        children: [
-          Image.asset(
-            'assets/images/logo_capitulo0.png',
-            width: 38,
-            height: 38,
-            fit: BoxFit.contain,
-          ),
-          const SizedBox(width: 7),
-          Expanded(
-            child: Text(
-              'CAPÍTULO 0',
-              style: GoogleFonts.cinzel(
-                color: _gold,
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.7,
-              ),
-            ),
-          ),
-          if (widget.isGuest)
-            Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: Text(
-                'Invitado',
-                style: GoogleFonts.inter(
-                  color: _gold,
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          _headerButton(
-            icon: Icons.qr_code_scanner_rounded,
-            tooltip: 'Escanear ISBN',
-            onTap: _showIsbnScanner,
-          ),
-          const SizedBox(width: 6),
-          _headerButton(
-            icon: Icons.auto_awesome_rounded,
-            tooltip: 'Asistente Gemini',
-            onTap: _showGeminiAssistant,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _headerButton({
-    required IconData icon,
-    required String tooltip,
-    required VoidCallback onTap,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _gold.withValues(alpha: 0.28)),
-            color: _deepAltSurface,
-          ),
-          child: Icon(icon, size: 18, color: _gold),
-        ),
-      ),
-    );
-  }
-
   Widget _buildWelcome() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 15, 16, 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            widget.isGuest
-                ? 'Bienvenida a Capítulo 0 ✦'
-                : 'Bienvenida, Constanza Mena ✦',
-            style: GoogleFonts.cinzel(
-              color: _textPrimary,
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
+          ValueListenableBuilder<ProfileGender>(
+            valueListenable: ProfileGenderStore.notifier,
+            builder: (context, gender, _) {
+              final name = widget.currentName.trim().isEmpty
+                  ? 'lector/a'
+                  : widget.currentName.trim();
+
+              final greeting = widget.isGuest
+                  ? '¡Qué gusto verte en Capítulo 0! ✦'
+                  : switch (gender) {
+                      ProfileGender.woman => 'Bienvenida, $name ✦',
+                      ProfileGender.man => 'Bienvenido, $name ✦',
+                      ProfileGender.preferNotToSay ||
+                      ProfileGender.selfDescribe =>
+                        '¡Qué gusto verte, $name! ✦',
+                    };
+
+              return AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child: Text(
+                  greeting,
+                  key: ValueKey(greeting),
+                  style: GoogleFonts.cinzel(
+                    color: _textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 4),
           Text(
@@ -445,22 +414,41 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               color: _surface,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _gold, width: 1.2),
+              border: Border.all(
+                color: _gold,
+                width: 1.15,
+              ),
             ),
             child: Row(
               children: [
-                Icon(Icons.search_rounded, color: _gold, size: 16),
+                Icon(
+                  Icons.search_rounded,
+                  color: _gold,
+                  size: 16,
+                ),
                 const SizedBox(width: 7),
                 Expanded(
                   child: TextField(
                     controller: searchController,
-                    style: GoogleFonts.inter(color: _textPrimary, fontSize: 10),
-                    decoration: InputDecoration.collapsed(
+                    style: GoogleFonts.inter(
+                      color: _textPrimary,
+                      fontSize: 10,
+                    ),
+                    decoration: InputDecoration(
                       hintText: 'Buscar libros...',
                       hintStyle: GoogleFonts.inter(
                         color: _textSecondary,
                         fontSize: 10,
                       ),
+                      isDense: true,
+                      filled: false,
+                      contentPadding: EdgeInsets.zero,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
                     ),
                     onChanged: (value) {
                       setState(() {
@@ -486,19 +474,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                     style: TextButton.styleFrom(
                       foregroundColor: _textPrimary,
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      backgroundColor: _surface,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                      ),
                       minimumSize: const Size(0, 27),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      side: BorderSide(color: _gold),
+                      side: BorderSide(
+                        color: _gold,
+                        width: 1,
+                      ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(7),
                       ),
                     ),
                     child: Text(
                       'Filtrar',
                       style: GoogleFonts.inter(
                         fontSize: 8,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
@@ -516,11 +510,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: FilledButton.styleFrom(
                       backgroundColor: _accent,
                       foregroundColor: _onAccent,
-                      padding: const EdgeInsets.symmetric(horizontal: 9),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                      ),
                       minimumSize: const Size(0, 27),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(7),
                       ),
                     ),
                     child: Text(
@@ -543,7 +540,9 @@ class _HomeScreenState extends State<HomeScreen> {
               decoration: BoxDecoration(
                 color: _surface,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _gold.withValues(alpha: 0.45)),
+                border: Border.all(
+                  color: _gold.withValues(alpha: 0.45),
+                ),
               ),
               child: Wrap(
                 spacing: 6,
@@ -552,7 +551,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   _filterChip('Título', 'titulo'),
                   _filterChip('Autor', 'autor'),
                   _filterChip('Recientes', 'recientes'),
-                  _filterChip('Mejor calificados', 'calificados'),
+                  _filterChip(
+                    'Mejor calificados',
+                    'calificados',
+                  ),
                 ],
               ),
             ),
@@ -1798,148 +1800,37 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showBookDetails(Map<String, dynamic> book) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: _background,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => HomeBookDetailScreen(
+          book: book,
+          currentUsername: widget.currentUsername,
+          initialReview: widget.reviews[book['id'] as int],
+          onReviewSaved: widget.onReviewSaved,
+          initiallyFavorite:
+              widget.favoriteBookIds.contains(book['id'] as int),
+          onToggleFavorite: () {
+            widget.onToggleFavoriteBook(book['id'] as int);
+          },
+          onOpenOwnProfile: () {
+            Navigator.of(context).pop();
+            widget.onOpenProfile();
+          },
+          onAddToLibrary: () {
+            if (widget.isGuest) {
+              _guestMessage('biblioteca');
+              return;
+            }
+
+            Navigator.of(context).pop();
+            widget.onOpenLibrary();
+          },
+        ),
       ),
-      builder: (sheetContext) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(18, 20, 18, 25),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Detalle del libro',
-                        style: GoogleFonts.cinzel(
-                          color: _textPrimary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(sheetContext).pop(),
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 15),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _networkCover(
-                      book['cover'] as String,
-                      width: 95,
-                      height: 135,
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            book['title'] as String,
-                            style: GoogleFonts.merriweather(
-                              color: _textPrimary,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            book['authorReal'] as String,
-                            style: GoogleFonts.inter(
-                              color: _textSecondary,
-                              fontSize: 10,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            '★ ${book['rating']}',
-                            style: GoogleFonts.inter(
-                              color: _gold,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            '${book['genre']} · ${book['year']}',
-                            style: GoogleFonts.inter(
-                              color: _textSecondary,
-                              fontSize: 9,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            'ISBN: ${book['isbn']}',
-                            style: GoogleFonts.inter(
-                              color: _textSecondary,
-                              fontSize: 8,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  'Sinopsis',
-                  style: GoogleFonts.cinzel(
-                    color: _textPrimary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  book['synopsis'] as String,
-                  style: GoogleFonts.merriweather(
-                    color: _textPrimary,
-                    fontSize: 10,
-                    height: 1.6,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      Navigator.of(sheetContext).pop();
-                      if (widget.isGuest) {
-                        _guestMessage('biblioteca');
-                        return;
-                      }
-                      widget.onOpenLibrary();
-                    },
-                    icon: const Icon(Icons.menu_book_rounded),
-                    label: const Text('Ver en Mi Biblioteca'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _accent,
-                      foregroundColor: _onAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
-  void _showIsbnScanner() {
+  void showIsbnScanner() {
     isbnController.clear();
 
     showDialog<void>(
@@ -2124,7 +2015,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _showBookDetails(found);
   }
 
-  void _showGeminiAssistant() {
+  void showGeminiAssistant() {
     geminiController.clear();
 
     final messages = <Map<String, String>>[
@@ -2560,89 +2451,342 @@ class _HomeScreenState extends State<HomeScreen> {
     return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 
+  Map<String, String> _clubExtraData(ReadingClub club) {
+    switch (club.id) {
+      case 1:
+        return {
+          'author': '@mariaPaz200',
+          'instagram': '@adictosclasicos',
+          'facebook': 'Adictos a los Clásicos',
+          'x': '@adictosclasicos_x',
+        };
+      case 2:
+        return {
+          'author': '@valencruz',
+          'instagram': '@mansiongotica',
+          'facebook': 'Mansión Gótica',
+          'x': '@mansiongotica_club',
+        };
+      case 3:
+        return {
+          'author': '@marcoibanez17',
+          'instagram': '@plumasdelsur',
+          'facebook': 'Plumas del Sur',
+          'x': '@plumasdelsur',
+        };
+      default:
+        return {
+          'author': '@capitulo0',
+          'instagram': '@capitulo0',
+          'facebook': 'Capítulo 0',
+          'x': '@capitulo0',
+        };
+    }
+  }
+
   void _showClubDetails(ReadingClub club) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: _background,
       useSafeArea: true,
       showDragHandle: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
       builder: (sheetContext) {
         final id = club.id;
+        final extra = _clubExtraData(club);
 
         return StatefulBuilder(
           builder: (context, setSheetState) {
             final joined = widget.joinedClubIds.contains(id);
 
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(20, 5, 20, 25),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    club.name,
-                    style: GoogleFonts.cinzel(
-                      color: _textPrimary,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    'Leyendo: ${club.book}',
-                    style: GoogleFonts.inter(
-                      color: _accent,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    '📅 ${club.date} · ${club.members} lectores',
-                    style: GoogleFonts.inter(
-                      color: _textSecondary,
-                      fontSize: 9,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Text(
-                    club.description,
-                    style: GoogleFonts.merriweather(
-                      color: _textPrimary,
-                      fontSize: 10,
-                      height: 1.6,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () {
-                        if (widget.isGuest) {
-                          Navigator.of(sheetContext).pop();
-                          _guestMessage('clubes de lectura');
-                          return;
-                        }
+            ReadingClub currentClub = club;
+            for (final candidate in widget.clubs) {
+              if (candidate.id == id) {
+                currentClub = candidate;
+                break;
+              }
+            }
 
-                        widget.onToggleClub(id);
-                        setSheetState(() {});
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: joined ? _surfaceSoft : _accent,
-                        foregroundColor: joined ? _textPrimary : _onAccent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.58,
+              minChildSize: 0.38,
+              maxChildSize: 0.84,
+              builder: (context, scrollController) {
+                return Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(18, 4, 18, 14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'DETALLE DEL CLUB',
+                              style: GoogleFonts.cinzel(
+                                color: _textPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.25,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(13),
+                              decoration: BoxDecoration(
+                                color: _surface,
+                                borderRadius: BorderRadius.circular(13),
+                                border: Border.all(
+                                  color: _gold,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    currentClub.name,
+                                    style: GoogleFonts.merriweather(
+                                      color: _textPrimary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    currentClub.description,
+                                    style: GoogleFonts.inter(
+                                      color: _textPrimary,
+                                      fontSize: 9.2,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Autor/a del club: ',
+                                        style: GoogleFonts.inter(
+                                          color: _textSecondary,
+                                          fontSize: 8,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          extra['author']!,
+                                          style: GoogleFonts.inter(
+                                            color: _accent,
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.w700,
+                                            decoration:
+                                                TextDecoration.underline,
+                                            decorationColor: _accent,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.calendar_month_outlined,
+                                        color: _accent,
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Expanded(
+                                        child: Text(
+                                          'Debate: ${currentClub.date}',
+                                          style: GoogleFonts.inter(
+                                            color: _textSecondary,
+                                            fontSize: 8,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.groups_2_outlined,
+                                        color: _deepSurface,
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        '${currentClub.members} lectores',
+                                        style: GoogleFonts.inter(
+                                          color: _textSecondary,
+                                          fontSize: 8,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 11),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.fromLTRB(
+                                13,
+                                12,
+                                13,
+                                8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _surface,
+                                borderRadius: BorderRadius.circular(13),
+                                border: Border.all(
+                                  color: _gold.withValues(alpha: 0.28),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'REDES SOCIALES',
+                                    style: GoogleFonts.cinzel(
+                                      color: _textPrimary,
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _clubSocialRow(
+                                    icon: Icons.photo_camera_outlined,
+                                    label: 'Instagram:',
+                                    value: extra['instagram']!,
+                                  ),
+                                  _clubSocialDivider(),
+                                  _clubSocialRow(
+                                    icon: Icons.facebook_outlined,
+                                    label: 'Facebook:',
+                                    value: extra['facebook']!,
+                                  ),
+                                  _clubSocialDivider(),
+                                  _clubSocialRow(
+                                    icon: Icons.close_rounded,
+                                    label: 'X:',
+                                    value: extra['x']!,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      child: Text(joined ? 'Salir del club' : 'Unirme al club'),
                     ),
-                  ),
-                ],
-              ),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+                      decoration: BoxDecoration(
+                        color: _background,
+                        border: Border(
+                          top: BorderSide(
+                            color: _gold.withValues(alpha: 0.16),
+                          ),
+                        ),
+                      ),
+                      child: SizedBox(
+                        height: 42,
+                        child: FilledButton(
+                          onPressed: () {
+                            if (widget.isGuest) {
+                              Navigator.of(sheetContext).pop();
+                              _guestMessage('clubes de lectura');
+                              return;
+                            }
+
+                            widget.onToggleClub(id);
+                            setSheetState(() {});
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor:
+                                joined ? _surfaceSoft : _accent,
+                            foregroundColor:
+                                joined ? _textPrimary : _onAccent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            side: joined
+                                ? BorderSide(
+                                    color: _gold.withValues(alpha: 0.55),
+                                  )
+                                : BorderSide.none,
+                          ),
+                          child: Text(
+                            joined ? 'Salir del club' : 'Unirme al club',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             );
           },
         );
       },
+    );
+  }
+
+  Widget _clubSocialRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: _textSecondary,
+            size: 13,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              color: _textSecondary,
+              fontSize: 8,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              value,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                color: _accent,
+                fontSize: 8,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _clubSocialDivider() {
+    return Divider(
+      height: 1,
+      color: _gold.withValues(alpha: 0.14),
     );
   }
 
@@ -2780,69 +2924,145 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showStory(Map<String, String> story) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: _background,
-      isScrollControlled: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    final publishedStory = _communityStoryToWriterStory(story);
+
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PublishedStoryScreen(
+          story: publishedStory,
+          currentUsername: widget.currentUsername,
+          authorUsername: story['user'],
+          initiallyFavorite:
+              widget.favoriteCommunityStoryIds.contains(publishedStory.id),
+          onToggleFavorite: () {
+            widget.onToggleCommunityStoryFavorite(publishedStory);
+          },
+        ),
       ),
-      builder: (sheetContext) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(19, 20, 19, 28),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        story['title']!,
-                        style: GoogleFonts.cinzel(
-                          color: _textPrimary,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.of(sheetContext).pop(),
-                      icon: const Icon(Icons.close_rounded),
-                    ),
-                  ],
-                ),
-                InkWell(
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    _showAuthorProfile(story);
-                  },
-                  child: Text(
-                    '${story['author']} · Autor Independiente',
-                    style: GoogleFonts.inter(
-                      color: _accent,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 17),
-                Text(
-                  story['full']!,
-                  style: GoogleFonts.merriweather(
-                    color: _textPrimary,
-                    fontSize: 11,
-                    height: 1.8,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
+  }
+
+  WriterStory _communityStoryToWriterStory(
+    Map<String, String> story,
+  ) {
+    final title = story['title']?.trim() ?? '';
+    final synopsis = story['extract']?.trim() ?? '';
+    final fullText = story['full']?.trim() ?? '';
+    final author = story['user']?.trim() ?? '@autor';
+
+    final storyId =
+        'community_${_stableCommunityId('$author|$title')}';
+
+    final now = DateTime.now();
+
+    return WriterStory(
+      id: storyId,
+      title: title,
+      synopsis: synopsis,
+      genre: 'Ficción',
+      coverPath: 'preset:classic',
+      status: WriterStoryStatus.published,
+      chapters: _communityStoryChapters(
+        storyId: storyId,
+        fullText: fullText,
+        now: now,
+      ),
+      createdAt: now,
+      updatedAt: now,
+      followers: 0,
+      rating: 0,
+    );
+  }
+
+  List<WriterChapter> _communityStoryChapters({
+    required String storyId,
+    required String fullText,
+    required DateTime now,
+  }) {
+    if (fullText.trim().isEmpty) {
+      return [
+        WriterChapter(
+          id: '$storyId-chapter-1',
+          title: 'Historia completa',
+          content: 'Esta historia todavía no tiene contenido disponible.',
+          order: 1,
+          isPublished: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ];
+    }
+
+    final headingPattern = RegExp(
+      r'Capítulo\s+(\d+)\s*:\s*([^\n]+)',
+      caseSensitive: false,
+    );
+
+    final matches = headingPattern.allMatches(fullText).toList();
+
+    if (matches.isEmpty) {
+      return [
+        WriterChapter(
+          id: '$storyId-chapter-1',
+          title: 'Historia completa',
+          content: fullText,
+          order: 1,
+          isPublished: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ];
+    }
+
+    final chapters = <WriterChapter>[];
+
+    for (var index = 0; index < matches.length; index++) {
+      final match = matches[index];
+      final nextStart = index + 1 < matches.length
+          ? matches[index + 1].start
+          : fullText.length;
+
+      var content = fullText
+          .substring(match.end, nextStart)
+          .trim();
+
+      if (content.isEmpty) {
+        content = 'Capítulo sin contenido.';
+      }
+
+      final number =
+          int.tryParse(match.group(1) ?? '') ?? index + 1;
+      final chapterTitle =
+          match.group(2)?.trim().isNotEmpty == true
+              ? match.group(2)!.trim()
+              : 'Capítulo $number';
+
+      chapters.add(
+        WriterChapter(
+          id: '$storyId-chapter-$number',
+          title: chapterTitle,
+          content: content,
+          order: number,
+          isPublished: true,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    }
+
+    chapters.sort((a, b) => a.order.compareTo(b.order));
+    return chapters;
+  }
+
+  int _stableCommunityId(String value) {
+    var hash = 0x811C9DC5;
+
+    for (final unit in value.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0x7FFFFFFF;
+    }
+
+    return hash;
   }
 
   void _guestMessage(String feature) {
@@ -2860,6 +3080,2400 @@ class _HomeScreenState extends State<HomeScreen> {
         SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
       );
   }
+}
+
+
+class HomeBookDetailScreen extends StatefulWidget {
+  const HomeBookDetailScreen({
+    super.key,
+    required this.book,
+    required this.currentUsername,
+    required this.initialReview,
+    required this.onReviewSaved,
+    required this.initiallyFavorite,
+    required this.onToggleFavorite,
+    required this.onOpenOwnProfile,
+    required this.onAddToLibrary,
+  });
+
+  final Map<String, dynamic> book;
+  final String currentUsername;
+  final BookReview? initialReview;
+  final void Function(int bookId, BookReview review) onReviewSaved;
+  final bool initiallyFavorite;
+  final VoidCallback onToggleFavorite;
+  final VoidCallback onOpenOwnProfile;
+  final VoidCallback onAddToLibrary;
+
+  @override
+  State<HomeBookDetailScreen> createState() => _HomeBookDetailScreenState();
+}
+
+class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
+  final ScrollController _scrollController = ScrollController();
+  late final List<TextEditingController> _replyControllers;
+  final TextEditingController _reviewController = TextEditingController();
+
+  bool _compactHeader = false;
+  bool _favorite = false;
+
+  bool _hasReview = false;
+  bool _reviewEditorOpen = false;
+  bool _reviewIsPublic = true;
+  bool _draftReviewIsPublic = true;
+
+  int _rating = 5;
+  int _draftRating = 5;
+
+  String _reviewText = '';
+
+  final List<Map<String, dynamic>> _comments = [
+    {
+      'user': '@lectora_clasica',
+      'text':
+          'La evolución entre Elizabeth y Darcy me sigue pareciendo brillante en cada relectura.',
+      'likes': 11,
+      'liked': false,
+      'replying': false,
+      'repliesExpanded': false,
+      'replies': <String>[],
+    },
+    {
+      'user': '@clubdelasletras',
+      'text':
+          'Una lectura muy entretenida para conversar sobre orgullo, prejuicios y primeras impresiones.',
+      'likes': 3,
+      'liked': false,
+      'replying': false,
+      'repliesExpanded': false,
+      'replies': <String>[],
+    },
+  ];
+
+  Color get _background => AppColors.backgroundOf(context);
+  Color get _surface => AppColors.surfaceOf(context);
+  Color get _textPrimary => AppColors.textPrimaryOf(context);
+  Color get _textSecondary => AppColors.textSecondaryOf(context);
+  Color get _gold => AppColors.goldOf(context);
+  Color get _accent => AppColors.accentOf(context);
+  Color get _deep => AppColors.deepOf(context);
+
+  String get _title => widget.book['title']?.toString() ?? '';
+  String get _author => widget.book['authorReal']?.toString() ?? '';
+  String get _authorHandle => widget.book['author']?.toString() ?? '';
+  String get _genre => widget.book['genre']?.toString() ?? '';
+  String get _cover => widget.book['cover']?.toString() ?? '';
+  String get _synopsis => widget.book['synopsis']?.toString() ?? '';
+  String get _isbn => widget.book['isbn']?.toString() ?? '';
+  int get _year => widget.book['year'] as int? ?? 0;
+  double get _bookRating => widget.book['rating'] as double? ?? 0;
+  bool get _isFree => widget.book['availability']?.toString() == 'GRATIS';
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_handleScroll);
+    _replyControllers = List.generate(
+      _comments.length,
+      (_) => TextEditingController(),
+    );
+
+    _favorite = widget.initiallyFavorite;
+
+    final initialReview = widget.initialReview;
+    if (initialReview != null) {
+      _hasReview = true;
+      _rating = initialReview.rating;
+      _draftRating = initialReview.rating;
+      _reviewIsPublic = initialReview.isPublic;
+      _draftReviewIsPublic = initialReview.isPublic;
+      _reviewText = initialReview.text;
+      _reviewController.text = initialReview.text;
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_handleScroll)
+      ..dispose();
+
+    for (final controller in _replyControllers) {
+      controller.dispose();
+    }
+
+    _reviewController.dispose();
+
+    super.dispose();
+  }
+
+  void _handleScroll() {
+    final compact = _scrollController.offset > 185;
+
+    if (compact != _compactHeader && mounted) {
+      setState(() {
+        _compactHeader = compact;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _background,
+      body: Stack(
+        children: [
+          CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              SliverToBoxAdapter(
+                child: _buildHero(),
+              ),
+              SliverToBoxAdapter(
+                child: _buildContent(),
+              ),
+            ],
+          ),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: _compactHeader
+                ? _buildCompactHeader()
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHero() {
+    return SizedBox(
+      height: 285,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.network(
+            _cover,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => Container(
+              color: _deep,
+              child: const Icon(
+                Icons.menu_book_rounded,
+                color: AppColors.gold,
+                size: 52,
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.05),
+                  Colors.black.withValues(alpha: 0.22),
+                  Colors.black.withValues(alpha: 0.76),
+                ],
+                stops: const [0.10, 0.48, 1],
+              ),
+            ),
+          ),
+          SafeArea(
+            bottom: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(
+                          Icons.arrow_back_rounded,
+                          size: 17,
+                        ),
+                        label: const Text('Volver atrás'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: _accent,
+                          padding: EdgeInsets.zero,
+                          textStyle: GoogleFonts.inter(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      _heroMenuButton(),
+                    ],
+                  ),
+                  const SizedBox(height: 5),
+                  _favoriteButton(),
+                  const Spacer(),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 5,
+                              children: [
+                                _heroTag(_genre.toUpperCase()),
+                                _heroTag('LIBRO', dark: true),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _title,
+                              style: GoogleFonts.merriweather(
+                                color: const Color(0xFFF9F1E5),
+                                fontSize: 21,
+                                fontWeight: FontWeight.w700,
+                                height: 1.12,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Row(
+                              children: [
+                                Text(
+                                  'por ',
+                                  style: GoogleFonts.inter(
+                                    color: const Color(0xFFEADFCB),
+                                    fontSize: 8,
+                                  ),
+                                ),
+                                Flexible(
+                                  child: Text(
+                                    _authorHandle.isEmpty
+                                        ? _author
+                                        : _authorHandle,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.inter(
+                                      color: _gold,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w700,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: _gold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      InkWell(
+                        onTap: () => _showShareDialog(context),
+                        customBorder: const CircleBorder(),
+                        child: Container(
+                          width: 39,
+                          height: 39,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black.withValues(alpha: 0.20),
+                            border: Border.all(
+                              color: _gold.withValues(alpha: 0.78),
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.share_outlined,
+                            color: _gold,
+                            size: 17,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            right: 16,
+            top: 64,
+            child: Text(
+              'PUBLICADO · $_year',
+              style: GoogleFonts.inter(
+                color: const Color(0xFFF3E6D1),
+                fontSize: 6.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.7,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactHeader() {
+    return Material(
+      key: const ValueKey('compact-book-header'),
+      elevation: 6,
+      color: _deep,
+      shadowColor: Colors.black.withValues(alpha: 0.20),
+      child: SafeArea(
+        bottom: false,
+        child: Container(
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              InkWell(
+                onTap: () => Navigator.of(context).pop(),
+                customBorder: const CircleBorder(),
+                child: Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _gold.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.arrow_back_rounded,
+                    color: _gold,
+                    size: 16,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.merriweather(
+                        color: const Color(0xFFF7EFE3),
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _authorHandle.isEmpty ? _author : _authorHandle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        color: _gold,
+                        fontSize: 6.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Text(
+                '· LIBRO',
+                style: GoogleFonts.inter(
+                  color: _gold,
+                  fontSize: 6.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return Container(
+      color: _background,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sectionTitle('SINOPSIS'),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.only(left: 12),
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(
+                  color: _gold,
+                  width: 2,
+                ),
+              ),
+            ),
+            child: Text(
+              _synopsis,
+              style: GoogleFonts.merriweather(
+                color: _textPrimary,
+                fontSize: 10.5,
+                height: 1.65,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Divider(
+            color: _gold.withValues(alpha: 0.26),
+            height: 1,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.star_rounded,
+                color: _gold,
+                size: 13,
+              ),
+              const SizedBox(width: 3),
+              Text(
+                _bookRating.toStringAsFixed(1),
+                style: GoogleFonts.inter(
+                  color: _textPrimary,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '·',
+                style: GoogleFonts.inter(
+                  color: _textSecondary,
+                  fontSize: 8,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '136 reseñas',
+                style: GoogleFonts.inter(
+                  color: _textSecondary,
+                  fontSize: 8,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Divider(
+            color: _gold.withValues(alpha: 0.26),
+            height: 1,
+          ),
+          const SizedBox(height: 18),
+          _sectionTitle('INFORMACIÓN DEL LIBRO'),
+          const SizedBox(height: 11),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+            decoration: BoxDecoration(
+              color: _surface,
+              borderRadius: BorderRadius.circular(13),
+              border: Border.all(
+                color: _gold.withValues(alpha: 0.28),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                _infoRow('Autor', _author),
+                _infoRow('Publicación', '$_year'),
+                _infoRow('ISBN', _isbn),
+                _infoRow(
+                  'Disponibilidad',
+                  _isFree ? 'GRATIS' : 'CATÁLOGO',
+                  valueColor: _isFree
+                      ? const Color(0xFF2F7C39)
+                      : _textPrimary,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          _sectionTitle('COMENTARIOS DE LA COMUNIDAD'),
+          const SizedBox(height: 10),
+          ..._comments.asMap().entries.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: _commentCard(entry.key),
+            ),
+          ),
+          const SizedBox(height: 15),
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: FilledButton(
+              onPressed: widget.onAddToLibrary,
+              style: FilledButton.styleFrom(
+                backgroundColor: _accent,
+                foregroundColor: AppColors.background,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(9),
+                ),
+              ),
+              child: Text(
+                'Añadir a mi biblioteca',
+                style: GoogleFonts.inter(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Divider(
+            color: _gold.withValues(alpha: 0.28),
+          ),
+          const SizedBox(height: 10),
+          _sectionTitle('TU RESEÑA'),
+          const SizedBox(height: 11),
+          _buildReviewSection(),
+          const SizedBox(height: 30),
+          Center(
+            child: Column(
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 24,
+                      height: 1,
+                      color: _gold.withValues(alpha: 0.35),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '✦',
+                      style: TextStyle(
+                        color: _gold.withValues(alpha: 0.55),
+                        fontSize: 8,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      width: 24,
+                      height: 1,
+                      color: _gold.withValues(alpha: 0.35),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'CAPÍTULO 0',
+                  style: GoogleFonts.cinzel(
+                    color: _textSecondary,
+                    fontSize: 7,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String text) {
+    return Row(
+      children: [
+        Text(
+          text,
+          style: GoogleFonts.cinzel(
+            color: _textPrimary,
+            fontSize: 9.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: _gold.withValues(alpha: 0.30),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '◆',
+          style: TextStyle(
+            color: _gold,
+            fontSize: 7,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _heroTag(String text, {bool dark = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 7,
+        vertical: 4,
+      ),
+      decoration: BoxDecoration(
+        color: dark
+            ? Colors.black.withValues(alpha: 0.42)
+            : const Color(0xFF8E5F22).withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(
+          color: _gold.withValues(alpha: 0.65),
+        ),
+      ),
+      child: Text(
+        text,
+        style: GoogleFonts.inter(
+          color: const Color(0xFFF8EAD4),
+          fontSize: 5.8,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.45,
+        ),
+      ),
+    );
+  }
+
+  Widget _favoriteButton() {
+    return InkWell(
+      onTap: () {
+        widget.onToggleFavorite();
+
+        setState(() {
+          _favorite = !_favorite;
+        });
+      },
+      borderRadius: BorderRadius.circular(99),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 9,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.28),
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(
+            color: _gold.withValues(alpha: 0.75),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _favorite
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
+              color: _gold,
+              size: 12,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              'Favoritos',
+              style: GoogleFonts.inter(
+                color: const Color(0xFFF7EAD7),
+                fontSize: 7,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _heroMenuButton() {
+    return InkWell(
+      onTap: () => _showReportMenu(context),
+      borderRadius: BorderRadius.circular(9),
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: _surface.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(
+            color: _gold.withValues(alpha: 0.42),
+          ),
+        ),
+        child: Icon(
+          Icons.more_vert_rounded,
+          color: _textPrimary,
+          size: 18,
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(
+    String label,
+    String value, {
+    Color? valueColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 78,
+            child: Text(
+              '$label:',
+              style: GoogleFonts.inter(
+                color: _textSecondary,
+                fontSize: 7.5,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: GoogleFonts.inter(
+                color: valueColor ?? _textPrimary,
+                fontSize: 7.5,
+                fontWeight: valueColor != null
+                    ? FontWeight.w700
+                    : FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _commentCard(int index) {
+    final comment = _comments[index];
+    final liked = comment['liked'] as bool;
+    final replying = comment['replying'] as bool;
+    final repliesExpanded = comment['repliesExpanded'] as bool;
+    final replies = comment['replies'] as List<String>;
+    final controller = _replyControllers[index];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(11, 9, 9, 9),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: _gold.withValues(alpha: 0.22),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  comment['user'] as String,
+                  style: GoogleFonts.inter(
+                    color: _accent,
+                    fontSize: 6.8,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: () => _showCommentMenu(index),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: _background,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _gold.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.more_vert_rounded,
+                    size: 15,
+                    color: _textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            comment['text'] as String,
+            style: GoogleFonts.merriweather(
+              color: _textPrimary,
+              fontSize: 7.8,
+              height: 1.45,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    comment['liked'] = !liked;
+                    comment['likes'] =
+                        (comment['likes'] as int) + (liked ? -1 : 1);
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 2,
+                    vertical: 4,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        liked
+                            ? Icons.favorite_rounded
+                            : Icons.favorite_border_rounded,
+                        size: 11,
+                        color: liked ? _accent : _textSecondary,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${comment['likes']} Me gusta',
+                        style: GoogleFonts.inter(
+                          fontSize: 6.3,
+                          fontWeight:
+                              liked ? FontWeight.w700 : FontWeight.w500,
+                          color: liked ? _accent : _textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 15),
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    comment['replying'] = !replying;
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 2,
+                    vertical: 4,
+                  ),
+                  child: Text(
+                    'Responder',
+                    style: GoogleFonts.inter(
+                      fontSize: 6.3,
+                      fontWeight: FontWeight.w700,
+                      color: _accent,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (replies.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            InkWell(
+              onTap: () {
+                setState(() {
+                  comment['repliesExpanded'] = !repliesExpanded;
+                });
+              },
+              child: Text(
+                repliesExpanded
+                    ? 'Ocultar respuestas (${replies.length})'
+                    : 'Ver respuestas (${replies.length})',
+                style: GoogleFonts.inter(
+                  fontSize: 6.2,
+                  fontWeight: FontWeight.w700,
+                  color: _textSecondary,
+                ),
+              ),
+            ),
+          ],
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            child: replying
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: controller,
+                            minLines: 1,
+                            maxLines: 3,
+                            style: GoogleFonts.inter(
+                              color: _textPrimary,
+                              fontSize: 7,
+                            ),
+                            decoration: InputDecoration(
+                              hintText:
+                                  'Responder a ${comment['user']}...',
+                              hintStyle: GoogleFonts.inter(
+                                color: _textSecondary,
+                                fontSize: 6.7,
+                              ),
+                              filled: true,
+                              fillColor: _background,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 8,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(9),
+                                borderSide: BorderSide(
+                                  color: _gold.withValues(alpha: 0.26),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(9),
+                                borderSide: BorderSide(color: _gold),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        SizedBox(
+                          height: 34,
+                          child: FilledButton(
+                            onPressed: () {
+                              final reply = controller.text.trim();
+                              if (reply.isEmpty) return;
+
+                              setState(() {
+                                replies.add(reply);
+                                comment['replying'] = false;
+                                comment['repliesExpanded'] = true;
+                                controller.clear();
+                              });
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _accent,
+                              foregroundColor: AppColors.background,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                            ),
+                            child: Text(
+                              'Responder',
+                              style: GoogleFonts.inter(
+                                fontSize: 6.4,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            child: repliesExpanded && replies.isNotEmpty
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 8, left: 12),
+                    child: Column(
+                      children: replies.map((reply) {
+                        return Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 6),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _background,
+                            borderRadius: BorderRadius.circular(9),
+                            border: Border.all(
+                              color: _gold.withValues(alpha: 0.16),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                widget.currentUsername,
+                                style: GoogleFonts.inter(
+                                  color: _accent,
+                                  fontSize: 6.2,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                reply,
+                                style: GoogleFonts.merriweather(
+                                  color: _textPrimary,
+                                  fontSize: 6.8,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showCommentMenu(int index) async {
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Opciones del comentario',
+      barrierColor: Colors.black.withValues(alpha: 0.10),
+      transitionDuration: const Duration(milliseconds: 140),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => Navigator.of(dialogContext).pop(),
+                behavior: HitTestBehavior.translucent,
+                child: const SizedBox.expand(),
+              ),
+            ),
+            Positioned(
+              right: 22,
+              top: MediaQuery.of(dialogContext).size.height * 0.58,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  width: 152,
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _gold.withValues(alpha: 0.22),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.14),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.of(dialogContext).pop();
+                      _showCommentReportDialog(index);
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 13,
+                        vertical: 13,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.flag_rounded,
+                            size: 14,
+                            color: AppColors.accent,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Reportar comentario',
+                            style: GoogleFonts.inter(
+                              fontSize: 7.4,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      transitionBuilder: (
+        dialogContext,
+        animation,
+        secondaryAnimation,
+        child,
+      ) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOut,
+          ),
+          child: ScaleTransition(
+            alignment: Alignment.topRight,
+            scale: Tween<double>(begin: 0.96, end: 1).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              ),
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showCommentReportDialog(int index) async {
+    final comment = _comments[index];
+    final detailController = TextEditingController();
+    final reasons = <String>[
+      'Spam o contenido engañoso',
+      'Acoso o lenguaje ofensivo',
+      'Contenido inapropiado',
+      'Otro motivo',
+    ];
+    String? selectedReason;
+
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Reportar comentario',
+      barrierColor: Colors.black.withValues(alpha: 0.62),
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return SafeArea(
+              child: Center(
+                child: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: MediaQuery.of(dialogContext).size.width * 0.84,
+                    constraints: const BoxConstraints(maxWidth: 380),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                    decoration: BoxDecoration(
+                      color: _surface,
+                      borderRadius: BorderRadius.circular(17),
+                      border: Border.all(
+                        color: _gold.withValues(alpha: 0.28),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          blurRadius: 24,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'MODERACIÓN',
+                                    style: GoogleFonts.cinzel(
+                                      fontSize: 7.2,
+                                      fontWeight: FontWeight.w700,
+                                      color: _accent,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Reportar comentario',
+                                    style: GoogleFonts.merriweather(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: _textPrimary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () =>
+                                  Navigator.of(dialogContext).pop(),
+                              customBorder: const CircleBorder(),
+                              child: Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: _gold.withValues(alpha: 0.36),
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.close_rounded,
+                                  size: 15,
+                                  color: _textSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: _background,
+                            borderRadius: BorderRadius.circular(9),
+                            border: Border.all(
+                              color: _gold.withValues(alpha: 0.22),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                comment['user'] as String,
+                                style: GoogleFonts.inter(
+                                  fontSize: 6.6,
+                                  fontWeight: FontWeight.w800,
+                                  color: _accent,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                '“${comment['text']}”',
+                                style: GoogleFonts.merriweather(
+                                  fontSize: 7,
+                                  height: 1.4,
+                                  color: _textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ...reasons.map((reason) {
+                          final selected = selectedReason == reason;
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 7),
+                            child: InkWell(
+                              onTap: () {
+                                setDialogState(() {
+                                  selectedReason = reason;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(9),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 11,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? _accent.withValues(alpha: 0.07)
+                                      : _background,
+                                  borderRadius: BorderRadius.circular(9),
+                                  border: Border.all(
+                                    color: selected
+                                        ? _accent.withValues(alpha: 0.40)
+                                        : _gold.withValues(alpha: 0.20),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        reason,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 7.2,
+                                          fontWeight: selected
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                          color: _textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    if (selected)
+                                      const Icon(
+                                        Icons.check_circle_rounded,
+                                        size: 13,
+                                        color: AppColors.accent,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 5),
+                        TextField(
+                          controller: detailController,
+                          minLines: 2,
+                          maxLines: 4,
+                          maxLength: 300,
+                          style: GoogleFonts.inter(
+                            fontSize: 7.2,
+                            color: _textPrimary,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'Añade un detalle opcional...',
+                            counterText: '',
+                            filled: true,
+                            fillColor: _background,
+                            hintStyle: GoogleFonts.inter(
+                              fontSize: 7,
+                              color: _textSecondary,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 11,
+                              vertical: 10,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(9),
+                              borderSide: BorderSide(
+                                color: _gold.withValues(alpha: 0.28),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(9),
+                              borderSide: BorderSide(color: _gold),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 9),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: selectedReason == null
+                                ? null
+                                : () {
+                                    Navigator.of(dialogContext).pop();
+                                    _showModerationSuccess(
+                                      title: 'Comentario reportado',
+                                      message:
+                                          'Gracias. El reporte fue registrado para revisión de moderación.',
+                                    );
+                                  },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: _accent,
+                              disabledBackgroundColor:
+                                  _accent.withValues(alpha: 0.32),
+                              foregroundColor: AppColors.background,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 11),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                            ),
+                            child: Text(
+                              'Enviar reporte',
+                              style: GoogleFonts.inter(
+                                fontSize: 7.4,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    detailController.dispose();
+  }
+
+  Future<void> _showReportMenu(BuildContext pageContext) async {
+    await showGeneralDialog<void>(
+      context: pageContext,
+      barrierDismissible: true,
+      barrierLabel: 'Opciones de publicación',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 140),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        final media = MediaQuery.of(dialogContext);
+        final top = media.padding.top + 54;
+
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => Navigator.of(dialogContext).pop(),
+                behavior: HitTestBehavior.translucent,
+                child: const SizedBox.expand(),
+              ),
+            ),
+            Positioned(
+              top: top,
+              right: 18,
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  width: 170,
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(13),
+                    border: Border.all(
+                      color: _gold.withValues(alpha: 0.22),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 18,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.of(dialogContext).pop();
+                      _showBookReportDialog();
+                    },
+                    borderRadius: BorderRadius.circular(13),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.flag_rounded,
+                            size: 15,
+                            color: AppColors.accent,
+                          ),
+                          const SizedBox(width: 9),
+                          Text(
+                            'Reportar publicación',
+                            style: GoogleFonts.inter(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+      transitionBuilder: (
+        dialogContext,
+        animation,
+        secondaryAnimation,
+        child,
+      ) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOut,
+          ),
+          child: ScaleTransition(
+            alignment: Alignment.topRight,
+            scale: Tween<double>(begin: 0.96, end: 1).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              ),
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showBookReportDialog() async {
+    final reasons = <String>[
+      'Contenido inapropiado',
+      'Spam o contenido engañoso',
+      'Acoso o lenguaje ofensivo',
+      'Otro motivo',
+    ];
+    String? selectedReason;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: _surface,
+              surfaceTintColor: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(
+                  color: _gold.withValues(alpha: 0.24),
+                ),
+              ),
+              title: Text(
+                'REPORTAR PUBLICACIÓN',
+                style: GoogleFonts.cinzel(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: _accent,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: reasons.map((reason) {
+                  final selected = selectedReason == reason;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 7),
+                    child: InkWell(
+                      onTap: () {
+                        setDialogState(() {
+                          selectedReason = reason;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 11,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? _accent.withValues(alpha: 0.08)
+                              : _background,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: selected
+                                ? _accent.withValues(alpha: 0.40)
+                                : _gold.withValues(alpha: 0.22),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              selected
+                                  ? Icons.radio_button_checked_rounded
+                                  : Icons.radio_button_unchecked_rounded,
+                              size: 15,
+                              color: selected
+                                  ? _accent
+                                  : _textSecondary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                reason,
+                                style: GoogleFonts.inter(
+                                  fontSize: 8.2,
+                                  fontWeight: selected
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  color: _textPrimary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('Cancelar'),
+                ),
+                FilledButton(
+                  onPressed: selectedReason == null
+                      ? null
+                      : () {
+                          Navigator.of(dialogContext).pop();
+                          _showModerationSuccess(
+                            title: 'Publicación reportada',
+                            message:
+                                'Gracias. El reporte fue enviado para revisión.',
+                          );
+                        },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _accent,
+                    foregroundColor: AppColors.background,
+                  ),
+                  child: const Text('Enviar reporte'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showShareDialog(BuildContext pageContext) async {
+    await showGeneralDialog<void>(
+      context: pageContext,
+      barrierDismissible: true,
+      barrierLabel: 'Compartir obra',
+      barrierColor: Colors.black.withValues(alpha: 0.62),
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return SafeArea(
+          child: Center(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: MediaQuery.of(dialogContext).size.width * 0.76,
+                constraints: const BoxConstraints(maxWidth: 360),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                decoration: BoxDecoration(
+                  color: _surface,
+                  borderRadius: BorderRadius.circular(17),
+                  border: Border.all(
+                    color: _gold.withValues(alpha: 0.28),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'COMPARTIR OBRA',
+                                style: GoogleFonts.cinzel(
+                                  fontSize: 7.5,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.65,
+                                  color: _accent,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                '¿Dónde deseas compartir?',
+                                style: GoogleFonts.merriweather(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: _textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () =>
+                              Navigator.of(dialogContext).pop(),
+                          borderRadius: BorderRadius.circular(999),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: _gold.withValues(alpha: 0.38),
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.close_rounded,
+                              size: 15,
+                              color: _textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _shareOption(
+                            label: 'W · WhatsApp',
+                            onTap: () => _fakeShare(
+                              dialogContext,
+                              'WhatsApp',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _shareOption(
+                            label: 'I · Instagram',
+                            onTap: () => _fakeShare(
+                              dialogContext,
+                              'Instagram',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _shareOption(
+                            label: 'X · X',
+                            onTap: () => _fakeShare(
+                              dialogContext,
+                              'X',
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _shareOption(
+                            label: '↗ · Enlace',
+                            onTap: () async {
+                              await Clipboard.setData(
+                                ClipboardData(
+                                  text:
+                                      'Capítulo 0 · $_title · ${_authorHandle.isEmpty ? _author : _authorHandle}',
+                                ),
+                              );
+
+                              if (!dialogContext.mounted) return;
+                              Navigator.of(dialogContext).pop();
+
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content:
+                                      Text('Enlace de la obra copiado.'),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (
+        dialogContext,
+        animation,
+        secondaryAnimation,
+        child,
+      ) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOut,
+          ),
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.96, end: 1).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              ),
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _shareOption({
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 11,
+        ),
+        decoration: BoxDecoration(
+          color: _background,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: _gold.withValues(alpha: 0.34),
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            fontSize: 7.4,
+            fontWeight: FontWeight.w700,
+            color: _textPrimary,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _fakeShare(
+    BuildContext dialogContext,
+    String destination,
+  ) {
+    Navigator.of(dialogContext).pop();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Compartir en $destination estará disponible próximamente.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showModerationSuccess({
+    required String title,
+    required String message,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: _surface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: _gold.withValues(alpha: 0.24),
+            ),
+          ),
+          icon: const Icon(
+            Icons.check_circle_rounded,
+            color: AppColors.accent,
+          ),
+          title: Text(
+            title,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.cinzel(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: _textPrimary,
+            ),
+          ),
+          content: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 8,
+              height: 1.45,
+              color: _textSecondary,
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              style: FilledButton.styleFrom(
+                backgroundColor: _accent,
+                foregroundColor: AppColors.background,
+              ),
+              child: const Text('Entendido'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildReviewSection() {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.topCenter,
+      child: _reviewEditorOpen
+          ? _buildReviewEditor()
+          : _hasReview
+              ? _buildPublishedReview()
+              : _buildReviewCallToAction(),
+    );
+  }
+
+  Widget _buildReviewCallToAction() {
+    return SizedBox(
+      width: double.infinity,
+      height: 38,
+      child: OutlinedButton(
+        onPressed: _openReviewEditor,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _textPrimary,
+          side: BorderSide(
+            color: _gold.withValues(alpha: 0.40),
+          ),
+          backgroundColor: _surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9),
+          ),
+        ),
+        child: Text(
+          '★ Calificar y reseñar',
+          style: GoogleFonts.inter(
+            fontSize: 8,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReviewEditor() {
+    final canPublish =
+        _draftRating > 0 && _reviewController.text.trim().isNotEmpty;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: _gold.withValues(alpha: 0.24),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'TU CALIFICACIÓN',
+            style: GoogleFonts.cinzel(
+              color: _textPrimary,
+              fontSize: 7.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 9),
+          Row(
+            children: List.generate(5, (index) {
+              final value = index + 1;
+              final selected = value <= _draftRating;
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _draftRating = value;
+                    });
+                  },
+                  customBorder: const CircleBorder(),
+                  child: TweenAnimationBuilder<double>(
+                    key: ValueKey(
+                      'review-star-$value-$_draftRating',
+                    ),
+                    tween: Tween<double>(
+                      begin: 0.72,
+                      end: 1,
+                    ),
+                    duration: const Duration(milliseconds: 190),
+                    curve: Curves.easeOutBack,
+                    builder: (context, scale, child) {
+                      return Transform.scale(
+                        scale: scale,
+                        child: child,
+                      );
+                    },
+                    child: Icon(
+                      selected
+                          ? Icons.star_rounded
+                          : Icons.star_border_rounded,
+                      color: _gold,
+                      size: 23,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _reviewController,
+            minLines: 4,
+            maxLines: 6,
+            maxLength: 500,
+            onChanged: (_) {
+              setState(() {});
+            },
+            style: GoogleFonts.merriweather(
+              color: _textPrimary,
+              fontSize: 8.2,
+              height: 1.45,
+            ),
+            decoration: InputDecoration(
+              hintText: '¿Qué te pareció esta lectura?',
+              counterText: '',
+              filled: true,
+              fillColor: _background,
+              hintStyle: GoogleFonts.merriweather(
+                color: _textSecondary,
+                fontSize: 8,
+              ),
+              contentPadding: const EdgeInsets.fromLTRB(
+                11,
+                10,
+                11,
+                10,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(9),
+                borderSide: BorderSide(
+                  color: _gold.withValues(alpha: 0.34),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(9),
+                borderSide: BorderSide(color: _gold),
+              ),
+            ),
+          ),
+          const SizedBox(height: 11),
+          Text(
+            'PRIVACIDAD DE LA RESEÑA',
+            style: GoogleFonts.cinzel(
+              color: _textPrimary,
+              fontSize: 7.1,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Container(
+            height: 34,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: _background,
+              borderRadius: BorderRadius.circular(9),
+              border: Border.all(
+                color: _gold.withValues(alpha: 0.28),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _reviewPrivacyButton(
+                    label: '🌐  Pública',
+                    selected: _draftReviewIsPublic,
+                    onTap: () {
+                      setState(() {
+                        _draftReviewIsPublic = true;
+                      });
+                    },
+                  ),
+                ),
+                Expanded(
+                  child: _reviewPrivacyButton(
+                    label: '🔒  Privada',
+                    selected: !_draftReviewIsPublic,
+                    onTap: () {
+                      setState(() {
+                        _draftReviewIsPublic = false;
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: Text(
+              _draftReviewIsPublic
+                  ? 'Visible para todos los lectores.'
+                  : 'Anonimo para todos los lectores.',
+              key: ValueKey(_draftReviewIsPublic),
+              style: GoogleFonts.inter(
+                color: _textSecondary,
+                fontSize: 6.7,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '${_reviewController.text.length} / 500',
+              style: GoogleFonts.inter(
+                color: _textSecondary,
+                fontSize: 6.2,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 36,
+                  child: OutlinedButton(
+                    onPressed: _cancelReviewEditing,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _textPrimary,
+                      side: BorderSide(
+                        color: _gold.withValues(alpha: 0.34),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                    ),
+                    child: Text(
+                      'Cancelar',
+                      style: GoogleFonts.inter(
+                        fontSize: 7.3,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                flex: 2,
+                child: SizedBox(
+                  height: 36,
+                  child: FilledButton(
+                    onPressed: canPublish ? _publishReview : null,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: _accent,
+                      disabledBackgroundColor:
+                          _accent.withValues(alpha: 0.32),
+                      foregroundColor: AppColors.background,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                    ),
+                    child: Text(
+                      _hasReview
+                          ? 'Guardar cambios'
+                          : 'Publicar reseña',
+                      style: GoogleFonts.inter(
+                        fontSize: 7.3,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _reviewPrivacyButton({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(7),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? _deep : Colors.transparent,
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            color: selected
+                ? AppColors.background
+                : _textPrimary,
+            fontSize: 6.8,
+            fontWeight: selected
+                ? FontWeight.w700
+                : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPublishedReview() {
+    final displayedUser = _reviewIsPublic
+        ? widget.currentUsername
+        : '@anonimo';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(
+          color: _gold.withValues(alpha: 0.23),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: _reviewIsPublic
+                      ? widget.onOpenOwnProfile
+                      : null,
+                  borderRadius: BorderRadius.circular(5),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 2,
+                    ),
+                    child: Text(
+                      displayedUser,
+                      style: GoogleFonts.inter(
+                        color: _accent,
+                        fontSize: 6.8,
+                        fontWeight: FontWeight.w800,
+                        decoration: _reviewIsPublic
+                            ? TextDecoration.underline
+                            : TextDecoration.none,
+                        decorationColor: _accent,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 7,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: _background,
+                  borderRadius: BorderRadius.circular(99),
+                  border: Border.all(
+                    color: _gold.withValues(alpha: 0.28),
+                  ),
+                ),
+                child: Text(
+                  _reviewIsPublic ? '🌐 Pública' : '🔒 Privada',
+                  style: GoogleFonts.inter(
+                    color: _textSecondary,
+                    fontSize: 6,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 7),
+              InkWell(
+                onTap: _openReviewEditor,
+                child: Text(
+                  'Editar reseña',
+                  style: GoogleFonts.inter(
+                    color: _accent,
+                    fontSize: 6.3,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Row(
+            children: List.generate(5, (index) {
+              return Icon(
+                index < _rating
+                    ? Icons.star_rounded
+                    : Icons.star_border_rounded,
+                color: _gold,
+                size: 13,
+              );
+            }),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _reviewText,
+            style: GoogleFonts.merriweather(
+              color: _textPrimary,
+              fontSize: 7.7,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openReviewEditor() {
+    setState(() {
+      _draftRating = _rating;
+      _draftReviewIsPublic = _reviewIsPublic;
+      _reviewController.text = _reviewText;
+      _reviewEditorOpen = true;
+    });
+  }
+
+  void _cancelReviewEditing() {
+    setState(() {
+      _reviewEditorOpen = false;
+      _draftRating = _rating;
+      _draftReviewIsPublic = _reviewIsPublic;
+      _reviewController.text = _reviewText;
+    });
+  }
+
+  void _publishReview() {
+    final text = _reviewController.text.trim();
+
+    if (text.isEmpty || _draftRating <= 0) {
+      return;
+    }
+
+    final review = BookReview(
+      rating: _draftRating,
+      text: text,
+      isPublic: _draftReviewIsPublic,
+    );
+
+    widget.onReviewSaved(
+      widget.book['id'] as int,
+      review,
+    );
+
+    setState(() {
+      _rating = review.rating;
+      _reviewIsPublic = review.isPublic;
+      _reviewText = review.text;
+      _hasReview = true;
+      _reviewEditorOpen = false;
+    });
+  }
+
+
+
 }
 
 class _ScannerFramePainter extends CustomPainter {

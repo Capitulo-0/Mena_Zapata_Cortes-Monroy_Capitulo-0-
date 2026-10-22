@@ -7,6 +7,7 @@ import '../../../library/presentation/screens/library_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../profile/presentation/screens/settings_screen.dart';
 import 'home_screen.dart';
+import '../widgets/main_header.dart';
 import '../../../writer/models/writer_story.dart';
 import '../../../writer/services/writer_local_service.dart';
 import '../../../writer/presentation/screens/writer_screen.dart';
@@ -33,6 +34,9 @@ class MainShellScreen extends StatefulWidget {
 
 class _MainShellScreenState extends State<MainShellScreen> {
   int selectedIndex = 0;
+
+  final GlobalKey<HomeScreenState> _homeKey = GlobalKey<HomeScreenState>();
+  bool _headerCompact = false;
 
   final WriterLocalService _writerService = WriterLocalService();
   List<WriterStory> _writerStories = <WriterStory>[];
@@ -75,8 +79,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
     ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
   // Estado compartido de clubes de lectura.
-  final List<ReadingClub> _clubs = const [
-    ReadingClub(
+  final List<ReadingClub> _clubs = [
+    const ReadingClub(
       id: 1,
       name: 'Adictos a los Clásicos ☕',
       members: 342,
@@ -85,7 +89,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       description:
           'Un espacio para quienes aman los grandes clásicos de la literatura universal. Cada semana conversamos sobre capítulos, personajes y contexto histórico.',
     ),
-    ReadingClub(
+    const ReadingClub(
       id: 2,
       name: 'Mansión Gótica 🕯️',
       members: 189,
@@ -94,7 +98,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       description:
           'Para amantes de la literatura gótica y victoriana. Misterio, romanticismo oscuro y personajes inolvidables.',
     ),
-    ReadingClub(
+    const ReadingClub(
       id: 3,
       name: 'Plumas del Sur ✍️',
       members: 98,
@@ -408,6 +412,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
   };
 
   final Set<int> _favoriteBookIds = {1, 2, 3, 4};
+  final Map<String, WriterStory> _favoriteCommunityStories =
+      <String, WriterStory>{};
 
   void _changeBookStatus(int bookId, BookStatus status) {
     setState(() {
@@ -451,13 +457,46 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
 
-  void _toggleClub(int clubId) {
+  void _toggleFavoriteCommunityStory(WriterStory story) {
     setState(() {
-      if (_joinedClubIds.contains(clubId)) {
+      if (_favoriteCommunityStories.containsKey(story.id)) {
+        _favoriteCommunityStories.remove(story.id);
+      } else {
+        _favoriteCommunityStories[story.id] = story;
+      }
+    });
+  }
+
+
+  void _toggleClub(int clubId) {
+    final index = _clubs.indexWhere((club) => club.id == clubId);
+
+    if (index == -1) {
+      return;
+    }
+
+    final currentClub = _clubs[index];
+    final wasJoined = _joinedClubIds.contains(clubId);
+
+    final updatedMembers = wasJoined
+        ? (currentClub.members > 0 ? currentClub.members - 1 : 0)
+        : currentClub.members + 1;
+
+    setState(() {
+      if (wasJoined) {
         _joinedClubIds.remove(clubId);
       } else {
         _joinedClubIds.add(clubId);
       }
+
+      _clubs[index] = ReadingClub(
+        id: currentClub.id,
+        name: currentClub.name,
+        members: updatedMembers,
+        book: currentClub.book,
+        date: currentClub.date,
+        description: currentClub.description,
+      );
     });
   }
 
@@ -469,7 +508,32 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
     setState(() {
       selectedIndex = index;
+      _headerCompact = false;
     });
+  }
+
+  bool _handleMainScroll(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
+
+    final compact = notification.metrics.pixels > 24;
+
+    if (compact != _headerCompact) {
+      setState(() {
+        _headerCompact = compact;
+      });
+    }
+
+    return false;
+  }
+
+  void _openHeaderScanner() {
+    _homeKey.currentState?.showIsbnScanner();
+  }
+
+  void _openHeaderGemini() {
+    _homeKey.currentState?.showGeminiAssistant();
   }
 
   void _showGuestAccessDialog(int index) {
@@ -576,77 +640,75 @@ class _MainShellScreenState extends State<MainShellScreen> {
     );
   }
 
-  Widget _currentScreen() {
-    switch (selectedIndex) {
-      case 0:
-        return HomeScreen(
-          isGuest: widget.isGuest,
-          clubs: _clubs,
-          joinedClubIds: _joinedClubIds,
-          onToggleClub: _toggleClub,
-          onOpenLibrary: () {
-            _selectTab(1);
-          },
-          onOpenWriter: () {
-            _selectTab(2);
-          },
-          onOpenPoints: () {
-            _selectTab(3);
-          },
-        );
-
-      case 1:
-        return LibraryScreen(
-          books: _libraryBooks,
-          statuses: _bookStatuses,
-          progresses: _bookProgresses,
-          reviews: _bookReviews,
-          favorites: _favoriteBookIds,
-          onStatusChanged: _changeBookStatus,
-          onProgressChanged: _changeBookProgress,
-          onReviewSaved: _saveBookReview,
-          onToggleFavorite: _toggleFavoriteBook,
-        );
-
-      case 2:
-        return WriterScreen(
-          onStoriesChanged: _handleWriterStoriesChanged,
-        );
-
-      case 3:
-        return const MapsScreen();
-
-      case 4:
-        return ProfileScreen(
-          onOpenSettings: () {
-            setState(() {
-              showSettings = true;
-            });
-          },
-          name: _profileName,
-          username: _profileUsername,
-          biography: _profileBiography,
-          readingFormat: _readingFormat,
-          annualGoal: _annualGoal,
-          clubs: _clubs,
-          joinedClubIds: _joinedClubIds,
-          onToggleClub: _toggleClub,
-
-          books: _libraryBooks,
-          statuses: _bookStatuses,
-          progresses: _bookProgresses,
-          reviews: _bookReviews,
-          favorites: _favoriteBookIds,
-          onStatusChanged: _changeBookStatus,
-          onProgressChanged: _changeBookProgress,
-          onReviewSaved: _saveBookReview,
-          onToggleFavorite: _toggleFavoriteBook,
-          publishedStories: _publishedWriterStories,
-        );
-
-      default:
-        return const SizedBox.shrink();
-    }
+  List<Widget> _mainScreens() {
+    return [
+      HomeScreen(
+        key: _homeKey,
+        isGuest: widget.isGuest,
+        currentName: _profileName,
+        currentUsername: _profileUsername,
+        reviews: _bookReviews,
+        onReviewSaved: _saveBookReview,
+        favoriteBookIds: _favoriteBookIds,
+        onToggleFavoriteBook: _toggleFavoriteBook,
+        favoriteCommunityStoryIds:
+            _favoriteCommunityStories.keys.toSet(),
+        onToggleCommunityStoryFavorite:
+            _toggleFavoriteCommunityStory,
+        clubs: _clubs,
+        joinedClubIds: _joinedClubIds,
+        onToggleClub: _toggleClub,
+        onOpenLibrary: () => _selectTab(1),
+        onOpenWriter: () => _selectTab(2),
+        onOpenPoints: () => _selectTab(3),
+        onOpenProfile: () => _selectTab(4),
+      ),
+      LibraryScreen(
+        books: _libraryBooks,
+        statuses: _bookStatuses,
+        progresses: _bookProgresses,
+        reviews: _bookReviews,
+        favorites: _favoriteBookIds,
+        onStatusChanged: _changeBookStatus,
+        onProgressChanged: _changeBookProgress,
+        onReviewSaved: _saveBookReview,
+        onToggleFavorite: _toggleFavoriteBook,
+      ),
+      WriterScreen(
+        currentUsername: _profileUsername,
+        onStoriesChanged: _handleWriterStoriesChanged,
+      ),
+      const MapsScreen(),
+      ProfileScreen(
+        onOpenSettings: () {
+          setState(() {
+            showSettings = true;
+          });
+        },
+        name: _profileName,
+        username: _profileUsername,
+        biography: _profileBiography,
+        readingFormat: _readingFormat,
+        annualGoal: _annualGoal,
+        clubs: _clubs,
+        joinedClubIds: _joinedClubIds,
+        onToggleClub: _toggleClub,
+        books: _libraryBooks,
+        statuses: _bookStatuses,
+        progresses: _bookProgresses,
+        reviews: _bookReviews,
+        favorites: _favoriteBookIds,
+        favoriteCommunityStories:
+            _favoriteCommunityStories.values.toList(),
+        onToggleCommunityStoryFavorite:
+            _toggleFavoriteCommunityStory,
+        onStatusChanged: _changeBookStatus,
+        onProgressChanged: _changeBookProgress,
+        onReviewSaved: _saveBookReview,
+        onToggleFavorite: _toggleFavoriteBook,
+        publishedStories: _publishedWriterStories,
+      ),
+    ];
   }
 
   @override
@@ -690,7 +752,29 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.backgroundOf(context),
-      body: _currentScreen(),
+      body: Column(
+        children: [
+          MainHeader(
+            compact: _headerCompact,
+            isGuest: widget.isGuest,
+            onScannerTap: _openHeaderScanner,
+            onGeminiTap: _openHeaderGemini,
+          ),
+          Expanded(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _handleMainScroll,
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: true,
+                child: IndexedStack(
+                  index: selectedIndex,
+                  children: _mainScreens(),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       extendBody: true,
       bottomNavigationBar: _buildBottomNavigation(),
     );

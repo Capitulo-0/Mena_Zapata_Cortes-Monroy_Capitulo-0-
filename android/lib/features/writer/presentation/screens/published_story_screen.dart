@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../models/writer_chapter.dart';
@@ -31,9 +34,29 @@ class PublishedStoryScreen extends StatefulWidget {
   const PublishedStoryScreen({
     super.key,
     required this.story,
+    required this.currentUsername,
+    this.authorUsername,
+    this.initiallyFavorite = false,
+    this.onToggleFavorite,
   });
 
   final WriterStory story;
+
+  /// Usuario que está usando la app. Se utiliza para respuestas/comentarios
+  /// creados por el usuario actual.
+  final String currentUsername;
+
+  /// Autor que debe mostrarse en la publicación.
+  /// En Writer normalmente coincide con currentUsername, mientras que una
+  /// historia de la comunidad puede pertenecer a otro usuario.
+  final String? authorUsername;
+  final bool initiallyFavorite;
+  final VoidCallback? onToggleFavorite;
+
+  String get displayedAuthorUsername =>
+      authorUsername?.trim().isNotEmpty == true
+          ? authorUsername!.trim()
+          : currentUsername;
 
   @override
   State<PublishedStoryScreen> createState() => _PublishedStoryScreenState();
@@ -42,7 +65,11 @@ class PublishedStoryScreen extends StatefulWidget {
 class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
   final Set<String> _expandedChapterIds = <String>{};
   late final Map<String, List<_MockChapterComment>> _commentsByChapter;
+  late bool _isFavorite;
   final Map<String, TextEditingController> _replyControllers = {};
+
+  String get _repliesStorageKey =>
+      'published_story_replies_${widget.story.id}';
 
   bool _isDarkMode(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;
@@ -76,6 +103,7 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
   @override
   void initState() {
     super.initState();
+    _isFavorite = widget.initiallyFavorite;
 
     final chapters = _publishedChapters;
     _commentsByChapter = <String, List<_MockChapterComment>>{};
@@ -117,6 +145,69 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
         _replyControllers[comment.id] = TextEditingController();
       }
     }
+
+    _loadPersistedReplies();
+  }
+
+  Future<void> _loadPersistedReplies() async {
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_repliesStorageKey);
+
+    if (raw == null || raw.trim().isEmpty) {
+      return;
+    }
+
+    try {
+      final decoded = jsonDecode(raw);
+
+      if (decoded is! Map) {
+        return;
+      }
+
+      for (final comments in _commentsByChapter.values) {
+        for (final comment in comments) {
+          final storedReplies = decoded[comment.id];
+
+          if (storedReplies is List) {
+            comment.replies
+              ..clear()
+              ..addAll(
+                storedReplies
+                    .whereType<String>()
+                    .where((reply) => reply.trim().isNotEmpty),
+              );
+          }
+        }
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {});
+    } catch (_) {
+      // Si los datos locales están dañados, simplemente mantenemos
+      // los comentarios mock sin respuestas persistidas.
+    }
+  }
+
+  Future<void> _savePersistedReplies() async {
+    final preferences = await SharedPreferences.getInstance();
+
+    final data = <String, List<String>>{};
+
+    for (final comments in _commentsByChapter.values) {
+      for (final comment in comments) {
+        if (comment.replies.isNotEmpty) {
+          data[comment.id] = List<String>.from(comment.replies);
+        }
+      }
+    }
+
+    await preferences.setString(
+      _repliesStorageKey,
+      jsonEncode(data),
+    );
   }
 
   @override
@@ -349,7 +440,7 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                             ),
                           ),
                           Text(
-                            '@constanza.lectora',
+                            widget.displayedAuthorUsername,
                             style: GoogleFonts.inter(
                               color: AppColors.gold,
                               fontSize: 7,
@@ -410,30 +501,51 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
   }
 
   Widget _buildFavoriteChip() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.45),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.favorite_border_rounded,
-            color: Colors.white,
-            size: 11,
+    return InkWell(
+      onTap: () {
+        widget.onToggleFavorite?.call();
+
+        setState(() {
+          _isFavorite = !_isFavorite;
+        });
+      },
+      borderRadius: BorderRadius.circular(999),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+        decoration: BoxDecoration(
+          color: _isFavorite
+              ? AppColors.accent.withValues(alpha: 0.92)
+              : Colors.black.withValues(alpha: 0.45),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: _isFavorite
+                ? AppColors.gold.withValues(alpha: 0.60)
+                : Colors.transparent,
           ),
-          const SizedBox(width: 4),
-          Text(
-            'Favoritos',
-            style: GoogleFonts.inter(
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _isFavorite
+                  ? Icons.favorite_rounded
+                  : Icons.favorite_border_rounded,
               color: Colors.white,
-              fontSize: 6.5,
-              fontWeight: FontWeight.w700,
+              size: 11,
             ),
-          ),
-        ],
+            const SizedBox(width: 4),
+            Text(
+              'Favoritos',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 6.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1085,6 +1197,7 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                                   });
 
                                   controller.clear();
+                                  _savePersistedReplies();
                                 },
                                 style: FilledButton.styleFrom(
                                   backgroundColor: AppColors.accent,
@@ -1176,7 +1289,7 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '↳ @constanza.lectora',
+            '↳ ${widget.currentUsername}',
             style: GoogleFonts.inter(
               fontSize: 6.2,
               fontWeight: FontWeight.w800,
@@ -2410,7 +2523,7 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                               await Clipboard.setData(
                                 ClipboardData(
                                   text:
-                                      'Capítulo 0 · ${widget.story.title} · @constanza.lectora',
+                                      'Capítulo 0 · ${widget.story.title} · ${widget.displayedAuthorUsername}',
                                 ),
                               );
 

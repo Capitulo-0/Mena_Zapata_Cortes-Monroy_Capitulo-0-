@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../clubs/models/reading_club.dart';
+import '../../../home/presentation/screens/home_screen.dart';
 import '../../../library/presentation/screens/library_screen.dart';
 import '../../../writer/models/writer_story.dart';
 import '../../../writer/presentation/screens/published_story_screen.dart';
@@ -26,6 +27,8 @@ class ProfileScreen extends StatefulWidget {
     required this.progresses,
     required this.reviews,
     required this.favorites,
+    required this.favoriteCommunityStories,
+    required this.onToggleCommunityStoryFavorite,
     required this.onStatusChanged,
     required this.onProgressChanged,
     required this.onReviewSaved,
@@ -50,6 +53,9 @@ class ProfileScreen extends StatefulWidget {
   final Map<int, int> progresses;
   final Map<int, BookReview> reviews;
   final Set<int> favorites;
+
+  final List<WriterStory> favoriteCommunityStories;
+  final ValueChanged<WriterStory> onToggleCommunityStoryFavorite;
 
   final void Function(int bookId, BookStatus status) onStatusChanged;
   final void Function(int bookId, int progress) onProgressChanged;
@@ -195,6 +201,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   List<LibraryBook> get _favoriteBooks =>
       widget.books.where((book) => widget.favorites.contains(book.id)).toList();
+
+  int get _favoriteCount =>
+      _favoriteBooks.length + widget.favoriteCommunityStories.length;
 
   List<ReadingClub> get _joinedClubs => widget.clubs
       .where((club) => widget.joinedClubIds.contains(club.id))
@@ -1269,8 +1278,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildTabs() {
     final tabs = [
-      {'id': 'favoritos', 'label': 'Favoritos (${_favoriteBooks.length})'},
-      {'id': 'resenas', 'label': 'Mis Reseñas (${widget.reviews.length})'},
+      {'id': 'favoritos', 'label': 'Favoritos ($_favoriteCount)'},
+      {
+        'id': 'resenas',
+        'label':
+            'Mis Reseñas (${widget.reviews.values.where((review) => review.isPublic).length})',
+      },
       {'id': 'lecturas', 'label': 'Mis Lecturas'},
       {
         'id': 'obras',
@@ -1333,89 +1346,200 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildFavorites() {
-    if (_favoriteBooks.isEmpty) {
-      return _emptyCard('Todavía no tienes libros favoritos.');
+    if (_favoriteCount == 0) {
+      return _emptyCard('Todavía no tienes favoritos.');
     }
-    return GridView.builder(
+
+    final items = <Widget>[
+      ..._favoriteBooks.map(_favoriteBookCard),
+      ...widget.favoriteCommunityStories.map(
+        _favoriteCommunityStoryCard,
+      ),
+    ];
+
+    return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.72,
-        crossAxisSpacing: 9,
-        mainAxisSpacing: 9,
-      ),
-      itemCount: _favoriteBooks.length,
-      itemBuilder: (context, index) {
-        final book = _favoriteBooks[index];
-        final review = widget.reviews[book.id];
-        return InkWell(
-          onTap: () => _openBookDetail(book),
+      crossAxisCount: 2,
+      childAspectRatio: 0.72,
+      crossAxisSpacing: 9,
+      mainAxisSpacing: 9,
+      children: items,
+    );
+  }
+
+  Widget _favoriteBookCard(LibraryBook book) {
+    final review = widget.reviews[book.id];
+
+    return InkWell(
+      onTap: () => _openBookDetail(book),
+      borderRadius: BorderRadius.circular(13),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: _surfaceColor,
           borderRadius: BorderRadius.circular(13),
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: _surfaceColor,
-              borderRadius: BorderRadius.circular(13),
-              border: Border.all(color: AppColors.gold.withValues(alpha: 0.38)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: Image.network(
-                        book.cover,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
-                          color: _deepSurfaceColor,
-                          child: const Icon(
-                            Icons.menu_book,
-                            color: AppColors.gold,
-                          ),
-                        ),
+          border: Border.all(
+            color: AppColors.gold.withValues(alpha: 0.38),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Image.network(
+                    book.cover,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      color: _deepSurfaceColor,
+                      child: const Icon(
+                        Icons.menu_book,
+                        color: AppColors.gold,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 7),
-                Text(
-                  book.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.merriweather(
-                    color: _textPrimaryColor,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  book.author,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(
-                    color: _textSecondaryColor,
-                    fontSize: 7,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  review == null ? '♡ Favorito' : '★ ${review.rating}/5',
-                  style: GoogleFonts.inter(
-                    color: AppColors.accent,
-                    fontSize: 7.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+              ),
             ),
+            const SizedBox(height: 7),
+            Text(
+              book.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.merriweather(
+                color: _textPrimaryColor,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              book.author,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                color: _textSecondaryColor,
+                fontSize: 7,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              review == null ? '♥ Favorito' : '★ ${review.rating}/5',
+              style: GoogleFonts.inter(
+                color: AppColors.accent,
+                fontSize: 7.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _favoriteCommunityStoryCard(WriterStory story) {
+    return InkWell(
+      onTap: () => _openFavoriteCommunityStory(story),
+      borderRadius: BorderRadius.circular(13),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: _surfaceColor,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(
+            color: AppColors.gold.withValues(alpha: 0.38),
           ),
-        );
-      },
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: _deepSurfaceColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                alignment: Alignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.auto_stories_rounded,
+                        color: AppColors.gold,
+                        size: 28,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        story.title.toUpperCase(),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.cinzel(
+                          color: AppColors.background,
+                          fontSize: 7,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              story.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.merriweather(
+                color: _textPrimaryColor,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              story.genre,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                color: _textSecondaryColor,
+                fontSize: 7,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '♥ Favorito · Comunidad',
+              style: GoogleFonts.inter(
+                color: AppColors.accent,
+                fontSize: 7.2,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openFavoriteCommunityStory(WriterStory story) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PublishedStoryScreen(
+          story: story,
+          currentUsername: widget.username,
+          initiallyFavorite: true,
+          onToggleFavorite: () {
+            widget.onToggleCommunityStoryFavorite(story);
+          },
+        ),
+      ),
     );
   }
 
@@ -1427,7 +1551,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildReviews() {
-    final reviewEntries = widget.reviews.entries.toList();
+    final reviewEntries = widget.reviews.entries
+        .where((entry) => entry.value.isPublic)
+        .toList();
     if (reviewEntries.isEmpty) {
       return _emptyCard('Aún no has publicado reseñas.');
     }
@@ -2462,7 +2588,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _openPublishedWork(WriterStory story) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => PublishedStoryScreen(story: story),
+        builder: (_) => PublishedStoryScreen(
+          story: story,
+          currentUsername: widget.username,
+        ),
       ),
     );
   }
@@ -2547,20 +2676,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _openBookDetail(LibraryBook book) {
+    final bookData = <String, dynamic>{
+      'id': book.id,
+      'title': book.title,
+      'author': book.authorHandle ?? book.author,
+      'authorReal': book.author,
+      'rating': 4.8,
+      'year': book.year,
+      'genre': book.genre,
+      'availability': 'GRATIS',
+      'isbn': book.isbn,
+      'cover': book.cover,
+      'synopsis': book.synopsis,
+    };
+
     Navigator.of(context)
         .push(
           MaterialPageRoute<void>(
-            builder: (_) => _ProfileBookDetailScreen(
-              name: widget.name,
-              book: book,
-              initialStatus: widget.statuses[book.id],
-              initialProgress: widget.progresses[book.id] ?? 0,
+            builder: (_) => HomeBookDetailScreen(
+              book: bookData,
+              currentUsername: widget.username,
               initialReview: widget.reviews[book.id],
-              initiallyFavorite: widget.favorites.contains(book.id),
-              onStatusChanged: widget.onStatusChanged,
-              onProgressChanged: widget.onProgressChanged,
               onReviewSaved: widget.onReviewSaved,
-              onToggleFavorite: widget.onToggleFavorite,
+              initiallyFavorite: widget.favorites.contains(book.id),
+              onToggleFavorite: () {
+                widget.onToggleFavorite(book.id);
+              },
+              onOpenOwnProfile: () {
+                Navigator.of(context).pop();
+              },
+              onAddToLibrary: () {
+                widget.onStatusChanged(
+                  book.id,
+                  widget.statuses[book.id] ?? BookStatus.porLeer,
+                );
+                _showMessage('${book.title} está en tu biblioteca.');
+              },
             ),
           ),
         )

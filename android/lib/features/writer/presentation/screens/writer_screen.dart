@@ -13,9 +13,11 @@ enum _StoryFilter { all, published, drafts }
 class WriterScreen extends StatefulWidget {
   const WriterScreen({
     super.key,
+    required this.currentUsername,
     this.onStoriesChanged,
   });
 
+  final String currentUsername;
   final ValueChanged<List<WriterStory>>? onStoriesChanged;
 
   @override
@@ -115,14 +117,22 @@ class _WriterScreenState extends State<WriterScreen> {
   void _openPublishedStory(WriterStory story) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PublishedStoryScreen(story: story),
+        builder: (_) => PublishedStoryScreen(
+          story: story,
+          currentUsername: widget.currentUsername,
+        ),
       ),
     );
   }
 
   Future<void> _openManageStory(WriterStory story) async {
     await Navigator.of(context).push<WriterStory>(
-      MaterialPageRoute(builder: (_) => ManageStoryScreen(story: story)),
+      MaterialPageRoute(
+        builder: (_) => ManageStoryScreen(
+          story: story,
+          currentUsername: widget.currentUsername,
+        ),
+      ),
     );
 
     if (!mounted) return;

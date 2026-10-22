@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/profile_gender_preference.dart';
+
 
 import '../../../../core/theme/app_colors.dart';
 
@@ -795,6 +797,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final goalController = TextEditingController(text: '$_annualGoal');
 
     String tempReadingFormat = _readingFormat;
+    bool isSaving = false;
+    int savingDots = 1;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -843,34 +847,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Center(
                       child: Column(
                         children: [
-                          CircleAvatar(
-                            radius: 39,
-                            backgroundColor: _deep,
-                            child: Text(
-                              _firstLetter(nameController.text),
-                              style: GoogleFonts.cinzel(
-                                color: _gold,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Container(
+                                width: 82,
+                                height: 82,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: _gold,
+                                    width: 2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.10),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 5),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipOval(
+                                  child: Image.network(
+                                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) {
+                                      return Container(
+                                        color: _deep,
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          _firstLetter(nameController.text),
+                                          style: GoogleFonts.cinzel(
+                                            color: _gold,
+                                            fontSize: 28,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
                               ),
-                            ),
+                              Positioned(
+                                right: -2,
+                                bottom: -2,
+                                child: Container(
+                                  width: 26,
+                                  height: 26,
+                                  decoration: BoxDecoration(
+                                    color: _surface,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: _gold,
+                                      width: 1.2,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    Icons.photo_camera_outlined,
+                                    color: _gold,
+                                    size: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           OutlinedButton.icon(
-                            onPressed: () {
-                              _showMessage(
-                                'El selector de imagen se conectará '
-                                'con la galería en el siguiente paso.',
-                              );
-                            },
+                            onPressed: isSaving
+                                ? null
+                                : () {
+                                    _showMessage(
+                                      'El selector de imagen se conectará '
+                                      'con la galería en el siguiente paso.',
+                                    );
+                                  },
                             icon: const Icon(
                               Icons.photo_camera_outlined,
-                              size: 17,
+                              size: 16,
                             ),
                             label: const Text('Cambiar imagen'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: _gold,
-                              side: BorderSide(color: _gold),
+                              disabledForegroundColor:
+                                  _gold.withValues(alpha: 0.45),
+                              side: BorderSide(
+                                color: _gold.withValues(alpha: 0.72),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 9,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(999),
+                              ),
                             ),
                           ),
                         ],
@@ -906,6 +975,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         fontSize: 8,
                       ),
                     ),
+                    const SizedBox(height: 12),
+
+                    // Preferencia privada: solo personaliza el saludo de Home.
+                    // No se muestra en el perfil público.
+                    const ProfileGenderPreferenceField(),
+
                     const SizedBox(height: 12),
                     _fieldLabel('Biografía'),
                     _editTextField(
@@ -971,69 +1046,176 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              Navigator.of(bottomSheetContext).pop();
-                            },
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: _textPrimary,
-                              side: BorderSide(color: _textSecondary),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: SizedBox(
+                            height: 44,
+                            child: OutlinedButton.icon(
+                              onPressed: isSaving
+                                  ? null
+                                  : () {
+                                      Navigator.of(bottomSheetContext).pop();
+                                    },
+                              icon: const Icon(
+                                Icons.close_rounded,
+                                size: 15,
+                              ),
+                              label: const Text('Cancelar'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _textPrimary,
+                                disabledForegroundColor:
+                                    _textSecondary.withValues(alpha: 0.45),
+                                side: BorderSide(
+                                  color: _gold.withValues(alpha: 0.42),
+                                ),
+                                backgroundColor:
+                                    _surface.withValues(alpha: 0.55),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                                textStyle: GoogleFonts.inter(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ),
-                            child: const Text('Cancelar'),
                           ),
                         ),
-                        const SizedBox(width: 9),
+                        const SizedBox(width: 10),
                         Expanded(
-                          child: FilledButton(
-                            onPressed: () {
-                              final cleanName = nameController.text.trim();
+                          child: SizedBox(
+                            height: 44,
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(13),
+                                boxShadow: isSaving
+                                    ? const []
+                                    : [
+                                        BoxShadow(
+                                          color: _accent.withValues(alpha: 0.18),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 5),
+                                        ),
+                                      ],
+                              ),
+                              child: FilledButton(
+                                onPressed: isSaving
+                                    ? null
+                                    : () async {
+                                        final cleanName =
+                                            nameController.text.trim();
 
-                              var cleanUsername = usernameController.text
-                                  .replaceAll(' ', '')
-                                  .trim();
+                                        var cleanUsername = usernameController
+                                            .text
+                                            .replaceAll(' ', '')
+                                            .trim();
 
-                              if (cleanName.isEmpty ||
-                                  cleanUsername.isEmpty ||
-                                  cleanUsername == '@') {
-                                _showMessage('Completa nombre y usuario.');
-                                return;
-                              }
+                                        if (cleanName.isEmpty ||
+                                            cleanUsername.isEmpty ||
+                                            cleanUsername == '@') {
+                                          _showMessage(
+                                            'Completa nombre y usuario.',
+                                          );
+                                          return;
+                                        }
 
-                              if (!cleanUsername.startsWith('@')) {
-                                cleanUsername = '@$cleanUsername';
-                              }
+                                        if (!cleanUsername.startsWith('@')) {
+                                          cleanUsername = '@$cleanUsername';
+                                        }
 
-                              final parsedGoal =
-                                  int.tryParse(goalController.text.trim()) ??
-                                  _annualGoal;
+                                        final parsedGoal = int.tryParse(
+                                              goalController.text.trim(),
+                                            ) ??
+                                            _annualGoal;
 
-                              setState(() {
-                                _name = cleanName;
-                                _username = cleanUsername;
-                                _biography = biographyController.text.trim();
-                                _readingFormat = tempReadingFormat;
-                                _annualGoal = parsedGoal.clamp(1, 365);
-                              });
+                                        setModalState(() {
+                                          isSaving = true;
+                                          savingDots = 1;
+                                        });
 
-                              widget.onProfileSaved(
-                                _name,
-                                _username,
-                                _biography,
-                                _readingFormat,
-                                _annualGoal,
-                              );
+                                        // Simulación visual de guardado en backend:
+                                        // Guardando. -> Guardando.. -> Guardando...
+                                        for (var step = 0; step < 4; step++) {
+                                          await Future<void>.delayed(
+                                            const Duration(milliseconds: 250),
+                                          );
 
-                              Navigator.of(bottomSheetContext).pop();
+                                          if (!bottomSheetContext.mounted) {
+                                            return;
+                                          }
 
-                              _showMessage('Perfil actualizado correctamente.');
-                            },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _accent,
-                              foregroundColor: AppColors.background,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
+                                          setModalState(() {
+                                            savingDots =
+                                                (savingDots % 3) + 1;
+                                          });
+                                        }
+
+                                        if (!mounted ||
+                                            !bottomSheetContext.mounted) {
+                                          return;
+                                        }
+
+                                        setState(() {
+                                          _name = cleanName;
+                                          _username = cleanUsername;
+                                          _biography =
+                                              biographyController.text.trim();
+                                          _readingFormat = tempReadingFormat;
+                                          _annualGoal =
+                                              parsedGoal.clamp(1, 365);
+                                        });
+
+                                        widget.onProfileSaved(
+                                          _name,
+                                          _username,
+                                          _biography,
+                                          _readingFormat,
+                                          _annualGoal,
+                                        );
+
+                                        Navigator.of(
+                                          bottomSheetContext,
+                                        ).pop();
+
+                                        WidgetsBinding.instance
+                                            .addPostFrameCallback((_) {
+                                          if (!mounted) return;
+
+                                          _showMessage(
+                                            'Perfil actualizado correctamente.',
+                                          );
+                                        });
+                                      },
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: isSaving
+                                      ? _accent.withValues(alpha: 0.58)
+                                      : _accent,
+                                  disabledBackgroundColor:
+                                      _accent.withValues(alpha: 0.58),
+                                  foregroundColor: AppColors.background,
+                                  disabledForegroundColor:
+                                      AppColors.background.withValues(
+                                        alpha: 0.82,
+                                      ),
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(13),
+                                  ),
+                                  textStyle: GoogleFonts.inter(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                child: AnimatedOpacity(
+                                  duration: const Duration(milliseconds: 120),
+                                  opacity: 1,
+                                  child: Text(
+                                    isSaving
+                                        ? 'Guardando${'.' * savingDots}'
+                                        : 'Guardar',
+                                  ),
+                                ),
+                              ),
                             ),
-                            child: const Text('Guardar'),
                           ),
                         ),
                       ],
@@ -1046,6 +1228,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       },
     );
+
+    // showModalBottomSheet completa su Future antes de que termine por completo
+    // la animación de salida. Si liberamos los controllers inmediatamente,
+    // los TextField todavía pueden intentar leerlos durante ese último frame.
+    await Future<void>.delayed(const Duration(milliseconds: 350));
 
     nameController.dispose();
     usernameController.dispose();

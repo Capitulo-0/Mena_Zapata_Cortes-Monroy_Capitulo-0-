@@ -10,9 +10,14 @@ import 'create_story_screen.dart';
 import 'published_story_screen.dart';
 
 class ManageStoryScreen extends StatefulWidget {
-  const ManageStoryScreen({super.key, required this.story});
+  const ManageStoryScreen({
+    super.key,
+    required this.story,
+    required this.currentUsername,
+  });
 
   final WriterStory story;
+  final String currentUsername;
 
   @override
   State<ManageStoryScreen> createState() => _ManageStoryScreenState();
@@ -83,7 +88,10 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
   void _openPublishedView() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => PublishedStoryScreen(story: _story),
+        builder: (_) => PublishedStoryScreen(
+          story: _story,
+          currentUsername: widget.currentUsername,
+        ),
       ),
     );
   }
