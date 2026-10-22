@@ -60,4 +60,64 @@ class AppColors {
 
   static const Color darkGold = Color(0xFFB89A63);
   static const Color darkAccent = Color(0xFFA52A38);
+
+  // ============================================================
+  // COLORES ADAPTATIVOS SEGÚN EL TEMA ACTIVO
+  // ============================================================
+
+  /// Indica si el tema activo de MaterialApp es oscuro.
+  static bool isDark(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark;
+  }
+
+  /// Fondo principal adaptativo.
+  static Color backgroundOf(BuildContext context) {
+    return isDark(context) ? darkBackground : background;
+  }
+
+  /// Fondo de tarjetas y superficies adaptativo.
+  static Color surfaceOf(BuildContext context) {
+    return isDark(context) ? darkSurface : surface;
+  }
+
+  /// Fondo secundario adaptativo.
+  static Color surfaceSoftOf(BuildContext context) {
+    return isDark(context) ? darkSurfaceSoft : surfaceSoft;
+  }
+
+  /// Marrón principal adaptativo.
+  static Color deepOf(BuildContext context) {
+    return isDark(context) ? darkDeep : deep;
+  }
+
+  /// Marrón secundario adaptativo.
+  static Color deepAltOf(BuildContext context) {
+    return isDark(context) ? darkDeepAlt : deepAlt;
+  }
+
+  /// Texto principal adaptativo.
+  static Color textPrimaryOf(BuildContext context) {
+    return isDark(context) ? darkTextPrimary : textPrimary;
+  }
+
+  /// Texto secundario adaptativo.
+  static Color textSecondaryOf(BuildContext context) {
+    return isDark(context) ? darkTextSecondary : textSecondary;
+  }
+
+  /// Dorado adaptativo.
+  static Color goldOf(BuildContext context) {
+    return isDark(context) ? darkGold : gold;
+  }
+
+  /// Burdeo adaptativo.
+  static Color accentOf(BuildContext context) {
+    return isDark(context) ? darkAccent : accent;
+  }
+
+  /// Variante clara del burdeo para degradados.
+  /// En modo oscuro usamos el acento oscuro para conservar contraste.
+  static Color accentLightOf(BuildContext context) {
+    return isDark(context) ? darkAccent : accentLight;
+  }
 }
