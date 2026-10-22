@@ -13,10 +13,12 @@ enum _StoryFilter { all, published, drafts }
 class WriterScreen extends StatefulWidget {
   const WriterScreen({
     super.key,
+    required this.currentName,
     required this.currentUsername,
     this.onStoriesChanged,
   });
 
+  final String currentName;
   final String currentUsername;
   final ValueChanged<List<WriterStory>>? onStoriesChanged;
 
@@ -221,34 +223,29 @@ class _WriterScreenState extends State<WriterScreen> {
                   ),
                 ),
                 const SizedBox(height: 5),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 6,
-                  children: [
-                    Text(
-                      'Tu espacio de escritura',
-                      style: GoogleFonts.merriweather(
-                        color: _textSecondaryColor,
-                        fontSize: 9,
-                        fontStyle: FontStyle.italic,
+                RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: 'Tu espacio de escritura, ',
+                        style: GoogleFonts.merriweather(
+                          color: _textSecondaryColor,
+                          fontSize: 9,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
-                    ),
-                    const Text(
-                      '✦',
-                      style: TextStyle(
-                        color: AppColors.gold,
-                        fontSize: 8,
+                      TextSpan(
+                        text:
+                            '${widget.currentName.trim().isEmpty ? 'LECTOR/A' : widget.currentName.trim().toUpperCase()} ✦',
+                        style: GoogleFonts.cinzel(
+                          color: _textPrimaryColor,
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        ),
                       ),
-                    ),
-                    Text(
-                      'Constanza',
-                      style: GoogleFonts.inter(
-                        color: _textPrimaryColor,
-                        fontSize: 8.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -521,18 +518,6 @@ class _WriterScreenState extends State<WriterScreen> {
                 height: 1.45,
               ),
             ),
-            if (_selectedFilter == _StoryFilter.all) ...[
-              const SizedBox(height: 18),
-              FilledButton.icon(
-                onPressed: _openCreateStory,
-                icon: const Icon(Icons.add_rounded, size: 17),
-                label: const Text('Crear mi primera historia'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.accent,
-                  foregroundColor: AppColors.background,
-                ),
-              ),
-            ],
           ],
         ),
       ),

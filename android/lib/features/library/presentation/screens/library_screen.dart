@@ -52,6 +52,7 @@ class LibraryScreen extends StatefulWidget {
     required this.progresses,
     required this.reviews,
     required this.favorites,
+    required this.currentName,
     required this.onStatusChanged,
     required this.onProgressChanged,
     required this.onReviewSaved,
@@ -63,6 +64,7 @@ class LibraryScreen extends StatefulWidget {
   final Map<int, int> progresses;
   final Map<int, BookReview> reviews;
   final Set<int> favorites;
+  final String currentName;
 
   final void Function(int bookId, BookStatus status) onStatusChanged;
   final void Function(int bookId, int progress) onProgressChanged;
@@ -154,6 +156,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildHeader() {
+    final displayName = widget.currentName.trim().isEmpty
+        ? 'LECTOR/A'
+        : widget.currentName.trim().toUpperCase();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -167,12 +173,27 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          'Tus libros, progreso, estados y reseñas en un solo lugar.',
-          style: GoogleFonts.merriweather(
-            color: AppColors.textSecondaryOf(context),
-            fontSize: 9.5,
-            fontStyle: FontStyle.italic,
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: 'Tus libros, progreso y estados en un solo lugar, ',
+                style: GoogleFonts.merriweather(
+                  color: AppColors.textSecondaryOf(context),
+                  fontSize: 9.5,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              TextSpan(
+                text: '$displayName ✦',
+                style: GoogleFonts.cinzel(
+                  color: AppColors.textPrimaryOf(context),
+                  fontSize: 9.2,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.35,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -180,41 +201,95 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildViewSelector() {
+    final isBooks = _view == 'libros';
+
     return Container(
+      height: 42,
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
         color: AppColors.surfaceOf(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.55)),
+        border: Border.all(
+          color: AppColors.gold.withValues(alpha: 0.55),
+        ),
       ),
-      child: Row(
-        children: [
-          Expanded(child: _viewButton('libros', '📚 Libros')),
-          Expanded(child: _viewButton('listas', '☷ Mis listas')),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return Stack(
+            children: [
+              AnimatedAlign(
+                duration: const Duration(milliseconds: 260),
+                curve: Curves.easeOutCubic,
+                alignment:
+                    isBooks ? Alignment.centerLeft : Alignment.centerRight,
+                child: SizedBox(
+                  width: constraints.maxWidth / 2,
+                  height: double.infinity,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: AppColors.deepOf(context),
+                      borderRadius: BorderRadius.circular(9),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.deepOf(context)
+                              .withValues(alpha: 0.12),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _viewButton(
+                      'libros',
+                      '📚 Libros',
+                    ),
+                  ),
+                  Expanded(
+                    child: _viewButton(
+                      'listas',
+                      '☷ Mis listas',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
   Widget _viewButton(String id, String label) {
     final active = _view == id;
+
     return InkWell(
-      onTap: () => setState(() => _view = id),
+      onTap: () {
+        if (_view == id) return;
+
+        setState(() {
+          _view = id;
+        });
+      },
       borderRadius: BorderRadius.circular(9),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        height: 36,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: active ? AppColors.deepOf(context) : Colors.transparent,
-          borderRadius: BorderRadius.circular(9),
+      child: AnimatedDefaultTextStyle(
+        duration: const Duration(milliseconds: 210),
+        curve: Curves.easeOutCubic,
+        style: GoogleFonts.inter(
+          color: active
+              ? AppColors.gold
+              : AppColors.textPrimaryOf(context),
+          fontSize: 9,
+          fontWeight: FontWeight.w700,
         ),
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            color: active ? AppColors.gold : AppColors.textPrimaryOf(context),
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
+        child: SizedBox(
+          height: 36,
+          child: Center(
+            child: Text(label),
           ),
         ),
       ),
@@ -223,47 +298,74 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Widget _buildSearch() {
     return Container(
-      height: 42,
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
+      height: 34,
       decoration: BoxDecoration(
         color: AppColors.surfaceOf(context),
-        borderRadius: BorderRadius.circular(11),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.7)),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: AppColors.gold.withValues(alpha: 0.60),
+          width: 1,
+        ),
       ),
-      child: Row(
-        children: [
-          const Icon(Icons.search_rounded, color: AppColors.gold, size: 17),
-          const SizedBox(width: 7),
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) => setState(() => _query = value),
-              style: GoogleFonts.inter(
-                color: AppColors.textPrimaryOf(context),
-                fontSize: 10,
-              ),
-              decoration: InputDecoration.collapsed(
-                hintText: 'Buscar en mi biblioteca...',
-                hintStyle: GoogleFonts.inter(
-                  color: AppColors.textSecondaryOf(context),
-                  fontSize: 9,
-                ),
-              ),
-            ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (value) {
+          setState(() {
+            _query = value;
+          });
+        },
+        style: GoogleFonts.inter(
+          color: AppColors.textPrimaryOf(context),
+          fontSize: 9.5,
+        ),
+        textAlignVertical: TextAlignVertical.center,
+        decoration: InputDecoration(
+          isDense: true,
+          filled: false,
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 4,
+            vertical: 7,
           ),
-          if (_query.isNotEmpty)
-            InkWell(
-              onTap: () {
-                _searchController.clear();
-                setState(() => _query = '');
-              },
-              child: Icon(
-                Icons.close_rounded,
-                color: AppColors.textSecondaryOf(context),
-                size: 16,
-              ),
-            ),
-        ],
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            color: AppColors.gold.withValues(alpha: 0.88),
+            size: 16,
+          ),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 32,
+            minHeight: 34,
+          ),
+          hintText: 'Buscar en mi biblioteca...',
+          hintStyle: GoogleFonts.inter(
+            color: AppColors.textSecondaryOf(context)
+                .withValues(alpha: 0.82),
+            fontSize: 9,
+          ),
+          suffixIcon: _query.isEmpty
+              ? null
+              : IconButton(
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _query = '';
+                    });
+                  },
+                  splashRadius: 15,
+                  icon: Icon(
+                    Icons.close_rounded,
+                    color: AppColors.textSecondaryOf(context)
+                        .withValues(alpha: 0.72),
+                    size: 15,
+                  ),
+                ),
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 32,
+            minHeight: 34,
+          ),
+        ),
       ),
     );
   }
@@ -337,44 +439,61 @@ class _LibraryScreenState extends State<LibraryScreen> {
       {'id': 'leidos', 'label': 'Leídos'},
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: tabs.map((tab) {
+    return Row(
+      children: List.generate(
+        tabs.length,
+        (index) {
+          final tab = tabs[index];
           final active = _filter == tab['id'];
-          return Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: InkWell(
-              onTap: () => setState(() => _filter = tab['id']!),
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 11,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: active
-                      ? AppColors.deepOf(context)
-                      : AppColors.surfaceOf(context),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.gold.withValues(alpha: 0.55),
-                  ),
-                ),
-                child: Text(
-                  tab['label']!,
-                  style: GoogleFonts.inter(
+
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                right: index < tabs.length - 1 ? 5 : 0,
+              ),
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _filter = tab['id']!;
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  height: 30,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
                     color: active
-                        ? AppColors.gold
-                        : AppColors.textSecondaryOf(context),
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w700,
+                        ? AppColors.deepOf(context)
+                        : AppColors.surfaceOf(context),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: active
+                          ? AppColors.deepOf(context)
+                          : AppColors.gold.withValues(alpha: 0.46),
+                    ),
+                  ),
+                  child: AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 180),
+                    style: GoogleFonts.inter(
+                      color: active
+                          ? AppColors.gold
+                          : AppColors.textSecondaryOf(context),
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    child: Text(
+                      tab['label']!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ),
               ),
             ),
           );
-        }).toList(),
+        },
       ),
     );
   }
