@@ -808,41 +808,84 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     ),
                   ],
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: _navItem(
-                        index: 0,
-                        icon: Icons.home_outlined,
-                        activeIcon: Icons.home_rounded,
-                        label: 'Inicio',
-                      ),
-                    ),
-                    Expanded(
-                      child: _navItem(
-                        index: 1,
-                        icon: Icons.menu_book_outlined,
-                        activeIcon: Icons.menu_book_rounded,
-                        label: 'Biblioteca',
-                      ),
-                    ),
-                    Expanded(
-                      child: _navItem(
-                        index: 3,
-                        icon: Icons.location_on_outlined,
-                        activeIcon: Icons.location_on_rounded,
-                        label: 'Puntos',
-                      ),
-                    ),
-                    Expanded(
-                      child: _navItem(
-                        index: 4,
-                        icon: Icons.person_outline,
-                        activeIcon: Icons.person_rounded,
-                        label: 'Perfil',
-                      ),
-                    ),
-                  ],
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        AnimatedAlign(
+                          duration: const Duration(milliseconds: 380),
+                          curve: Curves.easeInOutCubicEmphasized,
+                          alignment: _regularNavAlignment(),
+                          child: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 170),
+                            opacity: selectedIndex == 2 ? 0 : 1,
+                            child: SizedBox(
+                              width: constraints.maxWidth / 4,
+                              height: 50,
+                              child: Center(
+                                child: AnimatedContainer(
+                                  duration:
+                                      const Duration(milliseconds: 300),
+                                  curve: Curves.easeOutBack,
+                                  width: selectedIndex == 2 ? 56 : 62,
+                                  height: selectedIndex == 2 ? 42 : 50,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(25),
+                                    color: AppColors.goldOf(context),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppColors.goldOf(context)
+                                            .withValues(alpha: 0.18),
+                                        blurRadius: 14,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _navItem(
+                                index: 0,
+                                icon: Icons.home_outlined,
+                                activeIcon: Icons.home_rounded,
+                                label: 'Inicio',
+                              ),
+                            ),
+                            Expanded(
+                              child: _navItem(
+                                index: 1,
+                                icon: Icons.menu_book_outlined,
+                                activeIcon: Icons.menu_book_rounded,
+                                label: 'Biblioteca',
+                              ),
+                            ),
+                            Expanded(
+                              child: _navItem(
+                                index: 3,
+                                icon: Icons.location_on_outlined,
+                                activeIcon: Icons.location_on_rounded,
+                                label: 'Puntos',
+                              ),
+                            ),
+                            Expanded(
+                              child: _navItem(
+                                index: 4,
+                                icon: Icons.person_outline,
+                                activeIcon: Icons.person_rounded,
+                                label: 'Perfil',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -918,6 +961,21 @@ class _MainShellScreenState extends State<MainShellScreen> {
     );
   }
 
+  Alignment _regularNavAlignment() {
+    switch (selectedIndex) {
+      case 0:
+        return Alignment.centerLeft;
+      case 1:
+        return const Alignment(-0.33, 0);
+      case 3:
+        return const Alignment(0.33, 0);
+      case 4:
+        return Alignment.centerRight;
+      default:
+        return Alignment.centerLeft;
+    }
+  }
+
   Widget _navItem({
     required int index,
     required IconData icon,
@@ -931,41 +989,66 @@ class _MainShellScreenState extends State<MainShellScreen> {
         _selectTab(index);
       },
       borderRadius: BorderRadius.circular(25),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+      child: SizedBox(
         height: 50,
-        decoration: BoxDecoration(
-          color: active ? AppColors.goldOf(context) : Colors.transparent,
-          borderRadius: BorderRadius.circular(25),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              active ? activeIcon : icon,
-              color: active
-                  ? AppColors.deepOf(context)
-                  : AppColors.backgroundOf(context).withValues(alpha: 0.68),
-              size: 23,
+        child: Center(
+          child: AnimatedScale(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutBack,
+            scale: active ? 1.10 : 1,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 240),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(
+                      begin: 0.82,
+                      end: 1,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: active
+                  ? Column(
+                      key: ValueKey('active-$index'),
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          activeIcon,
+                          color: AppColors.deepOf(context),
+                          size: 23,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            color: AppColors.deepOf(context),
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Icon(
+                      icon,
+                      key: ValueKey('inactive-$index'),
+                      color: AppColors.backgroundOf(context)
+                          .withValues(alpha: 0.68),
+                      size: 23,
+                    ),
             ),
-            if (active) ...[
-              const SizedBox(height: 2),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
-                  color: AppColors.deepOf(context),
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ],
+          ),
         ),
       ),
     );
   }
+
 }
 
 
