@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/profile_gender_preference.dart';
+import '../widgets/profile_privacy_store.dart';
 
 
 import '../../../../core/theme/app_colors.dart';
@@ -61,10 +62,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late String _readingFormat;
   late int _annualGoal;
 
-  bool _privateAccount = false;
+  bool get _privateAccount => ProfilePrivacyStore.isPrivate.value;
   bool _shareReadingActivity = true;
   bool _showReadingStatus = true;
   bool _showClubs = true;
+  bool _privacyUpdating = false;
 
   final List<Map<String, String>> _blockedUsers = [];
 
@@ -165,10 +167,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
-          IconButton(
-            onPressed: widget.onBack,
-            icon: Icon(Icons.close_rounded, color: _textPrimary),
-          ),
+          if (isHome)
+            IconButton(
+              onPressed: widget.onBack,
+              icon: Icon(Icons.close_rounded, color: _textPrimary),
+            ),
         ],
       ),
     );
@@ -304,17 +307,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Cuenta privada',
               subtitle: 'Solo las personas aprobadas podrán ver tu actividad completa',
               value: _privateAccount,
-              onChanged: (value) {
-                setState(() {
-                  _privateAccount = value;
-                });
-              },
+              enabled: !_privacyUpdating,
+              onChanged: _confirmPrivacyChange,
             ),
             _divider(),
             _privacySwitch(
               title: 'Compartir actividad lectora',
               subtitle: 'Muestra géneros, reto, favoritos y reseñas en tu perfil público',
               value: _shareReadingActivity,
+              enabled: !_privacyUpdating,
               onChanged: (value) {
                 setState(() {
                   _shareReadingActivity = value;
@@ -326,6 +327,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Mostrar estado lector',
               subtitle: 'Hace visible tu emoji y estado actual en el perfil',
               value: _showReadingStatus,
+              enabled: !_privacyUpdating,
               onChanged: (value) {
                 setState(() {
                   _showReadingStatus = value;
@@ -337,6 +339,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Mostrar clubes',
               subtitle: 'Permite que otros vean los clubes de lectura a los que perteneces',
               value: _showClubs,
+              enabled: !_privacyUpdating,
               onChanged: (value) {
                 setState(() {
                   _showClubs = value;
@@ -596,43 +599,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required String subtitle,
     required bool value,
     required ValueChanged<bool> onChanged,
+    bool enabled = true,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 11),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    color: _textPrimary,
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
+    final loading = _privacyUpdating;
+
+    final thumbColor = loading
+        ? Colors.grey.shade600
+        : _gold;
+
+    final activeTrackColor = loading
+        ? Colors.grey.shade300
+        : _accent;
+
+    final inactiveTrackColor = loading
+        ? Colors.grey.shade300
+        : _textSecondary.withValues(alpha: 0.28);
+
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 180),
+      opacity: loading ? 0.92 : 1,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      color: _textPrimary,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: GoogleFonts.inter(
-                    color: _textSecondary,
-                    fontSize: 8,
-                    height: 1.45,
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.inter(
+                      color: _textSecondary,
+                      fontSize: 8,
+                      height: 1.45,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Switch(
-            value: value,
-            activeThumbColor: _gold,
-            activeTrackColor: _accent,
-            onChanged: onChanged,
-          ),
-        ],
+            const SizedBox(width: 12),
+            Switch(
+              value: value,
+              activeThumbColor: thumbColor,
+              activeTrackColor: activeTrackColor,
+              inactiveThumbColor: thumbColor,
+              inactiveTrackColor: inactiveTrackColor,
+              onChanged: enabled ? onChanged : null,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -785,6 +809,175 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmPrivacyChange(bool makePrivate) async {
+    if (_privacyUpdating || makePrivate == _privateAccount) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        final title = makePrivate
+            ? 'Hacer cuenta privada'
+            : 'Hacer cuenta pública';
+
+        final description = makePrivate
+            ? 'Tu cuenta será privada. Solo las personas que apruebes podrán '
+                'ver tu actividad completa y el contenido que decidas compartir.'
+            : 'Tu cuenta será pública. Otras personas podrán ver la información '
+                'y actividad que tengas habilitada como visible en tu perfil.';
+
+        final icon = makePrivate
+            ? Icons.lock_outline_rounded
+            : Icons.public_rounded;
+
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 390),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+            decoration: BoxDecoration(
+              color: _background,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _gold.withValues(alpha: 0.42),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.20),
+                  blurRadius: 28,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _gold.withValues(alpha: 0.12),
+                    border: Border.all(
+                      color: _gold.withValues(alpha: 0.38),
+                    ),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: _gold,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(height: 13),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cinzel(
+                    color: _textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  description,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    color: _textSecondary,
+                    fontSize: 9,
+                    height: 1.55,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop(false);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _textPrimary,
+                            side: BorderSide(
+                              color: _gold.withValues(alpha: 0.38),
+                            ),
+                            backgroundColor:
+                                _surface.withValues(alpha: 0.48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancelar',
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: FilledButton(
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop(true);
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _accent,
+                            foregroundColor: AppColors.background,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Confirmar',
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) {
+      return;
+    }
+
+    ProfilePrivacyStore.isPrivate.value = makePrivate;
+
+    setState(() {
+      _privacyUpdating = true;
+    });
+
+    await Future<void>.delayed(const Duration(seconds: 2));
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _privacyUpdating = false;
+    });
   }
 
   Future<void> _openEditProfile() async {
