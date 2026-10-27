@@ -86,6 +86,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       members: 342,
       book: 'Cumbres Borrascosas',
       date: 'Viernes 20:00',
+      modality: 'Presencial',
       description:
           'Un espacio para quienes aman los grandes clásicos de la literatura universal. Cada semana conversamos sobre capítulos, personajes y contexto histórico.',
     ),
@@ -95,6 +96,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       members: 189,
       book: 'Jane Eyre',
       date: 'Sábado 18:30',
+      modality: 'Online',
       description:
           'Para amantes de la literatura gótica y victoriana. Misterio, romanticismo oscuro y personajes inolvidables.',
     ),
@@ -104,6 +106,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       members: 98,
       book: 'El Jardín de los Recuerdos',
       date: 'Miércoles 19:00',
+      modality: 'Presencial',
       description:
           'Club dedicado a literatura latinoamericana contemporánea y autores independientes.',
     ),
@@ -496,6 +499,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         book: currentClub.book,
         date: currentClub.date,
         description: currentClub.description,
+        modality: currentClub.modality,
       );
     });
   }
@@ -680,7 +684,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
         currentUsername: _profileUsername,
         onStoriesChanged: _handleWriterStoriesChanged,
       ),
-      const MapsScreen(),
+      MapsScreen(
+        clubs: _clubs,
+        joinedClubIds: _joinedClubIds,
+      ),
       ProfileScreen(
         onOpenSettings: () {
           setState(() {
@@ -808,84 +815,41 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     ),
                   ],
                 ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        AnimatedAlign(
-                          duration: const Duration(milliseconds: 380),
-                          curve: Curves.easeInOutCubicEmphasized,
-                          alignment: _regularNavAlignment(),
-                          child: AnimatedOpacity(
-                            duration: const Duration(milliseconds: 170),
-                            opacity: selectedIndex == 2 ? 0 : 1,
-                            child: SizedBox(
-                              width: constraints.maxWidth / 4,
-                              height: 50,
-                              child: Center(
-                                child: AnimatedContainer(
-                                  duration:
-                                      const Duration(milliseconds: 300),
-                                  curve: Curves.easeOutBack,
-                                  width: selectedIndex == 2 ? 56 : 62,
-                                  height: selectedIndex == 2 ? 42 : 50,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(25),
-                                    color: AppColors.goldOf(context),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppColors.goldOf(context)
-                                            .withValues(alpha: 0.18),
-                                        blurRadius: 14,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _navItem(
-                                index: 0,
-                                icon: Icons.home_outlined,
-                                activeIcon: Icons.home_rounded,
-                                label: 'Inicio',
-                              ),
-                            ),
-                            Expanded(
-                              child: _navItem(
-                                index: 1,
-                                icon: Icons.menu_book_outlined,
-                                activeIcon: Icons.menu_book_rounded,
-                                label: 'Biblioteca',
-                              ),
-                            ),
-                            Expanded(
-                              child: _navItem(
-                                index: 3,
-                                icon: Icons.location_on_outlined,
-                                activeIcon: Icons.location_on_rounded,
-                                label: 'Puntos',
-                              ),
-                            ),
-                            Expanded(
-                              child: _navItem(
-                                index: 4,
-                                icon: Icons.person_outline,
-                                activeIcon: Icons.person_rounded,
-                                label: 'Perfil',
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _navItem(
+                        index: 0,
+                        icon: Icons.home_outlined,
+                        activeIcon: Icons.home_rounded,
+                        label: 'Inicio',
+                      ),
+                    ),
+                    Expanded(
+                      child: _navItem(
+                        index: 1,
+                        icon: Icons.menu_book_outlined,
+                        activeIcon: Icons.menu_book_rounded,
+                        label: 'Biblioteca',
+                      ),
+                    ),
+                    Expanded(
+                      child: _navItem(
+                        index: 3,
+                        icon: Icons.location_on_outlined,
+                        activeIcon: Icons.location_on_rounded,
+                        label: 'Puntos',
+                      ),
+                    ),
+                    Expanded(
+                      child: _navItem(
+                        index: 4,
+                        icon: Icons.person_outline,
+                        activeIcon: Icons.person_rounded,
+                        label: 'Perfil',
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -961,21 +925,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
     );
   }
 
-  Alignment _regularNavAlignment() {
-    switch (selectedIndex) {
-      case 0:
-        return Alignment.centerLeft;
-      case 1:
-        return const Alignment(-0.33, 0);
-      case 3:
-        return const Alignment(0.33, 0);
-      case 4:
-        return Alignment.centerRight;
-      default:
-        return Alignment.centerLeft;
-    }
-  }
-
   Widget _navItem({
     required int index,
     required IconData icon,
@@ -988,26 +937,48 @@ class _MainShellScreenState extends State<MainShellScreen> {
       onTap: () {
         _selectTab(index);
       },
-      borderRadius: BorderRadius.circular(25),
+      borderRadius: BorderRadius.circular(28),
       child: SizedBox(
-        height: 50,
+        height: 58,
         child: Center(
-          child: AnimatedScale(
-            duration: const Duration(milliseconds: 300),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 350),
             curve: Curves.easeOutBack,
-            scale: active ? 1.10 : 1,
+            width: active ? 68 : 42,
+            height: active ? 58 : 42,
+            decoration: BoxDecoration(
+              color: active
+                  ? AppColors.goldOf(context)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(active ? 28 : 999),
+              boxShadow: active
+                  ? [
+                      BoxShadow(
+                        color: AppColors.goldOf(context)
+                            .withValues(alpha: 0.16),
+                        blurRadius: 13,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : const [],
+            ),
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 240),
-              switchInCurve: Curves.easeOutCubic,
+              duration: const Duration(milliseconds: 300),
+              switchInCurve: Curves.easeOutBack,
               switchOutCurve: Curves.easeInCubic,
               transitionBuilder: (child, animation) {
                 return FadeTransition(
                   opacity: animation,
                   child: ScaleTransition(
                     scale: Tween<double>(
-                      begin: 0.82,
+                      begin: 0.88,
                       end: 1,
-                    ).animate(animation),
+                    ).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeOutBack,
+                      ),
+                    ),
                     child: child,
                   ),
                 );
@@ -1020,7 +991,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                         Icon(
                           activeIcon,
                           color: AppColors.deepOf(context),
-                          size: 23,
+                          size: 24,
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -1040,7 +1011,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                       key: ValueKey('inactive-$index'),
                       color: AppColors.backgroundOf(context)
                           .withValues(alpha: 0.68),
-                      size: 23,
+                      size: 22,
                     ),
             ),
           ),

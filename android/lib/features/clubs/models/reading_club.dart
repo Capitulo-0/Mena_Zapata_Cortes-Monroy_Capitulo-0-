@@ -6,6 +6,7 @@ class ReadingClub {
     required this.book,
     required this.date,
     required this.description,
+    required this.modality,
   });
 
   final int id;
@@ -14,4 +15,5 @@ class ReadingClub {
   final String book;
   final String date;
   final String description;
+  final String modality;
 }

@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../clubs/models/reading_club.dart';
+
 enum MapPointType { library, cafe, bookFair, literaryEvent, culturalCenter }
 
 class MapPoint {
@@ -30,7 +33,14 @@ class MapPoint {
 }
 
 class MapsScreen extends StatefulWidget {
-  const MapsScreen({super.key});
+  const MapsScreen({
+    super.key,
+    required this.clubs,
+    required this.joinedClubIds,
+  });
+
+  final List<ReadingClub> clubs;
+  final Set<int> joinedClubIds;
 
   @override
   State<MapsScreen> createState() => _MapsScreenState();
@@ -41,6 +51,9 @@ class _MapsScreenState extends State<MapsScreen> {
 
   MapPointType? _selectedFilter;
   MapPoint? _selectedPoint;
+  bool _showJoinedClubs = false;
+
+  final ScrollController _filterScrollController = ScrollController();
 
   static const CameraPosition _initialCameraPosition = CameraPosition(
     target: LatLng(-33.4489, -70.6693),
@@ -109,6 +122,10 @@ class _MapsScreenState extends State<MapsScreen> {
 
     return _points.where((point) => point.type == _selectedFilter).toList();
   }
+
+  List<ReadingClub> get _joinedClubs => widget.clubs
+      .where((club) => widget.joinedClubIds.contains(club.id))
+      .toList();
 
   Set<Marker> get _markers {
     return _filteredPoints.map((point) {
@@ -219,12 +236,22 @@ class _MapsScreenState extends State<MapsScreen> {
   void _selectFilter(MapPointType? type) {
     setState(() {
       _selectedFilter = type;
+      _showJoinedClubs = false;
+      _selectedPoint = null;
+    });
+  }
+
+  void _selectJoinedClubs() {
+    setState(() {
+      _selectedFilter = null;
+      _showJoinedClubs = true;
       _selectedPoint = null;
     });
   }
 
   @override
   void dispose() {
+    _filterScrollController.dispose();
     _mapController?.dispose();
     super.dispose();
   }
@@ -253,11 +280,9 @@ class _MapsScreenState extends State<MapsScreen> {
                       heroTag: 'reset_map_camera',
                       onPressed: _resetCamera,
                       backgroundColor: isDark
-                          ? const Color(0xFF2D1C16)
-                          : Colors.white,
-                      foregroundColor: isDark
-                          ? Colors.white
-                          : const Color(0xFF381D14),
+                          ? AppColors.darkSurface
+                          : AppColors.surface,
+                      foregroundColor: AppColors.deepOf(context),
                       child: const Icon(Icons.center_focus_strong),
                     ),
                   ),
@@ -321,53 +346,73 @@ class _MapsScreenState extends State<MapsScreen> {
   Widget _buildFilters(BuildContext context) {
     return SizedBox(
       height: 55,
-      child: ListView(
+      child: SingleChildScrollView(
+        controller: _filterScrollController,
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 5, 16, 7),
-        children: [
-          _buildFilterChip(
-            context: context,
-            label: 'Todos',
-            icon: Icons.public,
-            selected: _selectedFilter == null,
-            onTap: () => _selectFilter(null),
-          ),
-          _buildFilterChip(
-            context: context,
-            label: 'Bibliotecas',
-            icon: Icons.local_library_outlined,
-            selected: _selectedFilter == MapPointType.library,
-            onTap: () => _selectFilter(MapPointType.library),
-          ),
-          _buildFilterChip(
-            context: context,
-            label: 'Cafés',
-            icon: Icons.local_cafe_outlined,
-            selected: _selectedFilter == MapPointType.cafe,
-            onTap: () => _selectFilter(MapPointType.cafe),
-          ),
-          _buildFilterChip(
-            context: context,
-            label: 'Ferias',
-            icon: Icons.menu_book_outlined,
-            selected: _selectedFilter == MapPointType.bookFair,
-            onTap: () => _selectFilter(MapPointType.bookFair),
-          ),
-          _buildFilterChip(
-            context: context,
-            label: 'Eventos',
-            icon: Icons.auto_stories_outlined,
-            selected: _selectedFilter == MapPointType.literaryEvent,
-            onTap: () => _selectFilter(MapPointType.literaryEvent),
-          ),
-          _buildFilterChip(
-            context: context,
-            label: 'Cultura',
-            icon: Icons.account_balance_outlined,
-            selected: _selectedFilter == MapPointType.culturalCenter,
-            onTap: () => _selectFilter(MapPointType.culturalCenter),
-          ),
-        ],
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(10, 5, 14, 7),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_joinedClubs.isNotEmpty) ...[
+              _buildFilterChip(
+                context: context,
+                label: 'Mis clubes',
+                icon: Icons.groups_2_outlined,
+                selected: _showJoinedClubs,
+                onTap: _selectJoinedClubs,
+              ),
+              const SizedBox(width: 6),
+            ],
+            _buildFilterChip(
+              context: context,
+              label: 'Todos',
+              icon: Icons.public,
+              selected: !_showJoinedClubs && _selectedFilter == null,
+              onTap: () => _selectFilter(null),
+            ),
+            const SizedBox(width: 6),
+            _buildFilterChip(
+              context: context,
+              label: 'Bibliotecas',
+              icon: Icons.local_library_outlined,
+              selected: !_showJoinedClubs && _selectedFilter == MapPointType.library,
+              onTap: () => _selectFilter(MapPointType.library),
+            ),
+            const SizedBox(width: 6),
+            _buildFilterChip(
+              context: context,
+              label: 'Cafés',
+              icon: Icons.local_cafe_outlined,
+              selected: !_showJoinedClubs && _selectedFilter == MapPointType.cafe,
+              onTap: () => _selectFilter(MapPointType.cafe),
+            ),
+            const SizedBox(width: 6),
+            _buildFilterChip(
+              context: context,
+              label: 'Ferias',
+              icon: Icons.menu_book_outlined,
+              selected: !_showJoinedClubs && _selectedFilter == MapPointType.bookFair,
+              onTap: () => _selectFilter(MapPointType.bookFair),
+            ),
+            const SizedBox(width: 8),
+            _buildFilterChip(
+              context: context,
+              label: 'Eventos',
+              icon: Icons.auto_stories_outlined,
+              selected: !_showJoinedClubs && _selectedFilter == MapPointType.literaryEvent,
+              onTap: () => _selectFilter(MapPointType.literaryEvent),
+            ),
+            const SizedBox(width: 6),
+            _buildFilterChip(
+              context: context,
+              label: 'Cultura',
+              icon: Icons.account_balance_outlined,
+              selected: !_showJoinedClubs && _selectedFilter == MapPointType.culturalCenter,
+              onTap: () => _selectFilter(MapPointType.culturalCenter),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -379,40 +424,44 @@ class _MapsScreenState extends State<MapsScreen> {
     required bool selected,
     required VoidCallback onTap,
   }) {
-    final theme = Theme.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: ChoiceChip(
-        selected: selected,
-        onSelected: (_) => onTap(),
-        avatar: Icon(
-          icon,
-          size: 17,
+    final chip = ChoiceChip(
+      selected: selected,
+      showCheckmark: false,
+      onSelected: (_) => onTap(),
+      avatar: Icon(
+        icon,
+        size: 16,
+        color: selected
+            ? AppColors.deepOf(context)
+            : AppColors.goldOf(context),
+      ),
+      label: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: GoogleFonts.inter(
+          fontSize: 10.5,
+          fontWeight: FontWeight.w600,
           color: selected
-              ? theme.colorScheme.onPrimary
-              : theme.colorScheme.primary,
+              ? AppColors.deepOf(context)
+              : AppColors.textPrimaryOf(context),
         ),
-        label: Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: selected
-                ? theme.colorScheme.onPrimary
-                : theme.colorScheme.onSurface,
-          ),
-        ),
-        selectedColor: theme.colorScheme.primary,
-        backgroundColor: theme.colorScheme.surface,
-        side: BorderSide(
-          color: selected
-              ? theme.colorScheme.primary
-              : theme.dividerColor.withValues(alpha: 0.35),
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+      labelPadding: const EdgeInsets.symmetric(horizontal: 2),
+      selectedColor: AppColors.goldOf(context),
+      backgroundColor: AppColors.surfaceOf(context),
+      side: BorderSide(
+        color: selected
+            ? AppColors.goldOf(context)
+            : AppColors.goldOf(context).withValues(alpha: 0.28),
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
       ),
     );
+
+    return chip;
   }
 
   // ─────────────────────────────────────────────────────────────
@@ -464,13 +513,13 @@ class _MapsScreenState extends State<MapsScreen> {
                 width: 76,
                 height: 76,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.10),
+                  color: AppColors.goldOf(context).withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.map_outlined,
                   size: 40,
-                  color: theme.colorScheme.primary,
+                  color: AppColors.goldOf(context),
                 ),
               ),
               const SizedBox(height: 18),
@@ -501,15 +550,21 @@ class _MapsScreenState extends State<MapsScreen> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.10),
+                  color: AppColors.goldOf(context).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  '${_filteredPoints.length} puntos preparados',
+                  _showJoinedClubs
+                      ? '${_joinedClubs.length} ${_joinedClubs.length == 1 ? 'club preparado' : 'clubes preparados'}'
+                      : _selectedFilter == null
+                          ? '${_filteredPoints.length + _joinedClubs.length} '
+                              '${(_filteredPoints.length + _joinedClubs.length) == 1 ? 'punto encontrado' : 'puntos encontrados'}'
+                          : '${_filteredPoints.length} '
+                              '${_filteredPoints.length == 1 ? 'punto encontrado' : 'puntos encontrados'}',
                   style: GoogleFonts.inter(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: theme.colorScheme.primary,
+                    color: AppColors.deepOf(context),
                   ),
                 ),
               ),
@@ -536,7 +591,7 @@ class _MapsScreenState extends State<MapsScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: theme.colorScheme.primary.withValues(alpha: 0.20),
+            color: AppColors.goldOf(context).withValues(alpha: 0.28),
           ),
         ),
         child: Column(
@@ -550,12 +605,12 @@ class _MapsScreenState extends State<MapsScreen> {
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                    color: AppColors.goldOf(context).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(13),
                   ),
                   child: Icon(
                     _iconForType(point.type),
-                    color: theme.colorScheme.primary,
+                    color: AppColors.goldOf(context),
                   ),
                 ),
                 const SizedBox(width: 11),
@@ -577,7 +632,7 @@ class _MapsScreenState extends State<MapsScreen> {
                         style: GoogleFonts.inter(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.primary,
+                          color: AppColors.goldOf(context),
                         ),
                       ),
                     ],
@@ -637,6 +692,10 @@ class _MapsScreenState extends State<MapsScreen> {
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: () => _focusPoint(point),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.deepOf(context),
+                  foregroundColor: AppColors.goldOf(context),
+                ),
                 icon: const Icon(Icons.near_me_outlined, size: 18),
                 label: Text(
                   'Ver en el mapa',
@@ -657,7 +716,7 @@ class _MapsScreenState extends State<MapsScreen> {
       padding: const EdgeInsets.only(bottom: 5),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: theme.colorScheme.primary),
+          Icon(icon, size: 16, color: AppColors.goldOf(context)),
           const SizedBox(width: 7),
           Expanded(
             child: Text(
