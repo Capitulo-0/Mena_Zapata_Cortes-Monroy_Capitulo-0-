@@ -44,6 +44,20 @@ class BookReview {
   final bool isPublic;
 }
 
+
+class _PersonalLibraryList {
+  const _PersonalLibraryList({
+    required this.name,
+    required this.description,
+    required this.emoji,
+  });
+
+  final String name;
+  final String description;
+  final String emoji;
+  final List<int> bookIds = const <int>[];
+}
+
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({
     super.key,
@@ -86,6 +100,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String _filter = 'leyendo';
   String _query = '';
 
+  bool _hideReadBooks = false;
+
+  final List<_PersonalLibraryList> _personalLists = <_PersonalLibraryList>[];
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -100,6 +118,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   List<LibraryBook> get _filteredBooks {
     var result = _booksInLibrary;
+
+    if (_hideReadBooks) {
+      result = result
+          .where((book) => widget.statuses[book.id] != BookStatus.leido)
+          .toList();
+    }
 
     result = result.where((book) {
       final status = widget.statuses[book.id];
@@ -160,40 +184,68 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ? 'LECTOR/A'
         : widget.currentName.trim().toUpperCase();
 
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'MI BIBLIOTECA',
-          style: GoogleFonts.cinzel(
-            color: AppColors.textPrimaryOf(context),
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.8,
-          ),
-        ),
-        const SizedBox(height: 4),
-        RichText(
-          text: TextSpan(
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextSpan(
-                text: 'Tus libros, progreso y estados en un solo lugar, ',
-                style: GoogleFonts.merriweather(
-                  color: AppColors.textSecondaryOf(context),
-                  fontSize: 9.5,
-                  fontStyle: FontStyle.italic,
-                ),
-              ),
-              TextSpan(
-                text: '$displayName ✦',
+              Text(
+                'MI BIBLIOTECA',
                 style: GoogleFonts.cinzel(
                   color: AppColors.textPrimaryOf(context),
-                  fontSize: 9.2,
+                  fontSize: 18,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.35,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 4),
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Tus libros, progreso y estados en un solo lugar, ',
+                      style: GoogleFonts.merriweather(
+                        color: AppColors.textSecondaryOf(context),
+                        fontSize: 9.5,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    TextSpan(
+                      text: '$displayName ✦',
+                      style: GoogleFonts.cinzel(
+                        color: AppColors.textPrimaryOf(context),
+                        fontSize: 9.2,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.35,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        InkWell(
+          onTap: _showLibraryOptions,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceOf(context),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: AppColors.gold.withValues(alpha: 0.55),
+              ),
+            ),
+            child: Icon(
+              Icons.more_vert_rounded,
+              size: 19,
+              color: AppColors.textPrimaryOf(context),
+            ),
           ),
         ),
       ],
@@ -813,39 +865,142 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _buildListsView() {
-    final favorites = widget.books
-        .where((book) => widget.favorites.contains(book.id))
-        .toList();
-    final reading = widget.books
-        .where((book) => widget.statuses[book.id] == BookStatus.leyendo)
-        .toList();
-    final pending = widget.books
-        .where((book) => widget.statuses[book.id] == BookStatus.porLeer)
-        .toList();
-
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _listCollectionCard(
-          title: 'Favoritos',
-          subtitle: 'Libros que marcaste con ♥',
-          icon: Icons.favorite_rounded,
-          books: favorites,
+        Text(
+          'MIS LISTAS PERSONALES',
+          style: GoogleFonts.cinzel(
+            color: AppColors.textPrimaryOf(context),
+            fontSize: 9.5,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.4,
+          ),
         ),
-        const SizedBox(height: 10),
-        _listCollectionCard(
-          title: 'Leyendo ahora',
-          subtitle: 'Tus lecturas activas',
-          icon: Icons.auto_stories_rounded,
-          books: reading,
-        ),
-        const SizedBox(height: 10),
-        _listCollectionCard(
-          title: 'Próximas lecturas',
-          subtitle: 'Libros guardados para después',
-          icon: Icons.bookmark_outline_rounded,
-          books: pending,
-        ),
+        const SizedBox(height: 8),
+        if (_personalLists.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 24,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceOf(context),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppColors.gold.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.library_add_outlined,
+                  color: AppColors.goldOf(context),
+                  size: 26,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Aún no has creado listas',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.merriweather(
+                    color: AppColors.textPrimaryOf(context),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Crea una lista personal para organizar tus libros como quieras.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    color: AppColors.textSecondaryOf(context),
+                    fontSize: 7.5,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ..._personalLists.map(
+            (list) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _personalListCard(list),
+            ),
+          ),
       ],
+    );
+  }
+
+  Widget _personalListCard(_PersonalLibraryList list) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceOf(context),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.gold.withValues(alpha: 0.40),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: AppColors.gold.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Text(
+              list.emoji,
+              style: const TextStyle(fontSize: 20),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  list.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.merriweather(
+                    color: AppColors.textPrimaryOf(context),
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (list.description.trim().isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    list.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      color: AppColors.textSecondaryOf(context),
+                      fontSize: 7.5,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${list.bookIds.length}',
+            style: GoogleFonts.inter(
+              color: AppColors.accentOf(context),
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -923,6 +1078,665 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  Future<void> _showLibraryOptions() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.58),
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              padding: const EdgeInsets.fromLTRB(18, 9, 18, 22),
+              decoration: BoxDecoration(
+                color: AppColors.backgroundOf(context),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(26),
+                ),
+                border: Border(
+                  top: BorderSide(
+                    color: AppColors.gold.withValues(alpha: 0.35),
+                  ),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.deepOf(context),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'OPCIONES DE BIBLIOTECA',
+                            style: GoogleFonts.cinzel(
+                              color: AppColors.textPrimaryOf(context),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.4,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          '✦',
+                          style: TextStyle(
+                            color: AppColors.goldOf(context),
+                            fontSize: 17,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    _libraryOptionTile(
+                      icon: Icons.filter_alt_outlined,
+                      title: 'Filtrar libros',
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        setState(() {
+                          _view = 'libros';
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _libraryOptionTile(
+                      icon: Icons.swap_vert_rounded,
+                      title: 'Ordenar por',
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () {},
+                    ),
+                    const SizedBox(height: 8),
+                    _libraryOptionTile(
+                      icon: Icons.visibility_off_outlined,
+                      title: 'Ocultar libros leídos',
+                      trailing: Switch.adaptive(
+                        value: _hideReadBooks,
+                        activeThumbColor: AppColors.goldOf(context),
+                        activeTrackColor:
+                            AppColors.deepOf(context).withValues(alpha: 0.75),
+                        onChanged: (value) {
+                          setState(() {
+                            _hideReadBooks = value;
+                          });
+                          setSheetState(() {});
+                        },
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _hideReadBooks = !_hideReadBooks;
+                        });
+                        setSheetState(() {});
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _libraryOptionTile(
+                      icon: Icons.add_box_outlined,
+                      title: 'Crear lista',
+                      highlighted: true,
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        Future<void>.delayed(
+                          const Duration(milliseconds: 180),
+                          _showCreateListSheet,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _libraryOptionTile(
+                      icon: Icons.download_outlined,
+                      title: 'Exportar mi biblioteca',
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () {},
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _libraryOptionTile({
+    required IconData icon,
+    required String title,
+    required Widget trailing,
+    required VoidCallback onTap,
+    bool highlighted = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 52),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+        decoration: BoxDecoration(
+          color: highlighted
+              ? AppColors.goldOf(context).withValues(alpha: 0.14)
+              : AppColors.surfaceOf(context),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.goldOf(context).withValues(
+              alpha: highlighted ? 0.70 : 0.42,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: AppColors.deepOf(context),
+              size: 20,
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.inter(
+                  color: AppColors.textPrimaryOf(context),
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            IconTheme(
+              data: IconThemeData(
+                color: AppColors.textPrimaryOf(context),
+                size: 20,
+              ),
+              child: trailing,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showCreateListSheet() async {
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+
+    var selectedEmoji = '♥';
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.60),
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final canCreate = nameController.text.trim().isNotEmpty;
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(18, 9, 18, 20),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundOf(context),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(26),
+                  ),
+                  border: Border(
+                    top: BorderSide(
+                      color: AppColors.gold.withValues(alpha: 0.35),
+                    ),
+                  ),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 38,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppColors.deepOf(context),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'CREAR NUEVA LISTA',
+                                style: GoogleFonts.cinzel(
+                                  color: AppColors.textPrimaryOf(context),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            Text(
+                              '✦',
+                              style: TextStyle(
+                                color: AppColors.goldOf(context),
+                                fontSize: 17,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Ícono de la lista *',
+                          style: GoogleFonts.inter(
+                            color: AppColors.textPrimaryOf(context),
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            _emojiChoice(
+                              emoji: '♥',
+                              selectedEmoji: selectedEmoji,
+                              onTap: () {
+                                setSheetState(() {
+                                  selectedEmoji = '♥';
+                                });
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _emojiChoice(
+                              emoji: '📖',
+                              selectedEmoji: selectedEmoji,
+                              onTap: () {
+                                setSheetState(() {
+                                  selectedEmoji = '📖';
+                                });
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _emojiChoice(
+                              emoji: '🔖',
+                              selectedEmoji: selectedEmoji,
+                              onTap: () {
+                                setSheetState(() {
+                                  selectedEmoji = '🔖';
+                                });
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () async {
+                                  final emoji =
+                                      await _showEmojiPicker(selectedEmoji);
+
+                                  if (emoji == null ||
+                                      !sheetContext.mounted) {
+                                    return;
+                                  }
+
+                                  setSheetState(() {
+                                    selectedEmoji = emoji;
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(11),
+                                child: Container(
+                                  height: 44,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceOf(context),
+                                    borderRadius: BorderRadius.circular(11),
+                                    border: Border.all(
+                                      color: AppColors.gold.withValues(
+                                        alpha: 0.45,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    '☺ Más emojis',
+                                    style: GoogleFonts.inter(
+                                      color: AppColors.textPrimaryOf(context),
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 15),
+                        _createListLabel('Nombre de la lista *'),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: nameController,
+                          maxLength: 50,
+                          onChanged: (_) => setSheetState(() {}),
+                          style: GoogleFonts.inter(
+                            color: AppColors.textPrimaryOf(context),
+                            fontSize: 9.5,
+                          ),
+                          decoration: _createListInputDecoration(
+                            hint: 'Ej: Clásicos, Lecturas 2026...',
+                            icon: Icons.menu_book_outlined,
+                          ).copyWith(counterText: ''),
+                        ),
+                        const SizedBox(height: 13),
+                        _createListLabel('Descripción (opcional)'),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: descriptionController,
+                          minLines: 3,
+                          maxLines: 4,
+                          maxLength: 180,
+                          style: GoogleFonts.inter(
+                            color: AppColors.textPrimaryOf(context),
+                            fontSize: 9,
+                            height: 1.4,
+                          ),
+                          decoration: _createListInputDecoration(
+                            hint: 'Cuéntanos de qué trata esta lista...',
+                            icon: Icons.description_outlined,
+                          ).copyWith(counterText: ''),
+                        ),
+                        const SizedBox(height: 17),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: SizedBox(
+                                height: 42,
+                                child: OutlinedButton(
+                                  onPressed: () =>
+                                      Navigator.of(sheetContext).pop(),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor:
+                                        AppColors.textPrimaryOf(context),
+                                    side: BorderSide(
+                                      color: AppColors.goldOf(context),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(11),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Cancelar',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 9),
+                            Expanded(
+                              child: SizedBox(
+                                height: 42,
+                                child: FilledButton(
+                                  onPressed: canCreate
+                                      ? () {
+                                          final list = _PersonalLibraryList(
+                                            name: nameController.text.trim(),
+                                            description: descriptionController
+                                                .text
+                                                .trim(),
+                                            emoji: selectedEmoji,
+                                          );
+
+                                          setState(() {
+                                            _personalLists.add(list);
+                                            _view = 'listas';
+                                          });
+
+                                          Navigator.of(sheetContext).pop();
+                                        }
+                                      : null,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor:
+                                        AppColors.deepOf(context),
+                                    disabledBackgroundColor:
+                                        AppColors.deepOf(context)
+                                            .withValues(alpha: 0.30),
+                                    foregroundColor:
+                                        AppColors.backgroundOf(context),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(11),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Crear lista',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    nameController.dispose();
+    descriptionController.dispose();
+  }
+
+  Widget _createListLabel(String text) {
+    return Text(
+      text,
+      style: GoogleFonts.inter(
+        color: AppColors.textPrimaryOf(context),
+        fontSize: 8.5,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
+  InputDecoration _createListInputDecoration({
+    required String hint,
+    required IconData icon,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle: GoogleFonts.inter(
+        color: AppColors.textSecondaryOf(context),
+        fontSize: 8.5,
+      ),
+      prefixIcon: Icon(
+        icon,
+        color: AppColors.deepOf(context),
+        size: 18,
+      ),
+      filled: true,
+      fillColor: AppColors.surfaceOf(context),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 12,
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(11),
+        borderSide: BorderSide(
+          color: AppColors.gold.withValues(alpha: 0.50),
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(11),
+        borderSide: BorderSide(
+          color: AppColors.goldOf(context),
+          width: 1.4,
+        ),
+      ),
+    );
+  }
+
+  Widget _emojiChoice({
+    required String emoji,
+    required String selectedEmoji,
+    required VoidCallback onTap,
+  }) {
+    final selected = emoji == selectedEmoji;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(11),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 48,
+        height: 44,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.deepOf(context)
+              : AppColors.surfaceOf(context),
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(
+            color: selected
+                ? AppColors.deepOf(context)
+                : AppColors.gold.withValues(alpha: 0.45),
+          ),
+        ),
+        child: Text(
+          emoji,
+          style: TextStyle(
+            fontSize: 20,
+            color: selected
+                ? AppColors.goldOf(context)
+                : AppColors.textPrimaryOf(context),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _showEmojiPicker(String selectedEmoji) async {
+    const emojis = <String>[
+      '♥',
+      '📖',
+      '🔖',
+      '☆',
+      '✦',
+      '📚',
+      '☕',
+      '🎧',
+      '🎬',
+      '🍃',
+      '☾',
+      '☀',
+      '🌸',
+      '⛰',
+      '🔥',
+    ];
+
+    return showDialog<String>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: AppColors.backgroundOf(context),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+            side: BorderSide(
+              color: AppColors.gold.withValues(alpha: 0.45),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(15, 13, 15, 15),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Seleccionar emoji',
+                        style: GoogleFonts.merriweather(
+                          color: AppColors.textPrimaryOf(context),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.of(dialogContext).pop(),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: emojis.length,
+                  gridDelegate:
+                      const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5,
+                    mainAxisSpacing: 7,
+                    crossAxisSpacing: 7,
+                  ),
+                  itemBuilder: (context, index) {
+                    final emoji = emojis[index];
+                    final active = emoji == selectedEmoji;
+
+                    return InkWell(
+                      onTap: () =>
+                          Navigator.of(dialogContext).pop(emoji),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: active
+                              ? AppColors.goldOf(context)
+                                  .withValues(alpha: 0.22)
+                              : AppColors.surfaceOf(context),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: active
+                                ? AppColors.goldOf(context)
+                                : AppColors.gold.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Text(
+                          emoji,
+                          style: const TextStyle(fontSize: 20),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
