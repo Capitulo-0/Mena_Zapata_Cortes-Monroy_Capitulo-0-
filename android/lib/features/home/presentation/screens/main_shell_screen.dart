@@ -674,6 +674,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         reviews: _bookReviews,
         favorites: _favoriteBookIds,
         currentName: _profileName,
+        currentUsername: _profileUsername,
+        onOpenProfile: () => _selectTab(4),
         onStatusChanged: _changeBookStatus,
         onProgressChanged: _changeBookProgress,
         onReviewSaved: _saveBookReview,
