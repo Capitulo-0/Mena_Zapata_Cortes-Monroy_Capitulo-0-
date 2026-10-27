@@ -20,6 +20,15 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
 
+  <!-- Oculta el botón nativo de mostrar contraseña de Microsoft Edge.
+       Capítulo 0 ya utiliza su propio botón de visibilidad en Flutter. -->
+  <style>
+    input::-ms-reveal,
+    input::-ms-clear {
+      display: none;
+    }
+  </style>
+
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
