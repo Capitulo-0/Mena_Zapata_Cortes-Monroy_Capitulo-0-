@@ -2631,6 +2631,27 @@ class HomeScreenState extends State<HomeScreen> {
                                       ),
                                     ],
                                   ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        currentClub.modality.toLowerCase() ==
+                                                'online'
+                                            ? Icons.language_rounded
+                                            : Icons.location_on_outlined,
+                                        color: _deepSurface,
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        'Modalidad: ${currentClub.modality}',
+                                        style: GoogleFonts.inter(
+                                          color: _textSecondary,
+                                          fontSize: 8,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
