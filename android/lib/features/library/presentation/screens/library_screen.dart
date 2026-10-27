@@ -56,6 +56,18 @@ class _PersonalLibraryList {
   final String description;
   final String emoji;
   final List<int> bookIds = const <int>[];
+
+  _PersonalLibraryList copyWith({
+    String? name,
+    String? description,
+    String? emoji,
+  }) {
+    return _PersonalLibraryList(
+      name: name ?? this.name,
+      description: description ?? this.description,
+      emoji: emoji ?? this.emoji,
+    );
+  }
 }
 
 class LibraryScreen extends StatefulWidget {
@@ -100,8 +112,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String _filter = 'leyendo';
   String _query = '';
 
-  bool _hideReadBooks = false;
-
   final List<_PersonalLibraryList> _personalLists = <_PersonalLibraryList>[];
 
   @override
@@ -118,12 +128,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   List<LibraryBook> get _filteredBooks {
     var result = _booksInLibrary;
-
-    if (_hideReadBooks) {
-      result = result
-          .where((book) => widget.statuses[book.id] != BookStatus.leido)
-          .toList();
-    }
 
     result = result.where((book) {
       final status = widget.statuses[book.id];
@@ -919,6 +923,32 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     height: 1.4,
                   ),
                 ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  height: 38,
+                  child: FilledButton.icon(
+                    onPressed: _showCreateListSheet,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.deepOf(context),
+                      foregroundColor: AppColors.goldOf(context),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    icon: const Icon(
+                      Icons.add_box_outlined,
+                      size: 16,
+                    ),
+                    label: Text(
+                      'Crear lista',
+                      style: GoogleFonts.inter(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           )
@@ -934,150 +964,541 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Widget _personalListCard(_PersonalLibraryList list) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceOf(context),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.40),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: AppColors.gold.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(11),
-            ),
-            child: Text(
-              list.emoji,
-              style: const TextStyle(fontSize: 20),
-            ),
+    final index = _personalLists.indexOf(list);
+
+    return InkWell(
+      onTap: () => _showPersonalListDetail(index),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surfaceOf(context),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: AppColors.gold.withValues(alpha: 0.40),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  list.name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.merriweather(
-                    color: AppColors.textPrimaryOf(context),
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (list.description.trim().isNotEmpty) ...[
-                  const SizedBox(height: 3),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.gold.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(11),
+              ),
+              child: Text(
+                list.emoji,
+                style: const TextStyle(fontSize: 20),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   Text(
-                    list.description,
-                    maxLines: 2,
+                    list.name,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.inter(
-                      color: AppColors.textSecondaryOf(context),
-                      fontSize: 7.5,
-                      height: 1.35,
+                    style: GoogleFonts.merriweather(
+                      color: AppColors.textPrimaryOf(context),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
+                  if (list.description.trim().isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      list.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        color: AppColors.textSecondaryOf(context),
+                        fontSize: 7.5,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '${list.bookIds.length}',
-            style: GoogleFonts.inter(
-              color: AppColors.accentOf(context),
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
+            const SizedBox(width: 8),
+            Text(
+              '${list.bookIds.length}',
+              style: GoogleFonts.inter(
+                color: AppColors.accentOf(context),
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(width: 4),
+            InkWell(
+              onTap: () => _showPersonalListMiniMenu(index),
+              borderRadius: BorderRadius.circular(9),
+              child: SizedBox(
+                width: 30,
+                height: 30,
+                child: Icon(
+                  Icons.more_vert_rounded,
+                  size: 18,
+                  color: AppColors.textPrimaryOf(context),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _listCollectionCard({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required List<LibraryBook> books,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceOf(context),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: AppColors.gold, size: 19),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+  Future<void> _showPersonalListMiniMenu(int index) async {
+    final list = _personalLists[index];
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (sheetContext) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(18, 9, 18, 18),
+          decoration: BoxDecoration(
+            color: AppColors.backgroundOf(context),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(22),
+            ),
+            border: Border(
+              top: BorderSide(
+                color: AppColors.gold.withValues(alpha: 0.32),
+              ),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.deepOf(context),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
                   children: [
                     Text(
-                      title,
-                      style: GoogleFonts.merriweather(
-                        color: AppColors.textPrimaryOf(context),
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      list.emoji,
+                      style: const TextStyle(fontSize: 20),
                     ),
-                    Text(
-                      subtitle,
-                      style: GoogleFonts.inter(
-                        color: AppColors.textSecondaryOf(context),
-                        fontSize: 7.5,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        list.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.merriweather(
+                          color: AppColors.textPrimaryOf(context),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                _libraryOptionTile(
+                  icon: Icons.edit_outlined,
+                  title: 'Editar lista',
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    Future<void>.delayed(
+                      const Duration(milliseconds: 160),
+                      () => _showEditListSheet(index),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showEditListSheet(int index) async {
+    final list = _personalLists[index];
+    final nameController = TextEditingController(text: list.name);
+    final descriptionController =
+        TextEditingController(text: list.description);
+
+    var selectedEmoji = list.emoji;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.58),
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final canSave = nameController.text.trim().isNotEmpty;
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              Text(
-                '${books.length}',
-                style: GoogleFonts.inter(
-                  color: AppColors.accent,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(18, 9, 18, 20),
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundOf(context),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(26),
+                  ),
+                  border: Border(
+                    top: BorderSide(
+                      color: AppColors.gold.withValues(alpha: 0.35),
+                    ),
+                  ),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 38,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppColors.deepOf(context),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        Text(
+                          'EDITAR LISTA',
+                          style: GoogleFonts.cinzel(
+                            color: AppColors.textPrimaryOf(context),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _createListLabel('Ícono de la lista *'),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Container(
+                              width: 58,
+                              height: 48,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: AppColors.deepOf(context),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                selectedEmoji,
+                                style: const TextStyle(fontSize: 23),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () async {
+                                  final emoji =
+                                      await _showEmojiPicker(selectedEmoji);
+
+                                  if (emoji == null ||
+                                      !sheetContext.mounted) {
+                                    return;
+                                  }
+
+                                  setSheetState(() {
+                                    selectedEmoji = emoji;
+                                  });
+                                },
+                                borderRadius: BorderRadius.circular(11),
+                                child: Container(
+                                  height: 48,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surfaceOf(context),
+                                    borderRadius: BorderRadius.circular(11),
+                                    border: Border.all(
+                                      color: AppColors.gold.withValues(
+                                        alpha: 0.45,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Más emojis',
+                                    style: GoogleFonts.inter(
+                                      color: AppColors.textPrimaryOf(context),
+                                      fontSize: 8.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 15),
+                        _createListLabel('Nombre de la lista *'),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: nameController,
+                          maxLength: 50,
+                          onChanged: (_) => setSheetState(() {}),
+                          decoration: _createListInputDecoration(
+                            hint: 'Nombre de la lista',
+                            icon: Icons.menu_book_outlined,
+                          ).copyWith(counterText: ''),
+                        ),
+                        const SizedBox(height: 13),
+                        _createListLabel('Descripción (opcional)'),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: descriptionController,
+                          minLines: 3,
+                          maxLines: 4,
+                          maxLength: 180,
+                          decoration: _createListInputDecoration(
+                            hint: 'Descripción de tu lista...',
+                            icon: Icons.description_outlined,
+                          ).copyWith(counterText: ''),
+                        ),
+                        const SizedBox(height: 17),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 42,
+                          child: FilledButton(
+                            onPressed: canSave
+                                ? () {
+                                    setState(() {
+                                      _personalLists[index] =
+                                          list.copyWith(
+                                        name: nameController.text.trim(),
+                                        description:
+                                            descriptionController.text.trim(),
+                                        emoji: selectedEmoji,
+                                      );
+                                    });
+
+                                    Navigator.of(sheetContext).pop();
+                                  }
+                                : null,
+                            style: FilledButton.styleFrom(
+                              backgroundColor:
+                                  AppColors.deepOf(context),
+                              foregroundColor:
+                                  AppColors.backgroundOf(context),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(11),
+                              ),
+                            ),
+                            child: Text(
+                              'Guardar cambios',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ],
-          ),
-          if (books.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              height: 86,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: books.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 7),
-                itemBuilder: (context, index) {
-                  final book = books[index];
-                  return InkWell(
-                    onTap: () => _openBookDetail(book),
-                    borderRadius: BorderRadius.circular(8),
-                    child: _cover(book.cover, 58, 84),
-                  );
-                },
+            );
+          },
+        );
+      },
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    nameController.dispose();
+    descriptionController.dispose();
+  }
+
+  Future<void> _showPersonalListDetail(int index) async {
+    final list = _personalLists[index];
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.58),
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.68,
+          minChildSize: 0.50,
+          maxChildSize: 0.90,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: AppColors.backgroundOf(context),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(26),
+                ),
+                border: Border(
+                  top: BorderSide(
+                    color: AppColors.gold.withValues(alpha: 0.35),
+                  ),
+                ),
               ),
-            ),
-          ],
-        ],
-      ),
+              child: SafeArea(
+                top: false,
+                child: ListView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(18, 9, 18, 24),
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 38,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.deepOf(context),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: AppColors.gold.withValues(alpha: 0.13),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            list.emoji,
+                            style: const TextStyle(fontSize: 25),
+                          ),
+                        ),
+                        const SizedBox(width: 11),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                list.name,
+                                style: GoogleFonts.cinzel(
+                                  color: AppColors.textPrimaryOf(context),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              if (list.description.trim().isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  list.description,
+                                  style: GoogleFonts.inter(
+                                    color: AppColors.textSecondaryOf(context),
+                                    fontSize: 8.5,
+                                    height: 1.45,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Text(
+                          'LIBROS AGREGADOS',
+                          style: GoogleFonts.cinzel(
+                            color: AppColors.textPrimaryOf(context),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.35,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${list.bookIds.length}',
+                          style: GoogleFonts.inter(
+                            color: AppColors.accentOf(context),
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (list.bookIds.isEmpty)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 28,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceOf(context),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: AppColors.gold.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(
+                              Icons.library_books_outlined,
+                              color: AppColors.goldOf(context),
+                              size: 28,
+                            ),
+                            const SizedBox(height: 9),
+                            Text(
+                              'Aún no hay libros agregados',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.merriweather(
+                                color: AppColors.textPrimaryOf(context),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              'Acá aparecerán los libros que agregues a tu lista personal.',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                color: AppColors.textSecondaryOf(context),
+                                fontSize: 7.8,
+                                height: 1.45,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ...list.bookIds.map(
+                        (bookId) => Text('Libro $bookId'),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1141,48 +1562,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     ),
                     const SizedBox(height: 15),
                     _libraryOptionTile(
-                      icon: Icons.filter_alt_outlined,
-                      title: 'Filtrar libros',
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () {
-                        Navigator.of(sheetContext).pop();
-                        setState(() {
-                          _view = 'libros';
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    _libraryOptionTile(
-                      icon: Icons.swap_vert_rounded,
-                      title: 'Ordenar por',
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () {},
-                    ),
-                    const SizedBox(height: 8),
-                    _libraryOptionTile(
-                      icon: Icons.visibility_off_outlined,
-                      title: 'Ocultar libros leídos',
-                      trailing: Switch.adaptive(
-                        value: _hideReadBooks,
-                        activeThumbColor: AppColors.goldOf(context),
-                        activeTrackColor:
-                            AppColors.deepOf(context).withValues(alpha: 0.75),
-                        onChanged: (value) {
-                          setState(() {
-                            _hideReadBooks = value;
-                          });
-                          setSheetState(() {});
-                        },
-                      ),
-                      onTap: () {
-                        setState(() {
-                          _hideReadBooks = !_hideReadBooks;
-                        });
-                        setSheetState(() {});
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    _libraryOptionTile(
                       icon: Icons.add_box_outlined,
                       title: 'Crear lista',
                       highlighted: true,
@@ -1200,7 +1579,26 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       icon: Icons.download_outlined,
                       title: 'Exportar mi biblioteca',
                       trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        Future<void>.delayed(
+                          const Duration(milliseconds: 160),
+                          _showExportLibraryDialog,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _libraryOptionTile(
+                      icon: Icons.ios_share_outlined,
+                      title: 'Exportar mi lista',
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () {
+                        Navigator.of(sheetContext).pop();
+                        Future<void>.delayed(
+                          const Duration(milliseconds: 160),
+                          _showExportListDialog,
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -1264,6 +1662,759 @@ class _LibraryScreenState extends State<LibraryScreen> {
               child: trailing,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showExportLibraryDialog() async {
+    final total = _booksInLibrary.length;
+    final reading = _count(BookStatus.leyendo);
+    final pending = _count(BookStatus.porLeer);
+    final read = _count(BookStatus.leido);
+
+    await _showLibraryShareDialog(
+      barrierLabel: 'Exportar biblioteca',
+      eyebrow: 'EXPORTAR MI BIBLIOTECA',
+      title: '¿Dónde deseas compartir?',
+      summaryTitle: 'Se exportarán estos libros:',
+      summaryMain:
+          '$total ${total == 1 ? 'libro en tu biblioteca' : 'libros en tu biblioteca'}',
+      summaryDetail:
+          '$read leídos · $reading leyendo · $pending por leer',
+      linkText:
+          'Capítulo 0 · Mi biblioteca · $total libros · $read leídos · $reading leyendo · $pending por leer',
+    );
+  }
+
+  Future<void> _showExportListDialog() async {
+    if (_personalLists.isEmpty) {
+      await showGeneralDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        barrierLabel: 'Sin listas personales',
+        barrierColor: Colors.black.withValues(alpha: 0.62),
+        transitionDuration: const Duration(milliseconds: 180),
+        pageBuilder: (dialogContext, animation, secondaryAnimation) {
+          return SafeArea(
+            child: Center(
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  width: MediaQuery.of(dialogContext).size.width * 0.80,
+                  constraints: const BoxConstraints(maxWidth: 360),
+                  padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceOf(context),
+                    borderRadius: BorderRadius.circular(17),
+                    border: Border.all(
+                      color: AppColors.goldOf(context)
+                          .withValues(alpha: 0.28),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        blurRadius: 24,
+                        offset: const Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.playlist_add_rounded,
+                        color: AppColors.goldOf(context),
+                        size: 28,
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'NO HAY LISTAS PARA EXPORTAR',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.cinzel(
+                          color: AppColors.textPrimaryOf(context),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Crea una lista personal y luego podrás compartirla desde aquí.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          color: AppColors.textSecondaryOf(context),
+                          fontSize: 8,
+                          height: 1.45,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 38,
+                        child: FilledButton(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.deepOf(context),
+                            foregroundColor:
+                                AppColors.backgroundOf(context),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: Text(
+                            'Entendido',
+                            style: GoogleFonts.inter(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        transitionBuilder: (
+          dialogContext,
+          animation,
+          secondaryAnimation,
+          child,
+        ) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOut,
+            ),
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.96, end: 1).animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                ),
+              ),
+              child: child,
+            ),
+          );
+        },
+      );
+      return;
+    }
+
+    int? selectedIndex;
+
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Exportar lista',
+      barrierColor: Colors.black.withValues(alpha: 0.62),
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return SafeArea(
+          child: Center(
+            child: Material(
+              color: Colors.transparent,
+              child: StatefulBuilder(
+                builder: (context, setDialogState) {
+                  final selected = selectedIndex == null
+                      ? null
+                      : _personalLists[selectedIndex!];
+
+                  return Container(
+                    width:
+                        MediaQuery.of(dialogContext).size.width * 0.84,
+                    constraints: BoxConstraints(
+                      maxWidth: 380,
+                      maxHeight:
+                          MediaQuery.of(dialogContext).size.height * 0.78,
+                    ),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceOf(context),
+                      borderRadius: BorderRadius.circular(17),
+                      border: Border.all(
+                        color: AppColors.goldOf(context)
+                            .withValues(alpha: 0.28),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          blurRadius: 24,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'EXPORTAR MI LISTA',
+                                      style: GoogleFonts.cinzel(
+                                        color:
+                                            AppColors.accentOf(context),
+                                        fontSize: 7.5,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: 0.65,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 5),
+                                    Text(
+                                      '¿Qué lista deseas exportar?',
+                                      style: GoogleFonts.merriweather(
+                                        color:
+                                            AppColors.textPrimaryOf(context),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              _exportCloseButton(dialogContext),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          ...List.generate(
+                            _personalLists.length,
+                            (index) {
+                              final list = _personalLists[index];
+                              final active = selectedIndex == index;
+
+                              return Padding(
+                                padding:
+                                    const EdgeInsets.only(bottom: 8),
+                                child: InkWell(
+                                  onTap: () {
+                                    setDialogState(() {
+                                      selectedIndex = index;
+                                    });
+                                  },
+                                  borderRadius:
+                                      BorderRadius.circular(11),
+                                  child: AnimatedContainer(
+                                    duration:
+                                        const Duration(milliseconds: 180),
+                                    padding:
+                                        const EdgeInsets.symmetric(
+                                      horizontal: 11,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: active
+                                          ? AppColors.goldOf(context)
+                                              .withValues(alpha: 0.18)
+                                          : AppColors.backgroundOf(context),
+                                      borderRadius:
+                                          BorderRadius.circular(11),
+                                      border: Border.all(
+                                        color: active
+                                            ? AppColors.goldOf(context)
+                                            : AppColors.goldOf(context)
+                                                .withValues(alpha: 0.30),
+                                        width: active ? 1.3 : 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 36,
+                                          height: 36,
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: active
+                                                ? AppColors.deepOf(context)
+                                                : AppColors.goldOf(context)
+                                                    .withValues(alpha: 0.10),
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            list.emoji,
+                                            style: const TextStyle(
+                                              fontSize: 19,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 9),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                list.name,
+                                                maxLines: 1,
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                                style:
+                                                    GoogleFonts.merriweather(
+                                                  color: AppColors
+                                                      .textPrimaryOf(
+                                                    context,
+                                                  ),
+                                                  fontSize: 9.5,
+                                                  fontWeight:
+                                                      FontWeight.w700,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                '${list.bookIds.length} ${list.bookIds.length == 1 ? 'libro' : 'libros'}',
+                                                style: GoogleFonts.inter(
+                                                  color: AppColors
+                                                      .textSecondaryOf(
+                                                    context,
+                                                  ),
+                                                  fontSize: 7.2,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        AnimatedSwitcher(
+                                          duration: const Duration(
+                                            milliseconds: 160,
+                                          ),
+                                          child: active
+                                              ? Icon(
+                                                  Icons
+                                                      .check_circle_rounded,
+                                                  key: const ValueKey(
+                                                    'selected',
+                                                  ),
+                                                  color: AppColors
+                                                      .goldOf(context),
+                                                  size: 19,
+                                                )
+                                              : Icon(
+                                                  Icons.circle_outlined,
+                                                  key: const ValueKey(
+                                                    'unselected',
+                                                  ),
+                                                  color: AppColors
+                                                      .textSecondaryOf(
+                                                    context,
+                                                  ),
+                                                  size: 18,
+                                                ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          AnimatedSize(
+                            duration:
+                                const Duration(milliseconds: 240),
+                            curve: Curves.easeOutCubic,
+                            child: selected == null
+                                ? const SizedBox.shrink()
+                                : Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 7),
+                                      Divider(
+                                        color: AppColors.goldOf(context)
+                                            .withValues(alpha: 0.24),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'LISTA SELECCIONADA',
+                                        style: GoogleFonts.cinzel(
+                                          color: AppColors
+                                              .accentOf(context),
+                                          fontSize: 7,
+                                          fontWeight: FontWeight.w700,
+                                          letterSpacing: 0.55,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${selected.emoji} ${selected.name}',
+                                        style: GoogleFonts.merriweather(
+                                          color: AppColors
+                                              .textPrimaryOf(context),
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        '${selected.bookIds.length} ${selected.bookIds.length == 1 ? 'libro agregado' : 'libros agregados'}',
+                                        style: GoogleFonts.inter(
+                                          color: AppColors
+                                              .textSecondaryOf(context),
+                                          fontSize: 7.5,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 13),
+                                      Text(
+                                        '¿Dónde deseas compartir?',
+                                        style: GoogleFonts.merriweather(
+                                          color: AppColors
+                                              .textPrimaryOf(context),
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 9),
+                                      _exportShareGrid(
+                                        dialogContext:
+                                            dialogContext,
+                                        linkText:
+                                            'Capítulo 0 · Lista ${selected.name} · ${selected.bookIds.length} libros',
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (
+        dialogContext,
+        animation,
+        secondaryAnimation,
+        child,
+      ) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOut,
+          ),
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.96, end: 1).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              ),
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showLibraryShareDialog({
+    required String barrierLabel,
+    required String eyebrow,
+    required String title,
+    required String summaryTitle,
+    required String summaryMain,
+    required String summaryDetail,
+    required String linkText,
+  }) async {
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: barrierLabel,
+      barrierColor: Colors.black.withValues(alpha: 0.62),
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (dialogContext, animation, secondaryAnimation) {
+        return SafeArea(
+          child: Center(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: MediaQuery.of(dialogContext).size.width * 0.80,
+                constraints: const BoxConstraints(maxWidth: 360),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceOf(context),
+                  borderRadius: BorderRadius.circular(17),
+                  border: Border.all(
+                    color: AppColors.goldOf(context)
+                        .withValues(alpha: 0.28),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                eyebrow,
+                                style: GoogleFonts.cinzel(
+                                  fontSize: 7.5,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.65,
+                                  color: AppColors.accentOf(context),
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                title,
+                                style: GoogleFonts.merriweather(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      AppColors.textPrimaryOf(context),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _exportCloseButton(dialogContext),
+                      ],
+                    ),
+                    const SizedBox(height: 13),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(11),
+                      decoration: BoxDecoration(
+                        color: AppColors.backgroundOf(context),
+                        borderRadius: BorderRadius.circular(11),
+                        border: Border.all(
+                          color: AppColors.goldOf(context)
+                              .withValues(alpha: 0.28),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            summaryTitle,
+                            style: GoogleFonts.inter(
+                              color:
+                                  AppColors.textSecondaryOf(context),
+                              fontSize: 7.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            summaryMain,
+                            style: GoogleFonts.merriweather(
+                              color:
+                                  AppColors.textPrimaryOf(context),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            summaryDetail,
+                            style: GoogleFonts.inter(
+                              color:
+                                  AppColors.textSecondaryOf(context),
+                              fontSize: 7.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _exportShareGrid(
+                      dialogContext: dialogContext,
+                      linkText: linkText,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (
+        dialogContext,
+        animation,
+        secondaryAnimation,
+        child,
+      ) {
+        return FadeTransition(
+          opacity: CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOut,
+          ),
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.96, end: 1).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              ),
+            ),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _exportCloseButton(BuildContext dialogContext) {
+    return InkWell(
+      onTap: () => Navigator.of(dialogContext).pop(),
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color:
+                AppColors.goldOf(context).withValues(alpha: 0.38),
+          ),
+        ),
+        child: Icon(
+          Icons.close_rounded,
+          size: 15,
+          color: AppColors.textSecondaryOf(context),
+        ),
+      ),
+    );
+  }
+
+  Widget _exportShareGrid({
+    required BuildContext dialogContext,
+    required String linkText,
+  }) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _exportShareOption(
+                label: 'W · WhatsApp',
+                onTap: () => _fakeLibraryExport(
+                  dialogContext,
+                  'WhatsApp',
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _exportShareOption(
+                label: 'I · Instagram',
+                onTap: () => _fakeLibraryExport(
+                  dialogContext,
+                  'Instagram',
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: _exportShareOption(
+                label: 'X · X',
+                onTap: () => _fakeLibraryExport(
+                  dialogContext,
+                  'X',
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _exportShareOption(
+                label: '↗ · Enlace',
+                onTap: () async {
+                  await Clipboard.setData(
+                    ClipboardData(text: linkText),
+                  );
+
+                  if (!dialogContext.mounted) return;
+                  Navigator.of(dialogContext).pop();
+
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Enlace de exportación copiado.',
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _exportShareOption({
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 8,
+          vertical: 11,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.backgroundOf(context),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color:
+                AppColors.goldOf(context).withValues(alpha: 0.34),
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.inter(
+            fontSize: 7.4,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimaryOf(context),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _fakeLibraryExport(
+    BuildContext dialogContext,
+    String destination,
+  ) {
+    Navigator.of(dialogContext).pop();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Exportar a $destination estará disponible próximamente.',
         ),
       ),
     );
@@ -1353,36 +2504,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         const SizedBox(height: 8),
                         Row(
                           children: [
-                            _emojiChoice(
-                              emoji: '♥',
-                              selectedEmoji: selectedEmoji,
-                              onTap: () {
-                                setSheetState(() {
-                                  selectedEmoji = '♥';
-                                });
-                              },
+                            Container(
+                              width: 58,
+                              height: 48,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: AppColors.deepOf(context),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.goldOf(context)
+                                      .withValues(alpha: 0.35),
+                                ),
+                              ),
+                              child: Text(
+                                selectedEmoji,
+                                style: const TextStyle(fontSize: 23),
+                              ),
                             ),
-                            const SizedBox(width: 8),
-                            _emojiChoice(
-                              emoji: '📖',
-                              selectedEmoji: selectedEmoji,
-                              onTap: () {
-                                setSheetState(() {
-                                  selectedEmoji = '📖';
-                                });
-                              },
-                            ),
-                            const SizedBox(width: 8),
-                            _emojiChoice(
-                              emoji: '🔖',
-                              selectedEmoji: selectedEmoji,
-                              onTap: () {
-                                setSheetState(() {
-                                  selectedEmoji = '🔖';
-                                });
-                              },
-                            ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 10),
                             Expanded(
                               child: InkWell(
                                 onTap: () async {
@@ -1400,7 +2539,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                 },
                                 borderRadius: BorderRadius.circular(11),
                                 child: Container(
-                                  height: 44,
+                                  height: 48,
                                   alignment: Alignment.center,
                                   decoration: BoxDecoration(
                                     color: AppColors.surfaceOf(context),
@@ -1411,13 +2550,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                       ),
                                     ),
                                   ),
-                                  child: Text(
-                                    '☺ Más emojis',
-                                    style: GoogleFonts.inter(
-                                      color: AppColors.textPrimaryOf(context),
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.emoji_emotions_outlined,
+                                        size: 16,
+                                        color: AppColors.goldOf(context),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Más emojis',
+                                        style: GoogleFonts.inter(
+                                          color: AppColors.textPrimaryOf(context),
+                                          fontSize: 8.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -1593,45 +2743,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
         borderSide: BorderSide(
           color: AppColors.goldOf(context),
           width: 1.4,
-        ),
-      ),
-    );
-  }
-
-  Widget _emojiChoice({
-    required String emoji,
-    required String selectedEmoji,
-    required VoidCallback onTap,
-  }) {
-    final selected = emoji == selectedEmoji;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(11),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 48,
-        height: 44,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected
-              ? AppColors.deepOf(context)
-              : AppColors.surfaceOf(context),
-          borderRadius: BorderRadius.circular(11),
-          border: Border.all(
-            color: selected
-                ? AppColors.deepOf(context)
-                : AppColors.gold.withValues(alpha: 0.45),
-          ),
-        ),
-        child: Text(
-          emoji,
-          style: TextStyle(
-            fontSize: 20,
-            color: selected
-                ? AppColors.goldOf(context)
-                : AppColors.textPrimaryOf(context),
-          ),
         ),
       ),
     );
