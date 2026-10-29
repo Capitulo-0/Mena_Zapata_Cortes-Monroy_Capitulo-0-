@@ -33,6 +33,9 @@ class HomeScreen extends StatefulWidget {
     required this.clubs,
     required this.joinedClubIds,
     required this.onToggleClub,
+    required this.continueReadingBook,
+    required this.continueReadingProgress,
+    required this.onContinueReadingProgressChanged,
   });
 
   final bool isGuest;
@@ -54,6 +57,11 @@ class HomeScreen extends StatefulWidget {
   final List<ReadingClub> clubs;
   final Set<int> joinedClubIds;
   final ValueChanged<int> onToggleClub;
+
+  final LibraryBook? continueReadingBook;
+  final int continueReadingProgress;
+  final void Function(int bookId, int progress)
+      onContinueReadingProgressChanged;
 
   @override
   State<HomeScreen> createState() => HomeScreenState();
@@ -79,10 +87,6 @@ class HomeScreenState extends State<HomeScreen> {
 
   int currentQuote = 0;
   int carouselOffset = 0;
-
-  int currentChapter = 4;
-  int currentProgress = 65;
-
 
   // Colores adaptativos al tema global.
   Color get _background => AppColors.backgroundOf(context);
@@ -1864,138 +1868,161 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildContinueReading() {
+    final book = widget.continueReadingBook;
+
+    if (book == null) {
+      return const SizedBox.shrink();
+    }
+
+    final progress = widget.continueReadingProgress.clamp(0, 100).toInt();
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 15),
       child: Column(
         children: [
           _sectionTitle('Continuar Leyendo'),
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(11),
-            decoration: BoxDecoration(
-              color: _surface,
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(
-                color: _gold.withValues(alpha: 0.6),
-                width: 1.2,
-              ),
-            ),
-            child: Row(
-              children: [
-                _networkCover(
-                  books[1]['cover'] as String,
-                  width: 64,
-                  height: 88,
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            child: Container(
+              key: ValueKey('${book.id}-$progress'),
+              padding: const EdgeInsets.all(11),
+              decoration: BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: _gold.withValues(alpha: 0.6),
+                  width: 1.2,
                 ),
-                const SizedBox(width: 11),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Cumbres Borrascosas',
-                        style: GoogleFonts.merriweather(
-                          color: _textPrimary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        'Capítulo $currentChapter de 12',
-                        style: GoogleFonts.inter(
-                          color: _textSecondary,
-                          fontSize: 8,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Progreso',
-                              style: GoogleFonts.inter(
-                                color: _textSecondary,
-                                fontSize: 8,
-                              ),
-                            ),
+              ),
+              child: Row(
+                children: [
+                  _networkCover(
+                    book.cover,
+                    width: 64,
+                    height: 88,
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          book.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.merriweather(
+                            color: _textPrimary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
                           ),
-                          Text(
-                            '$currentProgress%',
-                            style: GoogleFonts.inter(
-                              color: _accent,
-                              fontSize: 8,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(5),
-                        child: LinearProgressIndicator(
-                          value: currentProgress / 100,
-                          minHeight: 5,
-                          backgroundColor: _surfaceSoft,
-                          valueColor: AlwaysStoppedAnimation<Color>(_accent),
                         ),
-                      ),
-                      const SizedBox(height: 9),
-                      if (currentProgress < 100)
+                        const SizedBox(height: 3),
+                        Text(
+                          book.author,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            color: _textSecondary,
+                            fontSize: 8,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
-                            FilledButton(
-                              onPressed: () {
-                                if (widget.isGuest) {
-                                  _guestMessage('biblioteca');
-                                  return;
-                                }
-                                widget.onOpenLibrary();
-                              },
-                              style: _accentButtonStyle(),
+                            Expanded(
                               child: Text(
-                                'Continuar →',
+                                'Progreso',
                                 style: GoogleFonts.inter(
+                                  color: _textSecondary,
                                   fontSize: 8,
-                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            OutlinedButton(
-                              onPressed: _advanceReading,
-                              style: _outlineButtonStyle(),
-                              child: Text(
-                                '+ Avanzar',
+                            Text(
+                              '$progress%',
+                              style: GoogleFonts.inter(
+                                color: _accent,
+                                fontSize: 8,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(5),
+                          child: LinearProgressIndicator(
+                            value: progress / 100,
+                            minHeight: 5,
+                            backgroundColor: _surfaceSoft,
+                            valueColor:
+                                AlwaysStoppedAnimation<Color>(_accent),
+                          ),
+                        ),
+                        const SizedBox(height: 9),
+                        if (progress < 100)
+                          Row(
+                            children: [
+                              FilledButton(
+                                onPressed: () {
+                                  if (widget.isGuest) {
+                                    _guestMessage('biblioteca');
+                                    return;
+                                  }
+
+                                  widget.onOpenLibrary();
+                                },
+                                style: _accentButtonStyle(),
+                                child: Text(
+                                  'Continuar →',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              OutlinedButton(
+                                onPressed: () =>
+                                    _advanceSharedReading(book, progress),
+                                style: _outlineButtonStyle(),
+                                child: Text(
+                                  '+ Avanzar',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        else
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.check_circle_outline_rounded,
+                                size: 15,
+                                color: _gold,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                'Lectura finalizada',
                                 style: GoogleFonts.inter(
+                                  color: _textSecondary,
                                   fontSize: 8,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                            ),
-                          ],
-                        )
-                      else
-                        FilledButton.icon(
-                          onPressed: () {
-                            _showMessage(
-                              'Cumbres Borrascosas quedó marcado como leído.',
-                            );
-                          },
-                          icon: const Icon(Icons.check_rounded, size: 15),
-                          label: const Text('Marcar como leído'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: _gold,
-                            foregroundColor: _goldInk,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(7),
-                            ),
+                            ],
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -2003,24 +2030,23 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _advanceReading() {
+  void _advanceSharedReading(
+    LibraryBook book,
+    int currentProgress,
+  ) {
     if (widget.isGuest) {
       _guestMessage('progreso de lectura');
       return;
     }
 
-    setState(() {
-      currentProgress = (currentProgress + 8).clamp(0, 100).toInt();
-      if (currentChapter < 12) {
-        currentChapter++;
-      }
-    });
+    final nextProgress =
+        (currentProgress + 10).clamp(0, 100).toInt();
 
-    _showMessage(
-      currentProgress >= 100
-          ? '¡Terminaste el libro!'
-          : 'Progreso actualizado a $currentProgress%.',
+    widget.onContinueReadingProgressChanged(
+      book.id,
+      nextProgress,
     );
+
   }
 
   Widget _buildRecommendedBooks() {
