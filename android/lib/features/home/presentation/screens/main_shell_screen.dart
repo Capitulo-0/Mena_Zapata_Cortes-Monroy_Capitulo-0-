@@ -373,6 +373,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
     22: BookStatus.leido,
   };
 
+  int? _lastAdvancedBookId = 7;
+
   final Map<int, int> _bookProgresses = {
     1: 100,
     2: 100,
@@ -433,11 +435,14 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   void _changeBookProgress(int bookId, int progress) {
     final safeProgress = progress.clamp(0, 100).toInt();
+
     setState(() {
       _bookProgresses[bookId] = safeProgress;
+      _lastAdvancedBookId = bookId;
+
       if (safeProgress >= 100) {
         _bookStatuses[bookId] = BookStatus.leido;
-      } else if (_bookStatuses[bookId] == BookStatus.leido) {
+      } else {
         _bookStatuses[bookId] = BookStatus.leyendo;
       }
     });
@@ -644,6 +649,32 @@ class _MainShellScreenState extends State<MainShellScreen> {
     );
   }
 
+  LibraryBook? get _lastAdvancedBook {
+    final id = _lastAdvancedBookId;
+
+    if (id == null) {
+      return null;
+    }
+
+    for (final book in _libraryBooks) {
+      if (book.id == id) {
+        return book;
+      }
+    }
+
+    return null;
+  }
+
+  int get _lastAdvancedBookProgress {
+    final id = _lastAdvancedBookId;
+
+    if (id == null) {
+      return 0;
+    }
+
+    return _bookProgresses[id] ?? 0;
+  }
+
   List<Widget> _mainScreens() {
     return [
       HomeScreen(
@@ -662,6 +693,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
         clubs: _clubs,
         joinedClubIds: _joinedClubIds,
         onToggleClub: _toggleClub,
+        continueReadingBook: _lastAdvancedBook,
+        continueReadingProgress: _lastAdvancedBookProgress,
+        onContinueReadingProgressChanged: _changeBookProgress,
         onOpenLibrary: () => _selectTab(1),
         onOpenWriter: () => _selectTab(2),
         onOpenPoints: () => _selectTab(3),
