@@ -69,9 +69,11 @@ class HomeScreenState extends State<HomeScreen> {
 
   String searchQuery = '';
   String searchFilter = 'titulo';
+  final Set<String> selectedGenres = <String>{};
 
   bool searchSubmitted = false;
   bool showFilters = false;
+  bool showEmptySearchError = false;
   bool showQuoteShare = false;
   String? quoteSharedOn;
 
@@ -277,17 +279,22 @@ class HomeScreenState extends State<HomeScreen> {
     var result = [...books];
 
     if (query.isNotEmpty) {
-      if (searchFilter == 'autor') {
-        result = result.where((book) {
-          return book['authorReal'].toString().toLowerCase().contains(query);
-        }).toList();
-      } else {
-        result = result.where((book) {
-          final title = book['title'].toString().toLowerCase();
-          final author = book['authorReal'].toString().toLowerCase();
-          return title.contains(query) || author.contains(query);
-        }).toList();
-      }
+      result = result.where((book) {
+        final title = book['title'].toString().toLowerCase();
+        final author = book['authorReal'].toString().toLowerCase();
+
+        return title.contains(query) || author.contains(query);
+      }).toList();
+    }
+
+    if (selectedGenres.isNotEmpty) {
+      result = result.where((book) {
+        final genre = book['genre'].toString().toLowerCase();
+
+        return selectedGenres.any(
+          (selected) => genre.contains(selected.toLowerCase()),
+        );
+      }).toList();
     }
 
     if (searchFilter == 'recientes') {
@@ -325,6 +332,22 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _flashEmptySearchError() async {
+    if (!mounted) return;
+
+    setState(() {
+      showEmptySearchError = true;
+    });
+
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    if (!mounted) return;
+
+    setState(() {
+      showEmptySearchError = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
@@ -334,11 +357,12 @@ class HomeScreenState extends State<HomeScreen> {
         child: ListView(
           padding: const EdgeInsets.only(bottom: 130),
           children: [
-            _buildWelcome(),
+            if (!searchSubmitted) _buildWelcome(),
             _buildSearch(),
             if (searchSubmitted)
               _buildSearchResults()
             else ...[
+              _buildSearchPreview(),
               _buildQuote(),
               _buildContinueReading(),
               _buildRecommendedBooks(),
@@ -408,16 +432,29 @@ class HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Column(
         children: [
-          Container(
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
             height: 42,
             padding: const EdgeInsets.fromLTRB(10, 0, 5, 0),
             decoration: BoxDecoration(
               color: _surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: _gold,
-                width: 1.15,
+                color: showEmptySearchError
+                    ? _accent
+                    : _gold,
+                width: showEmptySearchError ? 1.7 : 1.15,
               ),
+              boxShadow: showEmptySearchError
+                  ? [
+                      BoxShadow(
+                        color: _accent.withValues(alpha: 0.16),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : const [],
             ),
             child: Row(
               children: [
@@ -430,9 +467,11 @@ class HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: TextField(
                     controller: searchController,
+                    textAlignVertical: TextAlignVertical.center,
                     style: GoogleFonts.inter(
                       color: _textPrimary,
                       fontSize: 10,
+                      height: 1.0,
                     ),
                     decoration: InputDecoration(
                       hintText: 'Buscar libros...',
@@ -442,13 +481,31 @@ class HomeScreenState extends State<HomeScreen> {
                       ),
                       isDense: true,
                       filled: false,
-                      contentPadding: EdgeInsets.zero,
+                      contentPadding: const EdgeInsets.symmetric(
+                        vertical: 11,
+                      ),
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
                       disabledBorder: InputBorder.none,
                       errorBorder: InputBorder.none,
                       focusedErrorBorder: InputBorder.none,
+                      suffixIcon: searchQuery.trim().isEmpty
+                          ? null
+                          : IconButton(
+                              onPressed: () {
+                                searchController.clear();
+                                setState(() {
+                                  searchQuery = '';
+                                });
+                              },
+                              splashRadius: 14,
+                              icon: Icon(
+                                Icons.close_rounded,
+                                color: _textSecondary,
+                                size: 15,
+                              ),
+                            ),
                     ),
                     onChanged: (value) {
                       setState(() {
@@ -456,7 +513,20 @@ class HomeScreenState extends State<HomeScreen> {
                       });
                     },
                     onSubmitted: (_) {
+                      final query = searchController.text.trim();
+
+                      if (query.isEmpty) {
+                        setState(() {
+                          searchSubmitted = false;
+                          searchQuery = '';
+                          showFilters = false;
+                        });
+                        _flashEmptySearchError();
+                        return;
+                      }
+
                       setState(() {
+                        searchQuery = query;
                         searchSubmitted = true;
                         showFilters = false;
                       });
@@ -466,18 +536,14 @@ class HomeScreenState extends State<HomeScreen> {
                 const SizedBox(width: 5),
                 SizedBox(
                   height: 27,
-                  child: TextButton(
-                    onPressed: () {
-                      setState(() {
-                        showFilters = !showFilters;
-                      });
-                    },
+                  child: TextButton.icon(
+                    onPressed: _showSearchFilters,
                     style: TextButton.styleFrom(
                       foregroundColor: _textPrimary,
-                      backgroundColor: _surface,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                      ),
+                      backgroundColor: selectedGenres.isNotEmpty
+                          ? _gold.withValues(alpha: 0.16)
+                          : _surface,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                       minimumSize: const Size(0, 27),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       side: BorderSide(
@@ -488,8 +554,15 @@ class HomeScreenState extends State<HomeScreen> {
                         borderRadius: BorderRadius.circular(7),
                       ),
                     ),
-                    child: Text(
-                      'Filtrar',
+                    icon: Icon(
+                      Icons.filter_alt_outlined,
+                      size: 13,
+                      color: _gold,
+                    ),
+                    label: Text(
+                      selectedGenres.isEmpty
+                          ? 'Filtrar'
+                          : 'Filtrar (${selectedGenres.length})',
                       style: GoogleFonts.inter(
                         fontSize: 8,
                         fontWeight: FontWeight.w600,
@@ -502,7 +575,20 @@ class HomeScreenState extends State<HomeScreen> {
                   height: 27,
                   child: FilledButton(
                     onPressed: () {
+                      final query = searchController.text.trim();
+
+                      if (query.isEmpty) {
+                        setState(() {
+                          searchSubmitted = false;
+                          searchQuery = '';
+                          showFilters = false;
+                        });
+                        _flashEmptySearchError();
+                        return;
+                      }
+
                       setState(() {
+                        searchQuery = query;
                         searchSubmitted = true;
                         showFilters = false;
                       });
@@ -510,9 +596,7 @@ class HomeScreenState extends State<HomeScreen> {
                     style: FilledButton.styleFrom(
                       backgroundColor: _accent,
                       foregroundColor: _onAccent,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 9),
                       minimumSize: const Size(0, 27),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       elevation: 0,
@@ -532,63 +616,595 @@ class HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-          if (showFilters) ...[
-            const SizedBox(height: 7),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: _surface,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: _gold.withValues(alpha: 0.45),
-                ),
-              ),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _filterChip('Título', 'titulo'),
-                  _filterChip('Autor', 'autor'),
-                  _filterChip('Recientes', 'recientes'),
-                  _filterChip(
-                    'Mejor calificados',
-                    'calificados',
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _filterChip(String label, String value) {
-    final selected = searchFilter == value;
+  Future<void> _showSearchFilters() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.58),
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              padding: const EdgeInsets.fromLTRB(18, 9, 18, 20),
+              decoration: BoxDecoration(
+                color: _background,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(26),
+                ),
+                border: Border(
+                  top: BorderSide(
+                    color: _gold.withValues(alpha: 0.34),
+                  ),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: _deepSurface,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                    const SizedBox(height: 17),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'FILTRAR BÚSQUEDA',
+                                style: GoogleFonts.cinzel(
+                                  color: _textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.35,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                'Refina tu búsqueda para encontrar tu próxima lectura.',
+                                style: GoogleFonts.inter(
+                                  color: _textSecondary,
+                                  fontSize: 8,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () =>
+                              Navigator.of(sheetContext).pop(),
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: _textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _searchFilterMenuTile(
+                      icon: Icons.menu_book_outlined,
+                      title: 'Géneros',
+                      value: selectedGenres.isEmpty
+                          ? 'Todos los géneros'
+                          : '1 seleccionado • ${selectedGenres.first}',
+                      onTap: () async {
+                        final changed = await _showGenreSubmenu();
 
-    return InkWell(
-      onTap: () {
-        setState(() {
-          searchFilter = value;
-        });
+                        if (changed && sheetContext.mounted) {
+                          setSheetState(() {});
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 8),
+                    _searchFilterMenuTile(
+                      icon: Icons.star_outline_rounded,
+                      title: 'Orden',
+                      value: searchFilter == 'calificados'
+                          ? 'Mejor calificados'
+                          : searchFilter == 'recientes'
+                              ? 'Más recientes'
+                              : 'Predeterminado',
+                      onTap: () {
+                        setState(() {
+                          searchFilter = switch (searchFilter) {
+                            'recientes' => 'calificados',
+                            'calificados' => 'titulo',
+                            _ => 'recientes',
+                          };
+                        });
+                        setSheetState(() {});
+                      },
+                    ),
+                    if (selectedGenres.isNotEmpty ||
+                        searchFilter == 'recientes' ||
+                        searchFilter == 'calificados') ...[
+                      const SizedBox(height: 10),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              selectedGenres.clear();
+                              searchFilter = 'titulo';
+                            });
+                            setSheetState(() {});
+                          },
+                          icon: Icon(
+                            Icons.refresh_rounded,
+                            size: 14,
+                            color: _accent,
+                          ),
+                          label: Text(
+                            'Limpiar filtros',
+                            style: GoogleFonts.inter(
+                              color: _accent,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 42,
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          Navigator.of(sheetContext).pop();
+                          setState(() {
+                            searchSubmitted = true;
+                          });
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _accent,
+                          foregroundColor: _onAccent,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(11),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.tune_rounded,
+                          size: 16,
+                        ),
+                        label: Text(
+                          'Aplicar filtros',
+                          style: GoogleFonts.inter(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
       },
-      borderRadius: BorderRadius.circular(7),
+    );
+  }
+
+  Widget _searchFilterMenuTile({
+    required IconData icon,
+    required String title,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(13),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        width: double.infinity,
+        constraints: const BoxConstraints(minHeight: 52),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
         decoration: BoxDecoration(
-          color: selected ? _deepSurface : _background,
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: _gold),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            color: selected ? _gold : _textPrimary,
-            fontSize: 8,
-            fontWeight: FontWeight.w700,
+          color: _surface,
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(
+            color: _gold.withValues(alpha: 0.38),
           ),
         ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: _gold,
+              size: 19,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                title,
+                style: GoogleFonts.merriweather(
+                  color: _textPrimary,
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Text(
+              value,
+              style: GoogleFonts.inter(
+                color: _textSecondary,
+                fontSize: 7.5,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: _gold,
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _showGenreSubmenu() async {
+    const genres = <Map<String, dynamic>>[
+      {'name': 'Romance', 'icon': Icons.favorite_border_rounded},
+      {'name': 'Fantasía', 'icon': Icons.auto_awesome_outlined},
+      {'name': 'Misterio', 'icon': Icons.search_rounded},
+      {'name': 'Gótico', 'icon': Icons.dark_mode_outlined},
+      {'name': 'Drama', 'icon': Icons.theater_comedy_outlined},
+      {'name': 'Clásico', 'icon': Icons.account_balance_outlined},
+    ];
+
+    var changed = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.60),
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.72,
+              minChildSize: 0.48,
+              maxChildSize: 0.90,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: _background,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(26),
+                    ),
+                    border: Border(
+                      top: BorderSide(
+                        color: _gold.withValues(alpha: 0.34),
+                      ),
+                    ),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: ListView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(18, 9, 18, 20),
+                      children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: _deepSurface,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () =>
+                              Navigator.of(sheetContext).pop(),
+                          icon: Icon(
+                            Icons.arrow_back_rounded,
+                            color: _gold,
+                          ),
+                        ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'GÉNEROS',
+                                style: GoogleFonts.cinzel(
+                                  color: _textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                'Selecciona uno o más géneros.',
+                                style: GoogleFonts.inter(
+                                  color: _textSecondary,
+                                  fontSize: 8,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 9),
+                    ...genres.map((genre) {
+                      final name = genre['name'] as String;
+                      final icon = genre['icon'] as IconData;
+                      final active = selectedGenres.contains(name);
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 7),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              if (active) {
+                                selectedGenres.clear();
+                              } else {
+                                selectedGenres
+                                  ..clear()
+                                  ..add(name);
+                              }
+                            });
+                            setSheetState(() {});
+                            changed = true;
+                          },
+                          borderRadius: BorderRadius.circular(12),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOutCubic,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 11,
+                            ),
+                            decoration: BoxDecoration(
+                              color: active
+                                  ? _gold.withValues(alpha: 0.16)
+                                  : _surface,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: active
+                                    ? _gold
+                                    : _gold.withValues(alpha: 0.30),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    color: active
+                                        ? _deepSurface
+                                        : _gold.withValues(alpha: 0.09),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    icon,
+                                    color: active ? _gold : _textSecondary,
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    name,
+                                    style: GoogleFonts.merriweather(
+                                      color: _textPrimary,
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 160),
+                                  child: active
+                                      ? Icon(
+                                          Icons.check_circle_rounded,
+                                          key: const ValueKey('selected'),
+                                          color: _gold,
+                                          size: 19,
+                                        )
+                                      : Icon(
+                                          Icons.circle_outlined,
+                                          key: const ValueKey('unselected'),
+                                          color: _textSecondary,
+                                          size: 18,
+                                        ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+
+    return changed;
+  }
+
+  Widget _buildSearchPreview() {
+    final query = searchQuery.trim().toLowerCase();
+
+    if (query.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final previewResults = books.where((book) {
+      final title = book['title'].toString().toLowerCase();
+      final author = book['authorReal'].toString().toLowerCase();
+      final genre = book['genre'].toString().toLowerCase();
+
+      return title.contains(query) ||
+          author.contains(query) ||
+          genre.contains(query);
+    }).take(1).toList();
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: Container(
+        key: ValueKey(query),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        padding: const EdgeInsets.all(11),
+        decoration: BoxDecoration(
+          color: _surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _gold.withValues(alpha: 0.34),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.035),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: previewResults.isEmpty
+            ? Row(
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: _gold.withValues(alpha: 0.10),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.search_off_rounded,
+                      color: _gold,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'No se encontró nada relacionado con “${searchQuery.trim()}”.',
+                      style: GoogleFonts.inter(
+                        color: _textSecondary,
+                        fontSize: 8.3,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.search_rounded,
+                        color: _gold,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'SUGERENCIA',
+                        style: GoogleFonts.cinzel(
+                          color: _textPrimary,
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.35,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 9),
+                  InkWell(
+                    onTap: () => _showBookDetails(previewResults.first),
+                    borderRadius: BorderRadius.circular(11),
+                    child: Row(
+                      children: [
+                        _networkCover(
+                          previewResults.first['cover'] as String,
+                          width: 44,
+                          height: 62,
+                        ),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                previewResults.first['title'] as String,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.merriweather(
+                                  color: _textPrimary,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                previewResults.first['authorReal'] as String,
+                                style: GoogleFonts.inter(
+                                  color: _textSecondary,
+                                  fontSize: 7.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.star_rounded,
+                                    color: _gold,
+                                    size: 12,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '${previewResults.first['rating']}',
+                                    style: GoogleFonts.inter(
+                                      color: _gold,
+                                      fontSize: 7.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  _availabilityBadge(),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: _gold,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -597,51 +1213,126 @@ class HomeScreenState extends State<HomeScreen> {
     final results = filteredBooks;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 25),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 25),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Resultados',
-                  style: GoogleFonts.cinzel(
-                    color: _textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                  ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                searchController.clear();
+
+                setState(() {
+                  searchQuery = '';
+                  searchSubmitted = false;
+                  showFilters = false;
+                  selectedGenres.clear();
+                  searchFilter = 'titulo';
+                });
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _textPrimary,
+                backgroundColor: _surface,
+                side: BorderSide(
+                  color: _gold.withValues(alpha: 0.55),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                minimumSize: const Size(0, 34),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              TextButton.icon(
-                onPressed: () {
-                  searchController.clear();
-                  setState(() {
-                    searchQuery = '';
-                    searchSubmitted = false;
-                    showFilters = false;
-                  });
-                },
-                icon: const Icon(Icons.arrow_back_rounded, size: 15),
-                label: const Text('Volver'),
-                style: TextButton.styleFrom(
-                  foregroundColor: _accent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(7),
-                  ),
+              icon: Icon(
+                Icons.arrow_back_rounded,
+                size: 15,
+                color: _gold,
+              ),
+              label: Text(
+                'Volver',
+                style: GoogleFonts.inter(
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-            ],
+            ),
           ),
+          const SizedBox(height: 13),
           Text(
-            '${results.length} obra(s)',
-            style: GoogleFonts.inter(color: _textSecondary, fontSize: 9),
+            'RESULTADOS',
+            style: GoogleFonts.cinzel(
+              color: _textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.3,
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 2),
+          Text(
+            '${results.length} ${results.length == 1 ? 'obra encontrada' : 'obras encontradas'}',
+            style: GoogleFonts.inter(
+              color: _textSecondary,
+              fontSize: 8.5,
+            ),
+          ),
+          if (selectedGenres.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 5,
+              runSpacing: 5,
+              children: selectedGenres.map((genre) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _gold.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(99),
+                    border: Border.all(
+                      color: _gold.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: Text(
+                    genre,
+                    style: GoogleFonts.inter(
+                      color: _textPrimary,
+                      fontSize: 7,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          const SizedBox(height: 12),
           if (results.isEmpty)
             _emptySearch()
           else
-            ...results.map(_buildSearchBook),
+            ...results.asMap().entries.map((entry) {
+              return TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0.97, end: 1),
+                duration: Duration(
+                  milliseconds: 220 + (entry.key * 45),
+                ),
+                curve: Curves.easeOutBack,
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: ((value - 0.97) / 0.03).clamp(0.0, 1.0),
+                    child: Transform.scale(
+                      scale: value,
+                      alignment: Alignment.topCenter,
+                      child: child,
+                    ),
+                  );
+                },
+                child: _buildSearchBook(entry.value),
+              );
+            }),
         ],
       ),
     );
@@ -650,20 +1341,48 @@ class HomeScreenState extends State<HomeScreen> {
   Widget _emptySearch() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
       decoration: BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _gold.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(
+          color: _gold.withValues(alpha: 0.35),
+        ),
       ),
       child: Column(
         children: [
-          Icon(Icons.menu_book_outlined, color: _gold, size: 32),
-          const SizedBox(height: 10),
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: _gold.withValues(alpha: 0.10),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.search_off_rounded,
+              color: _gold,
+              size: 26,
+            ),
+          ),
+          const SizedBox(height: 11),
           Text(
-            'No encontramos libros con esa búsqueda.',
+            'No encontramos resultados',
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(color: _textSecondary, fontSize: 10),
+            style: GoogleFonts.merriweather(
+              color: _textPrimary,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Prueba con otro título, autor o cambia los filtros seleccionados.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              color: _textSecondary,
+              fontSize: 7.8,
+              height: 1.45,
+            ),
           ),
         ],
       ),
@@ -671,64 +1390,164 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildSearchBook(Map<String, dynamic> book) {
+    final synopsis = book['synopsis']?.toString() ?? '';
+    final genre = book['genre']?.toString() ?? '';
+    final year = book['year']?.toString() ?? '';
+
     return InkWell(
       onTap: () => _showBookDetails(book),
-      borderRadius: BorderRadius.circular(13),
+      borderRadius: BorderRadius.circular(15),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 9),
-        padding: const EdgeInsets.all(9),
+        margin: const EdgeInsets.only(bottom: 11),
+        padding: const EdgeInsets.all(11),
         decoration: BoxDecoration(
           color: _surface,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: _gold.withValues(alpha: 0.42)),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: _gold.withValues(alpha: 0.38),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.035),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _networkCover(book['cover'] as String, width: 49, height: 69),
-            const SizedBox(width: 10),
+            _networkCover(
+              book['cover'] as String,
+              width: 78,
+              height: 108,
+            ),
+            const SizedBox(width: 11),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    book['title'] as String,
-                    style: GoogleFonts.merriweather(
-                      color: _textPrimary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          book['title'] as String,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.merriweather(
+                            color: _textPrimary,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: _gold,
+                        size: 19,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 3),
                   Text(
                     book['authorReal'] as String,
                     style: GoogleFonts.inter(
                       color: _textSecondary,
-                      fontSize: 9,
+                      fontSize: 8.5,
                     ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.star_rounded, color: _gold, size: 13),
+                      Icon(
+                        Icons.star_rounded,
+                        color: _gold,
+                        size: 14,
+                      ),
                       const SizedBox(width: 2),
                       Text(
                         '${book['rating']}',
                         style: GoogleFonts.inter(
                           color: _gold,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 8.5,
                         ),
                       ),
                       const SizedBox(width: 7),
                       _availabilityBadge(),
                     ],
                   ),
+                  const SizedBox(height: 7),
+                  Wrap(
+                    spacing: 5,
+                    runSpacing: 5,
+                    children: [
+                      if (genre.isNotEmpty)
+                        _searchResultMetaChip(
+                          Icons.auto_stories_outlined,
+                          genre,
+                        ),
+                      if (year.isNotEmpty)
+                        _searchResultMetaChip(
+                          Icons.calendar_today_outlined,
+                          year,
+                        ),
+                    ],
+                  ),
+                  if (synopsis.isNotEmpty) ...[
+                    const SizedBox(height: 7),
+                    Text(
+                      synopsis,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.inter(
+                        color: _textSecondary,
+                        fontSize: 7.4,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: _gold),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _searchResultMetaChip(
+    IconData icon,
+    String label,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: 6,
+        vertical: 3,
+      ),
+      decoration: BoxDecoration(
+        color: _gold.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            color: _gold,
+            size: 10,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              color: _textSecondary,
+              fontSize: 6.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2814,133 +3633,434 @@ class HomeScreenState extends State<HomeScreen> {
   void _showAllClubs() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: _background,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.58),
       isScrollControlled: true,
       useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(17, 18, 17, 25),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Clubes de Lectura',
-                          style: GoogleFonts.cinzel(
-                            color: _textPrimary,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.78,
+              minChildSize: 0.52,
+              maxChildSize: 0.92,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: _background,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
+                    border: Border(
+                      top: BorderSide(
+                        color: _gold.withValues(alpha: 0.34),
                       ),
-                      IconButton(
-                        onPressed: () => Navigator.of(sheetContext).pop(),
-                        icon: const Icon(Icons.close_rounded),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        blurRadius: 28,
+                        offset: const Offset(0, -6),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: widget.clubs.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 9),
-                      itemBuilder: (context, index) {
-                        final club = widget.clubs[index];
-                        final id = club.id;
-                        final joined = widget.joinedClubIds.contains(id);
-
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: _surface,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(
-                              color: _gold.withValues(alpha: 0.4),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 9),
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: _deepSurface,
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(18, 16, 12, 12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: _gold.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: _gold.withValues(alpha: 0.26),
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.groups_2_outlined,
+                                color: _gold,
+                                size: 20,
+                              ),
                             ),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                club.name,
-                                style: GoogleFonts.merriweather(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Leyendo: ${club.book}',
-                                style: GoogleFonts.inter(
-                                  color: _textSecondary,
-                                  fontSize: 9,
-                                ),
-                              ),
-                              const SizedBox(height: 9),
-                              Row(
+                            const SizedBox(width: 11),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    child: OutlinedButton(
-                                      onPressed: () {
-                                        Navigator.of(sheetContext).pop();
-                                        _showClubDetails(club);
-                                      },
-                                      style: _outlineButtonStyle(),
-                                      child: const Text('Ver'),
+                                  Text(
+                                    'CLUBES DE LECTURA',
+                                    style: GoogleFonts.cinzel(
+                                      color: _textPrimary,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.35,
                                     ),
                                   ),
-                                  const SizedBox(width: 7),
-                                  Expanded(
-                                    flex: 2,
-                                    child: FilledButton(
-                                      onPressed: () {
-                                        if (widget.isGuest) {
-                                          Navigator.of(sheetContext).pop();
-                                          _guestMessage('clubes de lectura');
-                                          return;
-                                        }
-
-                                        widget.onToggleClub(id);
-                                        setSheetState(() {});
-                                      },
-                                      style: FilledButton.styleFrom(
-                                        backgroundColor: joined
-                                            ? _surfaceSoft
-                                            : _accent,
-                                        foregroundColor: joined
-                                            ? _textPrimary
-                                            : _onAccent,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            7,
-                                          ),
-                                        ),
-                                      ),
-                                      child: Text(
-                                        joined ? 'Unido ✓' : 'Unirme',
-                                      ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${widget.clubs.length} clubes disponibles para descubrir',
+                                    style: GoogleFonts.inter(
+                                      color: _textSecondary,
+                                      fontSize: 8,
+                                      height: 1.35,
                                     ),
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+                            ),
+                            IconButton(
+                              onPressed: () =>
+                                  Navigator.of(sheetContext).pop(),
+                              splashRadius: 18,
+                              icon: Icon(
+                                Icons.close_rounded,
+                                color: _textPrimary,
+                                size: 21,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Divider(
+                        height: 1,
+                        color: _gold.withValues(alpha: 0.15),
+                      ),
+                      Expanded(
+                        child: ListView.separated(
+                          controller: scrollController,
+                          padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
+                          itemCount: widget.clubs.length,
+                          separatorBuilder: (_, _) =>
+                              const SizedBox(height: 11),
+                          itemBuilder: (context, index) {
+                            final club = widget.clubs[index];
+                            final id = club.id;
+                            final joined =
+                                widget.joinedClubIds.contains(id);
+                            final isOnline =
+                                club.modality.toLowerCase() == 'online';
+
+                            return TweenAnimationBuilder<double>(
+                              tween: Tween<double>(begin: 0.96, end: 1),
+                              duration: Duration(
+                                milliseconds: 220 + (index * 45),
+                              ),
+                              curve: Curves.easeOutBack,
+                              builder: (context, value, child) {
+                                return Opacity(
+                                  opacity: ((value - 0.96) / 0.04)
+                                      .clamp(0.0, 1.0),
+                                  child: Transform.scale(
+                                    scale: value,
+                                    alignment: Alignment.topCenter,
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeOutCubic,
+                                padding: const EdgeInsets.all(13),
+                                decoration: BoxDecoration(
+                                  color: joined
+                                      ? _gold.withValues(alpha: 0.08)
+                                      : _surface,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: joined
+                                        ? _gold.withValues(alpha: 0.72)
+                                        : _gold.withValues(alpha: 0.32),
+                                    width: joined ? 1.15 : 1,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.035,
+                                      ),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Container(
+                                          width: 38,
+                                          height: 38,
+                                          alignment: Alignment.center,
+                                          decoration: BoxDecoration(
+                                            color: _deepSurface,
+                                            borderRadius:
+                                                BorderRadius.circular(11),
+                                            border: Border.all(
+                                              color: _gold.withValues(
+                                                alpha: 0.28,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.auto_stories_outlined,
+                                            color: _gold,
+                                            size: 19,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Expanded(
+                                                    child: Text(
+                                                      club.name,
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style:
+                                                          GoogleFonts.merriweather(
+                                                        color: _textPrimary,
+                                                        fontSize: 10.8,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (joined)
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets
+                                                              .symmetric(
+                                                        horizontal: 7,
+                                                        vertical: 3,
+                                                      ),
+                                                      decoration:
+                                                          BoxDecoration(
+                                                        color: _gold.withValues(
+                                                          alpha: 0.16,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(99),
+                                                      ),
+                                                      child: Text(
+                                                        'UNIDO',
+                                                        style:
+                                                            GoogleFonts.inter(
+                                                          color: _deepSurface,
+                                                          fontSize: 6.5,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                          letterSpacing: 0.45,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                'Leyendo: ${club.book}',
+                                                maxLines: 1,
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                                style: GoogleFonts.inter(
+                                                  color: _textSecondary,
+                                                  fontSize: 8,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 11),
+                                    Wrap(
+                                      spacing: 6,
+                                      runSpacing: 6,
+                                      children: [
+                                        _allClubsInfoChip(
+                                          icon: Icons.calendar_month_outlined,
+                                          text: club.date,
+                                        ),
+                                        _allClubsInfoChip(
+                                          icon: Icons.people_outline_rounded,
+                                          text: '${club.members} lectores',
+                                        ),
+                                        _allClubsInfoChip(
+                                          icon: isOnline
+                                              ? Icons.language_rounded
+                                              : Icons.location_on_outlined,
+                                          text: club.modality,
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: SizedBox(
+                                            height: 36,
+                                            child: OutlinedButton.icon(
+                                              onPressed: () {
+                                                Navigator.of(sheetContext)
+                                                    .pop();
+                                                _showClubDetails(club);
+                                              },
+                                              style: OutlinedButton.styleFrom(
+                                                foregroundColor: _textPrimary,
+                                                side: BorderSide(
+                                                  color: _gold.withValues(
+                                                    alpha: 0.72,
+                                                  ),
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(9),
+                                                ),
+                                              ),
+                                              icon: Icon(
+                                                Icons.visibility_outlined,
+                                                size: 14,
+                                                color: _gold,
+                                              ),
+                                              label: Text(
+                                                'Ver detalles',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: SizedBox(
+                                            height: 36,
+                                            child: FilledButton(
+                                              onPressed: () {
+                                                if (widget.isGuest) {
+                                                  Navigator.of(sheetContext)
+                                                      .pop();
+                                                  _guestMessage(
+                                                    'clubes de lectura',
+                                                  );
+                                                  return;
+                                                }
+
+                                                widget.onToggleClub(id);
+                                                setSheetState(() {});
+                                              },
+                                              style: FilledButton.styleFrom(
+                                                backgroundColor: joined
+                                                    ? _surfaceSoft
+                                                    : _accent,
+                                                foregroundColor: joined
+                                                    ? _textPrimary
+                                                    : _onAccent,
+                                                side: joined
+                                                    ? BorderSide(
+                                                        color: _gold.withValues(
+                                                          alpha: 0.50,
+                                                        ),
+                                                      )
+                                                    : BorderSide.none,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(9),
+                                                ),
+                                              ),
+                                              child: AnimatedSwitcher(
+                                                duration: const Duration(
+                                                  milliseconds: 180,
+                                                ),
+                                                child: Text(
+                                                  joined
+                                                      ? 'Unido ✓'
+                                                      : 'Unirme',
+                                                  key: ValueKey(joined),
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 8.5,
+                                                    fontWeight: FontWeight.w700,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                );
+              },
             );
           },
         );
       },
+    );
+  }
+
+  Widget _allClubsInfoChip({
+    required IconData icon,
+    required String text,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: _gold.withValues(alpha: 0.09),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(
+          color: _gold.withValues(alpha: 0.22),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 12,
+            color: _gold,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: GoogleFonts.inter(
+              color: _textSecondary,
+              fontSize: 7,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
