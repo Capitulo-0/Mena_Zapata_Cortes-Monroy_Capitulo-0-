@@ -1,0 +1,83 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" modified="2026-10-23T16:30:00.000Z" agent="ChatGPT" version="24.7.17" type="device">
+  <diagram id="uml03" name="UML-03 Secuencia Autenticación">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t3" value="UML-03 · Diagrama de Secuencia — Autenticación" style="text;html=1;align=center;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#4B2418;" vertex="1" parent="1">
+          <mxGeometry x="260" y="20" width="980" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="l_Usuario" value="Usuario" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;participant=umlActor;fillColor=#F7EFE2;strokeColor=#C5A059;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="100" y="100" width="180" height="780" as="geometry" />
+        </mxCell>
+        <mxCell id="l_Flutter" value="Flutter" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;participant=umlActor;fillColor=#F7EFE2;strokeColor=#C5A059;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="360" y="100" width="180" height="780" as="geometry" />
+        </mxCell>
+        <mxCell id="l_Firebase_Authentication" value="Firebase Authentication" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;participant=umlActor;fillColor=#F7EFE2;strokeColor=#C5A059;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="650" y="100" width="180" height="780" as="geometry" />
+        </mxCell>
+        <mxCell id="l_Spring_Boot" value="Spring Boot" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;participant=umlActor;fillColor=#F7EFE2;strokeColor=#C5A059;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="970" y="100" width="180" height="780" as="geometry" />
+        </mxCell>
+        <mxCell id="l_PostgreSQL" value="PostgreSQL" style="shape=umlLifeline;perimeter=lifelinePerimeter;whiteSpace=wrap;html=1;container=1;collapsible=0;recursiveResize=0;outlineConnect=0;size=40;participant=umlActor;fillColor=#F7EFE2;strokeColor=#C5A059;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="100" width="180" height="780" as="geometry" />
+        </mxCell>
+        <mxCell id="msg_0" value="1. Ingresa credenciales" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#1F1916;" vertex="1" parent="1">
+          <mxGeometry x="470" y="170" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sm_0" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="1" source="l_Usuario" target="l_Flutter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="msg_1" value="2. Solicita autenticación" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#1F1916;" vertex="1" parent="1">
+          <mxGeometry x="470" y="242" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sm_1" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="1" source="l_Flutter" target="l_Firebase_Authentication">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="msg_2" value="3. Devuelve JWT" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#1F1916;" vertex="1" parent="1">
+          <mxGeometry x="470" y="314" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sm_2" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="1" source="l_Firebase_Authentication" target="l_Flutter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="msg_3" value="4. Solicitud protegida + JWT" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#1F1916;" vertex="1" parent="1">
+          <mxGeometry x="470" y="386" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sm_3" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="1" source="l_Flutter" target="l_Spring_Boot">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="msg_4" value="5. Valida JWT y permisos" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#1F1916;" vertex="1" parent="1">
+          <mxGeometry x="980" y="458" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sm_4" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="1" source="l_Spring_Boot" target="l_Spring_Boot">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="msg_5" value="6. Ejecuta operación autorizada" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#1F1916;" vertex="1" parent="1">
+          <mxGeometry x="470" y="530" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sm_5" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="1" source="l_Spring_Boot" target="l_PostgreSQL">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="msg_6" value="7. Devuelve resultado" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#1F1916;" vertex="1" parent="1">
+          <mxGeometry x="470" y="602" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sm_6" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="1" source="l_PostgreSQL" target="l_Spring_Boot">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="msg_7" value="8. Respuesta JSON" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#1F1916;" vertex="1" parent="1">
+          <mxGeometry x="470" y="674" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sm_7" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="1" source="l_Spring_Boot" target="l_Flutter">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="msg_8" value="9. Muestra resultado" style="text;html=1;align=center;verticalAlign=middle;fontSize=11;fontColor=#1F1916;" vertex="1" parent="1">
+          <mxGeometry x="470" y="746" width="360" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="sm_8" value="" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;" edge="1" parent="1" source="l_Flutter" target="l_Usuario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
