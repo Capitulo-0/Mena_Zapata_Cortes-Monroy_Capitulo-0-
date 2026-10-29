@@ -1,0 +1,9 @@
+services:
+  frontend:
+    build:
+      context: ./android
+      dockerfile: Dockerfile
+    container_name: capitulo0-frontend
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    restart: unless-stopped

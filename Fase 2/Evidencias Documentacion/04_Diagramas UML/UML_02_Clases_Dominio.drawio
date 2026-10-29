@@ -1,0 +1,221 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" modified="2026-10-23T16:30:00.000Z" agent="ChatGPT" version="24.7.17" type="device">
+  <diagram id="uml02" name="UML-02 Clases Dominio">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="t2" value="UML-02 · Diagrama de Clases / Dominio — Capítulo 0" style="text;html=1;align=center;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#4B2418;" vertex="1" parent="1">
+          <mxGeometry x="250" y="20" width="1000" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="grp0" value="Usuarios y comunidad" style="swimlane;horizontal=1;startSize=30;rounded=1;fillColor=#E8EEF7;strokeColor=#C5A059;fontColor=#4B2418;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="30" y="90" width="330" height="870" as="geometry" />
+        </mxCell>
+        <mxCell id="c_Usuario" value="Usuario" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="65" y="145" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_PerfilUsuario" value="PerfilUsuario" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="65" y="223" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_ConfiguracionUsuario" value="ConfiguracionUsuario" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="65" y="301" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_EstadoLector" value="EstadoLector" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="65" y="379" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_SeguimientoUsuario" value="SeguimientoUsuario" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="65" y="457" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_BloqueoUsuario" value="BloqueoUsuario" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="65" y="535" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_RetoLectura" value="RetoLectura" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="65" y="613" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_Insignia" value="Insignia" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="65" y="691" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_UsuarioInsignia" value="UsuarioInsignia" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="65" y="769" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="grp1" value="Libros y lectura" style="swimlane;horizontal=1;startSize=30;rounded=1;fillColor=#E8F3E8;strokeColor=#C5A059;fontColor=#4B2418;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="430" y="90" width="330" height="870" as="geometry" />
+        </mxCell>
+        <mxCell id="c_Libro" value="Libro" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="465" y="145" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_Autor" value="Autor" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="465" y="223" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_LibroAutor" value="LibroAutor" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="465" y="301" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_UsuarioLibro" value="UsuarioLibro" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="465" y="379" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_ResenaLibro" value="ResenaLibro" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="465" y="457" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_ListaLectura" value="ListaLectura" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="465" y="535" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_ListaLibro" value="ListaLibro" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="465" y="613" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_LibroFavorito" value="LibroFavorito" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="465" y="691" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_AutorFavorito" value="AutorFavorito" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="465" y="769" width="250" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="grp2" value="Autopublicación y moderación" style="swimlane;horizontal=1;startSize=30;rounded=1;fillColor=#F7E0E3;strokeColor=#C5A059;fontColor=#4B2418;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="830" y="90" width="250" height="870" as="geometry" />
+        </mxCell>
+        <mxCell id="c_Capitulo" value="Capitulo" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="865" y="145" width="180" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_Comentario" value="Comentario" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="865" y="223" width="180" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_MeGustaComentario" value="MeGustaComentario" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="865" y="301" width="180" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_Reporte" value="Reporte" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="865" y="379" width="180" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="grp3" value="Puntos Lectores y clubes" style="swimlane;horizontal=1;startSize=30;rounded=1;fillColor=#FFF3D6;strokeColor=#C5A059;fontColor=#4B2418;fontStyle=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="90" width="250" height="870" as="geometry" />
+        </mxCell>
+        <mxCell id="c_PuntoLector" value="PuntoLector" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1165" y="145" width="180" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_FotoPuntoLector" value="FotoPuntoLector" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1165" y="223" width="180" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_EncuentroLector" value="EncuentroLector" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1165" y="301" width="180" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_ClubLectura" value="ClubLectura" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1165" y="379" width="180" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="c_MiembroClub" value="MiembroClub" style="swimlane;fontStyle=1;align=center;verticalAlign=top;startSize=28;horizontal=0;fillColor=#FFFDF9;strokeColor=#C5A059;fontColor=#4B2418;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1165" y="457" width="180" height="44" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_PerfilUsuario_34" value="1 — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_PerfilUsuario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_ConfiguracionUsuario_35" value="1 — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_ConfiguracionUsuario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_EstadoLector_36" value="N — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_EstadoLector">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_UsuarioLibro_37" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_UsuarioLibro">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_UsuarioLibro_Libro_38" value="N — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_UsuarioLibro" target="c_Libro">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Libro_LibroAutor_39" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Libro" target="c_LibroAutor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_LibroAutor_Autor_40" value="N — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_LibroAutor" target="c_Autor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_ResenaLibro_41" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_ResenaLibro">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_ResenaLibro_Libro_42" value="N — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_ResenaLibro" target="c_Libro">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_Libro_43" value="1 — N · crea" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_Libro">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Libro_Capitulo_44" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Libro" target="c_Capitulo">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Capitulo_Comentario_45" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Capitulo" target="c_Comentario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Comentario_Comentario_46" value="1 — N · respuesta" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Comentario" target="c_Comentario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_SeguimientoUsuario_47" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_SeguimientoUsuario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_SeguimientoUsuario_Usuario_48" value="N — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_SeguimientoUsuario" target="c_Usuario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_BloqueoUsuario_49" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_BloqueoUsuario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_BloqueoUsuario_Usuario_50" value="N — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_BloqueoUsuario" target="c_Usuario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_ListaLectura_51" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_ListaLectura">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_ListaLectura_ListaLibro_52" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_ListaLectura" target="c_ListaLibro">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_ListaLibro_Libro_53" value="N — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_ListaLibro" target="c_Libro">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_LibroFavorito_54" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_LibroFavorito">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_LibroFavorito_Libro_55" value="N — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_LibroFavorito" target="c_Libro">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_AutorFavorito_56" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_AutorFavorito">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_AutorFavorito_Autor_57" value="N — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_AutorFavorito" target="c_Autor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_ClubLectura_MiembroClub_58" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_ClubLectura" target="c_MiembroClub">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_MiembroClub_Usuario_59" value="N — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_MiembroClub" target="c_Usuario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_ClubLectura_Libro_60" value="N — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_ClubLectura" target="c_Libro">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_PuntoLector_EncuentroLector_61" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_PuntoLector" target="c_EncuentroLector">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_PuntoLector_FotoPuntoLector_62" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_PuntoLector" target="c_FotoPuntoLector">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_RetoLectura_63" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_RetoLectura">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_MeGustaComentario_64" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_MeGustaComentario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_MeGustaComentario_Comentario_65" value="N — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_MeGustaComentario" target="c_Comentario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_Usuario_UsuarioInsignia_66" value="1 — N" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_Usuario" target="c_UsuarioInsignia">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel_UsuarioInsignia_Insignia_67" value="N — 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=none;startArrow=none;" edge="1" parent="1" source="c_UsuarioInsignia" target="c_Insignia">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rep_Usuario" value="objetivo posible" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;endArrow=none;" edge="1" parent="1" source="c_Reporte" target="c_Usuario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rep_Libro" value="objetivo posible" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;endArrow=none;" edge="1" parent="1" source="c_Reporte" target="c_Libro">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rep_Comentario" value="objetivo posible" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;endArrow=none;" edge="1" parent="1" source="c_Reporte" target="c_Comentario">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rep_ResenaLibro" value="objetivo posible" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;endArrow=none;" edge="1" parent="1" source="c_Reporte" target="c_ResenaLibro">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

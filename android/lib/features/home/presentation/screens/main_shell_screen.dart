@@ -86,6 +86,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       members: 342,
       book: 'Cumbres Borrascosas',
       date: 'Viernes 20:00',
+      modality: 'Presencial',
       description:
           'Un espacio para quienes aman los grandes clásicos de la literatura universal. Cada semana conversamos sobre capítulos, personajes y contexto histórico.',
     ),
@@ -95,6 +96,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       members: 189,
       book: 'Jane Eyre',
       date: 'Sábado 18:30',
+      modality: 'Online',
       description:
           'Para amantes de la literatura gótica y victoriana. Misterio, romanticismo oscuro y personajes inolvidables.',
     ),
@@ -104,6 +106,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       members: 98,
       book: 'El Jardín de los Recuerdos',
       date: 'Miércoles 19:00',
+      modality: 'Presencial',
       description:
           'Club dedicado a literatura latinoamericana contemporánea y autores independientes.',
     ),
@@ -496,6 +499,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         book: currentClub.book,
         date: currentClub.date,
         description: currentClub.description,
+        modality: currentClub.modality,
       );
     });
   }
@@ -670,6 +674,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         reviews: _bookReviews,
         favorites: _favoriteBookIds,
         currentName: _profileName,
+        currentUsername: _profileUsername,
+        onOpenProfile: () => _selectTab(4),
         onStatusChanged: _changeBookStatus,
         onProgressChanged: _changeBookProgress,
         onReviewSaved: _saveBookReview,
@@ -680,7 +686,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
         currentUsername: _profileUsername,
         onStoriesChanged: _handleWriterStoriesChanged,
       ),
-      const MapsScreen(),
+      MapsScreen(
+        clubs: _clubs,
+        joinedClubIds: _joinedClubIds,
+      ),
       ProfileScreen(
         onOpenSettings: () {
           setState(() {
@@ -930,42 +939,89 @@ class _MainShellScreenState extends State<MainShellScreen> {
       onTap: () {
         _selectTab(index);
       },
-      borderRadius: BorderRadius.circular(25),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        height: 50,
-        decoration: BoxDecoration(
-          color: active ? AppColors.goldOf(context) : Colors.transparent,
-          borderRadius: BorderRadius.circular(25),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              active ? activeIcon : icon,
+      borderRadius: BorderRadius.circular(28),
+      child: SizedBox(
+        height: 58,
+        child: Center(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeOutBack,
+            width: active ? 68 : 42,
+            height: active ? 58 : 42,
+            decoration: BoxDecoration(
               color: active
-                  ? AppColors.deepOf(context)
-                  : AppColors.backgroundOf(context).withValues(alpha: 0.68),
-              size: 23,
+                  ? AppColors.goldOf(context)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(active ? 28 : 999),
+              boxShadow: active
+                  ? [
+                      BoxShadow(
+                        color: AppColors.goldOf(context)
+                            .withValues(alpha: 0.16),
+                        blurRadius: 13,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : const [],
             ),
-            if (active) ...[
-              const SizedBox(height: 2),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
-                  color: AppColors.deepOf(context),
-                  fontSize: 8,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ],
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              switchInCurve: Curves.easeOutBack,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(
+                      begin: 0.88,
+                      end: 1,
+                    ).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeOutBack,
+                      ),
+                    ),
+                    child: child,
+                  ),
+                );
+              },
+              child: active
+                  ? Column(
+                      key: ValueKey('active-$index'),
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          activeIcon,
+                          color: AppColors.deepOf(context),
+                          size: 24,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.inter(
+                            color: AppColors.deepOf(context),
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Icon(
+                      icon,
+                      key: ValueKey('inactive-$index'),
+                      color: AppColors.backgroundOf(context)
+                          .withValues(alpha: 0.68),
+                      size: 22,
+                    ),
+            ),
+          ),
         ),
       ),
     );
   }
+
 }
 
 

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../widgets/profile_privacy_store.dart';
 import '../../../clubs/models/reading_club.dart';
 import '../../../home/presentation/screens/home_screen.dart';
 import '../../../library/presentation/screens/library_screen.dart';
@@ -89,7 +90,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Color get _deepSurfaceColor =>
       _isDarkMode ? AppColors.darkDeep : AppColors.deep;
 
-  final ScrollController _moodController = ScrollController();
+  Color get _goldColor =>
+      _isDarkMode ? AppColors.darkGold : AppColors.gold;
+
+  Color get _accentColor =>
+      _isDarkMode ? AppColors.darkAccent : AppColors.accent;
 
   String _selectedTab = 'favoritos';
   int _quoteIndex = 0;
@@ -202,15 +207,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<LibraryBook> get _favoriteBooks =>
       widget.books.where((book) => widget.favorites.contains(book.id)).toList();
 
-  int get _favoriteCount =>
-      _favoriteBooks.length + widget.favoriteCommunityStories.length;
+  List<Object> get _favoriteShelfItems => <Object>[
+        ..._favoriteBooks,
+        ...widget.favoriteCommunityStories,
+      ];
+
+  int get _favoriteCount => _favoriteShelfItems.length;
 
   List<ReadingClub> get _joinedClubs => widget.clubs
       .where((club) => widget.joinedClubIds.contains(club.id))
       .toList();
 
-  int get _followerCount => 142 - _blockedUsers.length;
-  int get _followingCount => 89;
+  int get _followerCount =>
+      139 +
+      _followers
+          .where((user) => !_blockedUsers.contains(user['user']))
+          .length;
+
+  int get _followingCount =>
+      87 +
+      _following
+          .where((user) => !_blockedUsers.contains(user['user']))
+          .length;
   int get _booksReadThisYear => _readBooks.length;
 
   Map<String, int> get _genreCounts {
@@ -225,12 +243,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final entries = _genreCounts.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     return entries.take(4).toList();
-  }
-
-  @override
-  void dispose() {
-    _moodController.dispose();
-    super.dispose();
   }
 
   @override
@@ -269,13 +281,56 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Row(
       children: [
         Expanded(
-          child: Text(
-            'MI PERFIL LITERARIO',
-            style: GoogleFonts.cinzel(
-              color: _headingColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
+          child: ValueListenableBuilder<bool>(
+            valueListenable: ProfilePrivacyStore.isPrivate,
+            builder: (context, isPrivate, _) {
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      'MI PERFIL LITERARIO',
+                      style: GoogleFonts.cinzel(
+                        color: _headingColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 220),
+                    transitionBuilder: (child, animation) {
+                      return FadeTransition(
+                        opacity: animation,
+                        child: ScaleTransition(
+                          scale: Tween<double>(
+                            begin: 0.86,
+                            end: 1,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOutBack,
+                            ),
+                          ),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Icon(
+                      isPrivate
+                          ? Icons.lock_rounded
+                          : Icons.lock_open_rounded,
+                      key: ValueKey<bool>(isPrivate),
+                      size: 16,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey.shade500
+                          : Colors.grey.shade600,
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ),
         InkWell(
@@ -543,113 +598,224 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-            decoration: BoxDecoration(
-              color: _backgroundColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.gold.withValues(alpha: 0.35)),
-            ),
-            child: Row(
-              children: [
-                Text(
-                  _currentMood['emoji']!,
-                  style: const TextStyle(fontSize: 21),
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _currentMood['label']!,
-                        style: GoogleFonts.merriweather(
-                          color: _textPrimaryColor,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _currentMood['detail']!,
-                        style: GoogleFonts.inter(
-                          color: _textSecondaryColor,
-                          fontSize: 7.5,
-                        ),
-                      ),
-                    ],
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.985, end: 1).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
                   ),
+                  child: child,
                 ),
-              ],
+              );
+            },
+            child: Container(
+              key: ValueKey<String>(
+                '${_currentMood['emoji']}-${_currentMood['label']}-$_moodIndex',
+              ),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+              decoration: BoxDecoration(
+                color: _backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.gold.withValues(alpha: 0.35),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    _currentMood['emoji']!,
+                    style: const TextStyle(fontSize: 21),
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _currentMood['label']!,
+                          style: GoogleFonts.merriweather(
+                            color: _textPrimaryColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _currentMood['detail']!,
+                          style: GoogleFonts.inter(
+                            color: _textSecondaryColor,
+                            fontSize: 7.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 9),
-          Row(
-            children: [
-              _moodArrow(Icons.chevron_left_rounded, -1),
-              const SizedBox(width: 7),
-              Expanded(
-                child: SizedBox(
-                  height: 72,
-                  child: ListView.separated(
-                    controller: _moodController,
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _moods.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 7),
-                    itemBuilder: (context, index) => _moodOption(index),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 7),
-              _moodArrow(Icons.chevron_right_rounded, 1),
-            ],
-          ),
+          _buildMoodCarousel(),
         ],
       ),
     );
   }
 
-  Widget _moodArrow(IconData icon, int direction) {
-    return InkWell(
-      onTap: () => _changeMood(direction),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        width: 30,
-        height: 30,
-        decoration: BoxDecoration(
-          color: _deepSurfaceColor,
-          shape: BoxShape.circle,
-          border: Border.all(color: AppColors.gold.withValues(alpha: 0.55)),
+  Widget _buildMoodCarousel() {
+    final nextIndex = (_moodIndex + 1) % _moods.length;
+
+    return Column(
+      children: [
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 320),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          layoutBuilder: (currentChild, previousChildren) {
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                ...previousChildren,
+                ?currentChild,
+              ],
+            );
+          },
+          transitionBuilder: (child, animation) {
+            final slide = Tween<Offset>(
+              begin: const Offset(0.055, 0),
+              end: Offset.zero,
+            ).animate(
+              CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              ),
+            );
+
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: slide,
+                child: child,
+              ),
+            );
+          },
+          child: Row(
+            key: ValueKey<int>(_moodIndex),
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _moodArrow(Icons.chevron_left_rounded, -1),
+              const SizedBox(width: 7),
+              Expanded(
+                flex: 10,
+                child: _moodOption(_moodIndex, selectedOverride: true),
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                flex: 9,
+                child: _moodOption(nextIndex, selectedOverride: false),
+              ),
+              const SizedBox(width: 7),
+              _moodArrow(Icons.chevron_right_rounded, 1),
+            ],
+          ),
         ),
-        child: Icon(icon, color: AppColors.gold, size: 18),
+        const SizedBox(height: 9),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(_moods.length, (index) {
+            final selected = index == _moodIndex;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: selected ? 7 : 5,
+              height: selected ? 7 : 5,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: selected
+                    ? _deepSurfaceColor
+                    : AppColors.gold.withValues(alpha: 0.34),
+              ),
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _moodArrow(IconData icon, int direction) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _changeMood(direction),
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: _deepSurfaceColor,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.gold.withValues(alpha: 0.55),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: _isDarkMode ? 0.16 : 0.07),
+                blurRadius: 7,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Icon(icon, color: AppColors.gold, size: 18),
+        ),
       ),
     );
   }
 
-  Widget _moodOption(int index) {
+  Widget _moodOption(int index, {bool? selectedOverride}) {
     final mood = _moods[index];
-    final selected = index == _moodIndex;
+    final selected = selectedOverride ?? index == _moodIndex;
+
     return InkWell(
       onTap: () => _selectMood(index),
       borderRadius: BorderRadius.circular(11),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 170),
-        width: 116,
-        padding: const EdgeInsets.all(7),
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOutCubic,
+        height: 72,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: selected ? _deepSurfaceColor : _backgroundColor,
           borderRadius: BorderRadius.circular(11),
           border: Border.all(
             color: selected
-                ? AppColors.gold
+                ? AppColors.gold.withValues(alpha: 0.88)
                 : AppColors.gold.withValues(alpha: 0.30),
           ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                      alpha: _isDarkMode ? 0.14 : 0.055,
+                    ),
+                    blurRadius: 9,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
         ),
         child: Row(
           children: [
             Text(mood['emoji']!, style: const TextStyle(fontSize: 17)),
-            const SizedBox(width: 6),
+            const SizedBox(width: 7),
             Expanded(
               child: Text(
                 mood['label']!,
@@ -657,7 +823,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.inter(
                   color: selected ? AppColors.background : _textPrimaryColor,
-                  fontSize: 7.5,
+                  fontSize: 7.3,
+                  height: 1.28,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -669,116 +836,225 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _changeMood(int direction) {
-    final next = (_moodIndex + direction).clamp(0, _moods.length - 1).toInt();
+    final next = (_moodIndex + direction + _moods.length) % _moods.length;
     _selectMood(next);
   }
 
   void _selectMood(int index) {
+    if (index == _moodIndex) return;
     setState(() => _moodIndex = index);
-    if (_moodController.hasClients) {
-      final target = (index * 123.0)
-          .clamp(0.0, _moodController.position.maxScrollExtent)
-          .toDouble();
-      _moodController.animateTo(
-        target,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
-    }
   }
 
-  void _showCustomMoodEditor() {
+  Future<void> _showCustomMoodEditor() async {
     final emojiController = TextEditingController(text: _customMoodEmoji);
     final labelController = TextEditingController(text: _customMoodLabel);
     final detailController = TextEditingController(text: _customMoodDetail);
 
-    showModalBottomSheet<void>(
+    await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: _backgroundColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-      ),
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.56),
       builder: (sheetContext) {
+        final bottomInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
+
         return Padding(
-          padding: EdgeInsets.fromLTRB(
-            18,
-            18,
-            18,
-            MediaQuery.viewInsetsOf(sheetContext).bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'ESTADO PERSONALIZADO',
-                style: GoogleFonts.cinzel(
-                  color: _headingColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
+          padding: EdgeInsets.only(bottom: bottomInset),
+          child: TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 340),
+            curve: Curves.easeOutCubic,
+            tween: Tween<double>(begin: 0.965, end: 1),
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: value,
+                alignment: Alignment.bottomCenter,
+                child: child,
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+              decoration: BoxDecoration(
+                color: _surfaceColor,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppColors.gold.withValues(alpha: 0.42),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: emojiController,
-                decoration: const InputDecoration(
-                  labelText: 'Emoji',
-                  hintText: '✨',
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: labelController,
-                decoration: const InputDecoration(
-                  labelText: 'Estado',
-                  hintText: 'Ej. En modo maratón lectora',
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: detailController,
-                decoration: const InputDecoration(
-                  labelText: 'Detalle',
-                  hintText: 'Cuéntales qué estás leyendo o cómo te sientes',
-                ),
-              ),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () {
-                    final label = labelController.text.trim();
-                    if (label.isEmpty) return;
-                    setState(() {
-                      _customMoodEmoji = emojiController.text.trim().isEmpty
-                          ? '✨'
-                          : emojiController.text.trim();
-                      _customMoodLabel = label;
-                      _customMoodDetail = detailController.text.trim().isEmpty
-                          ? 'Estado lector personalizado'
-                          : detailController.text.trim();
-                      _moodIndex = _moods.length - 1;
-                    });
-                    Navigator.of(sheetContext).pop();
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: AppColors.background,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(
+                      alpha: _isDarkMode ? 0.32 : 0.16,
+                    ),
+                    blurRadius: 28,
+                    offset: const Offset(0, -6),
                   ),
-                  child: const Text('Guardar estado'),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: _textSecondaryColor.withValues(alpha: 0.28),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                      ),
+                      const SizedBox(height: 15),
+                      Icon(
+                        Icons.auto_awesome_rounded,
+                        color: AppColors.gold,
+                        size: 20,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'ESTADO PERSONALIZADO',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.cinzel(
+                          color: _headingColor,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.25,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        'Crea un estado lector único para tu perfil',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          color: _textSecondaryColor,
+                          fontSize: 8.5,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      _customMoodField(
+                        controller: emojiController,
+                        label: 'Emoji',
+                        hintText: '✨',
+                        maxLength: 2,
+                      ),
+                      const SizedBox(height: 10),
+                      _customMoodField(
+                        controller: labelController,
+                        label: 'Estado',
+                        hintText: 'Mi propio estado',
+                      ),
+                      const SizedBox(height: 10),
+                      _customMoodField(
+                        controller: detailController,
+                        label: 'Detalle',
+                        hintText: 'Una lectura a mi manera',
+                        maxLines: 2,
+                      ),
+                      const SizedBox(height: 17),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: FilledButton(
+                          onPressed: () {
+                            final label = labelController.text.trim();
+                            if (label.isEmpty) return;
+
+                            setState(() {
+                              _customMoodEmoji = emojiController.text.trim().isEmpty
+                                  ? '✨'
+                                  : emojiController.text.trim();
+                              _customMoodLabel = label;
+                              _customMoodDetail = detailController.text.trim().isEmpty
+                                  ? 'Estado lector personalizado'
+                                  : detailController.text.trim();
+                              _moodIndex = _moods.length - 1;
+                            });
+
+                            Navigator.of(sheetContext).pop();
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.accent,
+                            foregroundColor: AppColors.background,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                          ),
+                          child: Text(
+                            'Guardar estado',
+                            style: GoogleFonts.inter(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
+            ),
           ),
         );
       },
-    ).whenComplete(() {
-      emojiController.dispose();
-      labelController.dispose();
-      detailController.dispose();
-    });
+    );
+
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    emojiController.dispose();
+    labelController.dispose();
+    detailController.dispose();
+  }
+
+  Widget _customMoodField({
+    required TextEditingController controller,
+    required String label,
+    required String hintText,
+    int maxLines = 1,
+    int? maxLength,
+  }) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      maxLength: maxLength,
+      style: GoogleFonts.inter(
+        color: _textPrimaryColor,
+        fontSize: 10.5,
+      ),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hintText,
+        counterText: '',
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        labelStyle: GoogleFonts.inter(
+          color: _textSecondaryColor,
+          fontSize: 8.5,
+        ),
+        hintStyle: GoogleFonts.inter(
+          color: _textSecondaryColor.withValues(alpha: 0.72),
+          fontSize: 9.5,
+        ),
+        filled: true,
+        fillColor: _backgroundColor,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 13,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: AppColors.gold.withValues(alpha: 0.48),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(
+            color: AppColors.gold.withValues(alpha: 0.95),
+            width: 1.25,
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildClubsCard() {
@@ -860,8 +1136,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                         ),
-                        TextButton(
-                          onPressed: () => widget.onToggleClub(club.id),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            TextButton(
+                              onPressed: () => _showClubDetails(club),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.gold,
+                                padding: const EdgeInsets.symmetric(horizontal: 6),
+                                minimumSize: const Size(0, 28),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                textStyle: GoogleFonts.inter(
+                                  fontSize: 7,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              child: const Text('Ver'),
+                            ),
+                            TextButton(
+                              onPressed: () => widget.onToggleClub(club.id),
                           style: TextButton.styleFrom(
                             foregroundColor: AppColors.accent,
                             padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -872,7 +1165,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          child: const Text('Salir'),
+                              child: const Text('Salir'),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -893,12 +1188,379 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Modalidad: ${club.modality}',
+                      style: GoogleFonts.inter(
+                        color: _textSecondaryColor,
+                        fontSize: 7,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               );
             }),
         ],
       ),
+    );
+  }
+
+  Map<String, String> _clubExtraData(ReadingClub club) {
+    switch (club.id) {
+      case 1:
+        return {
+          'author': '@mariaPaz200',
+          'instagram': '@adictosclasicos',
+          'facebook': 'Adictos a los Clásicos',
+          'x': '@adictosclasicos_x',
+        };
+      case 2:
+        return {
+          'author': '@valencruz',
+          'instagram': '@mansiongotica',
+          'facebook': 'Mansión Gótica',
+          'x': '@mansiongotica_club',
+        };
+      case 3:
+        return {
+          'author': '@marcoibanez17',
+          'instagram': '@plumasdelsur',
+          'facebook': 'Plumas del Sur',
+          'x': '@plumasdelsur',
+        };
+      default:
+        return {
+          'author': '@capitulo0',
+          'instagram': '@capitulo0',
+          'facebook': 'Capítulo 0',
+          'x': '@capitulo0',
+        };
+    }
+  }
+
+  void _showClubDetails(ReadingClub club) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _backgroundColor,
+      useSafeArea: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        final id = club.id;
+        final extra = _clubExtraData(club);
+
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final joined = widget.joinedClubIds.contains(id);
+
+            ReadingClub currentClub = club;
+            for (final candidate in widget.clubs) {
+              if (candidate.id == id) {
+                currentClub = candidate;
+                break;
+              }
+            }
+
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.58,
+              minChildSize: 0.38,
+              maxChildSize: 0.84,
+              builder: (context, scrollController) {
+                return Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.fromLTRB(18, 4, 18, 14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'DETALLE DEL CLUB',
+                              style: GoogleFonts.cinzel(
+                                color: _textPrimaryColor,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.25,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(13),
+                              decoration: BoxDecoration(
+                                color: _surfaceColor,
+                                borderRadius: BorderRadius.circular(13),
+                                border: Border.all(
+                                  color: AppColors.gold,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    currentClub.name,
+                                    style: GoogleFonts.merriweather(
+                                      color: _textPrimaryColor,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    currentClub.description,
+                                    style: GoogleFonts.inter(
+                                      color: _textPrimaryColor,
+                                      fontSize: 9.2,
+                                      height: 1.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Autor/a del club: ',
+                                        style: GoogleFonts.inter(
+                                          color: _textSecondaryColor,
+                                          fontSize: 8,
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          extra['author']!,
+                                          style: GoogleFonts.inter(
+                                            color: AppColors.accent,
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.w700,
+                                            decoration:
+                                                TextDecoration.underline,
+                                            decorationColor:
+                                                AppColors.accent,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 7),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.calendar_month_outlined,
+                                        color: AppColors.accent,
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Expanded(
+                                        child: Text(
+                                          'Debate: ${currentClub.date}',
+                                          style: GoogleFonts.inter(
+                                            color: _textSecondaryColor,
+                                            fontSize: 8,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.groups_2_outlined,
+                                        color: _deepSurfaceColor,
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        '${currentClub.members} lectores',
+                                        style: GoogleFonts.inter(
+                                          color: _textSecondaryColor,
+                                          fontSize: 8,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        currentClub.modality.toLowerCase() ==
+                                                'online'
+                                            ? Icons.language_rounded
+                                            : Icons.location_on_outlined,
+                                        color: _deepSurfaceColor,
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        'Modalidad: ${currentClub.modality}',
+                                        style: GoogleFonts.inter(
+                                          color: _textSecondaryColor,
+                                          fontSize: 8,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 11),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.fromLTRB(
+                                13,
+                                12,
+                                13,
+                                8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _surfaceColor,
+                                borderRadius: BorderRadius.circular(13),
+                                border: Border.all(
+                                  color: AppColors.gold.withValues(alpha: 0.28),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'REDES SOCIALES',
+                                    style: GoogleFonts.cinzel(
+                                      color: _textPrimaryColor,
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _clubSocialRow(
+                                    icon: Icons.photo_camera_outlined,
+                                    label: 'Instagram:',
+                                    value: extra['instagram']!,
+                                  ),
+                                  _clubSocialDivider(),
+                                  _clubSocialRow(
+                                    icon: Icons.facebook_outlined,
+                                    label: 'Facebook:',
+                                    value: extra['facebook']!,
+                                  ),
+                                  _clubSocialDivider(),
+                                  _clubSocialRow(
+                                    icon: Icons.close_rounded,
+                                    label: 'X:',
+                                    value: extra['x']!,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+                      decoration: BoxDecoration(
+                        color: _backgroundColor,
+                        border: Border(
+                          top: BorderSide(
+                            color: AppColors.gold.withValues(alpha: 0.16),
+                          ),
+                        ),
+                      ),
+                      child: SizedBox(
+                        height: 42,
+                        child: FilledButton(
+                          onPressed: () {
+                            widget.onToggleClub(id);
+                            setSheetState(() {});
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: joined
+                                ? AppColors.surfaceSoftOf(context)
+                                : AppColors.accent,
+                            foregroundColor: joined
+                                ? _textPrimaryColor
+                                : AppColors.background,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            side: joined
+                                ? BorderSide(
+                                    color:
+                                        AppColors.gold.withValues(alpha: 0.55),
+                                  )
+                                : BorderSide.none,
+                          ),
+                          child: Text(
+                            joined ? 'Salir del club' : 'Unirme al club',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _clubSocialRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: _textSecondaryColor,
+            size: 13,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              color: _textSecondaryColor,
+              fontSize: 8,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              value,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                color: AppColors.accent,
+                fontSize: 8,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _clubSocialDivider() {
+    return Divider(
+      height: 1,
+      color: AppColors.gold.withValues(alpha: 0.14),
     );
   }
 
@@ -1346,184 +2008,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildFavorites() {
-    if (_favoriteCount == 0) {
+    if (_favoriteShelfItems.isEmpty) {
       return _emptyCard('Todavía no tienes favoritos.');
     }
 
-    final items = <Widget>[
-      ..._favoriteBooks.map(_favoriteBookCard),
-      ...widget.favoriteCommunityStories.map(
-        _favoriteCommunityStoryCard,
-      ),
-    ];
-
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      childAspectRatio: 0.72,
-      crossAxisSpacing: 9,
-      mainAxisSpacing: 9,
-      children: items,
-    );
-  }
-
-  Widget _favoriteBookCard(LibraryBook book) {
-    final review = widget.reviews[book.id];
-
-    return InkWell(
-      onTap: () => _openBookDetail(book),
-      borderRadius: BorderRadius.circular(13),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: _surfaceColor,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(
-            color: AppColors.gold.withValues(alpha: 0.38),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Image.network(
-                    book.cover,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => Container(
-                      color: _deepSurfaceColor,
-                      child: const Icon(
-                        Icons.menu_book,
-                        color: AppColors.gold,
+    return _sectionCard(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'MI ESTANTE FAVORITO',
+                      style: GoogleFonts.cinzel(
+                        color: _headingColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Todos tus favoritos, tanto libros como obras de la comunidad, se guardan automáticamente aquí.',
+                      style: GoogleFonts.inter(
+                        color: _textSecondaryColor,
+                        fontSize: 7,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$_favoriteCount favoritos',
+                    style: GoogleFonts.inter(
+                      color: AppColors.accent,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  TextButton(
+                    onPressed: _showExpandedFavoriteShelf,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.accent,
+                      backgroundColor:
+                          AppColors.accent.withValues(alpha: 0.08),
+                      minimumSize: const Size(0, 26),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Text(
+                      'Ver estante',
+                      style: GoogleFonts.inter(
+                        fontSize: 7,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ),
-            const SizedBox(height: 7),
-            Text(
-              book.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.merriweather(
-                color: _textPrimaryColor,
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              book.author,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                color: _textSecondaryColor,
-                fontSize: 7,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              review == null ? '♥ Favorito' : '★ ${review.rating}/5',
-              style: GoogleFonts.inter(
-                color: AppColors.accent,
-                fontSize: 7.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _favoriteCommunityStoryCard(WriterStory story) {
-    return InkWell(
-      onTap: () => _openFavoriteCommunityStory(story),
-      borderRadius: BorderRadius.circular(13),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: _surfaceColor,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(
-            color: AppColors.gold.withValues(alpha: 0.38),
+            ],
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: _deepSurfaceColor,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                alignment: Alignment.center,
-                child: Padding(
-                  padding: const EdgeInsets.all(10),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.auto_stories_rounded,
-                        color: AppColors.gold,
-                        size: 28,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        story.title.toUpperCase(),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.cinzel(
-                          color: AppColors.background,
-                          fontSize: 7,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 7),
-            Text(
-              story.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.merriweather(
-                color: _textPrimaryColor,
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              story.genre,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                color: _textSecondaryColor,
-                fontSize: 7,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '♥ Favorito · Comunidad',
-              style: GoogleFonts.inter(
-                color: AppColors.accent,
-                fontSize: 7.2,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
+          const SizedBox(height: 10),
+          _buildShelfVisual(
+            compact: true,
+            sourceItems: _favoriteShelfItems,
+          ),
+        ],
       ),
     );
   }
@@ -1761,8 +2324,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildShelfVisual({required bool compact}) {
-    final books = _readBooks;
+  Widget _buildShelfVisual({
+    required bool compact,
+    List<Object>? sourceItems,
+  }) {
+    final books = sourceItems ?? _readBooks.cast<Object>();
     final rowCount = compact ? 2 : 4;
     final perRow = compact ? 5 : 6;
     final maxBooks = rowCount * perRow;
@@ -1826,7 +2392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 final end = (start + perRow).clamp(0, visibleBooks.length);
                 final rowBooks = start < visibleBooks.length
                     ? visibleBooks.sublist(start, end)
-                    : <LibraryBook>[];
+                    : <Object>[];
 
                 return Padding(
                   padding: EdgeInsets.only(
@@ -1869,7 +2435,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildShelfRow({
-    required List<LibraryBook> books,
+    required List<Object> books,
     required bool compact,
     required int rowIndex,
     required int globalStartIndex,
@@ -1981,7 +2547,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _shelfSpine(
-    LibraryBook book, {
+    Object item, {
     required int index,
     required bool compact,
   }) {
@@ -2000,15 +2566,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
       Color(0xFF9E5A49),
     ];
 
+    final String title;
+    final VoidCallback onTap;
+
+    if (item is LibraryBook) {
+      title = item.title;
+      onTap = () => _openBookDetail(item);
+    } else if (item is WriterStory) {
+      title = item.title;
+      onTap = () => _openFavoriteCommunityStory(item);
+    } else {
+      title = 'Favorito';
+      onTap = () {};
+    }
+
     final color = colors[index % colors.length];
     final width = compact ? 17.0 + (index % 3) : 21.0 + (index % 3) * 1.5;
-    final height = compact ? 53.0 + (index % 4) * 6 : 76.0 + (index % 4) * 8;
+    final height =
+        compact ? 53.0 + (index % 4) * 6 : 76.0 + (index % 4) * 8;
     final lightText = color.computeLuminance() < 0.48;
 
     return Tooltip(
-      message: book.title,
+      message: title,
       child: InkWell(
-        onTap: () => _openBookDetail(book),
+        onTap: onTap,
         borderRadius: BorderRadius.circular(2),
         child: Container(
           width: width,
@@ -2058,7 +2639,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 3),
                     child: Text(
-                      book.title.toUpperCase(),
+                      title.toUpperCase(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
@@ -2185,6 +2766,136 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showExpandedFavoriteShelf() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: _backgroundColor,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SizedBox(
+          height: MediaQuery.sizeOf(sheetContext).height * 0.92,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+            child: Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'MI BIBLIOTECA PERSONAL',
+                            style: GoogleFonts.inter(
+                              color: _textSecondaryColor,
+                              fontSize: 7.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'MIS FAVORITOS',
+                            style: GoogleFonts.cinzel(
+                              color: _headingColor,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Todos tus libros y obras favoritas, reunidos en un solo estante.',
+                            style: GoogleFonts.merriweather(
+                              color: _textSecondaryColor,
+                              fontSize: 8,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: () => Navigator.of(sheetContext).pop(),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF8A5939),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(0, 32),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                      ),
+                      child: Text(
+                        'Confirmar',
+                        style: GoogleFonts.inter(
+                          fontSize: 7,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0E0D0),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: const Color(0xFFD4B18F),
+                          width: 0.7,
+                        ),
+                      ),
+                      child: Text(
+                        '$_favoriteCount favoritos guardados',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF8C5A37),
+                          fontSize: 6.8,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Toca un lomo para abrir el libro.',
+                      style: GoogleFonts.inter(
+                        color: _textSecondaryColor,
+                        fontSize: 6.5,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: _favoriteShelfItems.isEmpty
+                        ? _emptyCard(
+                            'Cuando marques algo como favorito, aparecerá aquí.',
+                          )
+                        : _buildShelfVisual(
+                            compact: false,
+                            sourceItems: _favoriteShelfItems,
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -2721,13 +3432,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _showSocialList(String title, List<Map<String, String>> users) {
+    final isFollowers = title == 'Seguidores';
+
     showModalBottomSheet<void>(
       context: context,
       useSafeArea: true,
-      backgroundColor: _backgroundColor,
+      backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
       builder: (sheetContext) {
         return StatefulBuilder(
@@ -2735,83 +3449,592 @@ class _ProfileScreenState extends State<ProfileScreen> {
             final visibleUsers = users
                 .where((user) => !_blockedUsers.contains(user['user']))
                 .toList();
-            return SizedBox(
-              height: MediaQuery.sizeOf(sheetContext).height * 0.68,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                child: Column(
-                  children: [
-                    Row(
+
+            return Container(
+              height: MediaQuery.sizeOf(sheetContext).height * 0.70,
+              decoration: BoxDecoration(
+                color: _backgroundColor,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(26)),
+                border: Border(
+                  top: BorderSide(
+                    color: _goldColor.withValues(alpha: 0.35),
+                  ),
+                ),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 9),
+                  Container(
+                    width: 38,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: _textSecondaryColor.withValues(alpha: 0.28),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 12, 12),
+                    child: Row(
                       children: [
-                        Expanded(
-                          child: Text(
-                            title.toUpperCase(),
-                            style: GoogleFonts.cinzel(
-                              color: _headingColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: _deepSurfaceColor,
+                            border: Border.all(
+                              color: _goldColor.withValues(alpha: 0.35),
                             ),
+                          ),
+                          child: Icon(
+                            isFollowers
+                                ? Icons.people_outline_rounded
+                                : Icons.person_add_alt_1_rounded,
+                            color: _goldColor,
+                            size: 17,
+                          ),
+                        ),
+                        const SizedBox(width: 11),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                title.toUpperCase(),
+                                style: GoogleFonts.cinzel(
+                                  color: _headingColor,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.4,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isFollowers
+                                    ? 'Personas que siguen tu perfil literario'
+                                    : 'Perfiles que sigues actualmente',
+                                style: GoogleFonts.inter(
+                                  color: _textSecondaryColor,
+                                  fontSize: 8,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         IconButton(
+                          tooltip: 'Cerrar',
                           onPressed: () => Navigator.of(sheetContext).pop(),
-                          icon: const Icon(Icons.close_rounded),
+                          icon: Icon(
+                            Icons.close_rounded,
+                            color: _textPrimaryColor,
+                            size: 21,
+                          ),
                         ),
                       ],
                     ),
-                    Expanded(
-                      child: ListView.separated(
-                        itemCount: visibleUsers.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final user = visibleUsers[index];
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            leading: CircleAvatar(
-                              backgroundColor: _deepSurfaceColor,
-                              foregroundColor: AppColors.gold,
-                              child: Text(user['initial']!),
-                            ),
-                            title: Text(
-                              user['name']!,
-                              style: GoogleFonts.merriweather(
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
+                  ),
+                  Divider(
+                    height: 1,
+                    color: _goldColor.withValues(alpha: 0.16),
+                  ),
+                  Expanded(
+                    child: visibleUsers.isEmpty
+                        ? Center(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 30),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    isFollowers
+                                        ? Icons.people_outline_rounded
+                                        : Icons.person_outline_rounded,
+                                    size: 36,
+                                    color: _goldColor.withValues(alpha: 0.75),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    isFollowers
+                                        ? 'No tienes seguidores visibles.'
+                                        : 'No estás siguiendo perfiles visibles.',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.inter(
+                                      color: _textSecondaryColor,
+                                      fontSize: 9,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            subtitle: Text(
-                              user['user']!,
-                              style: GoogleFonts.inter(fontSize: 7.5),
-                            ),
-                            onTap: () => _showPublicProfile(user),
-                            trailing: PopupMenuButton<String>(
-                              onSelected: (value) {
-                                if (value == 'block') {
-                                  setState(
-                                    () => _blockedUsers.add(user['user']!),
-                                  );
-                                  modalSetState(() {});
-                                }
-                              },
-                              itemBuilder: (_) => const [
-                                PopupMenuItem(
-                                  value: 'block',
-                                  child: Text('Bloquear'),
+                          )
+                        : ListView.separated(
+                            padding:
+                                const EdgeInsets.fromLTRB(14, 12, 14, 24),
+                            itemCount: visibleUsers.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: 8),
+                            itemBuilder: (context, index) {
+                              final user = visibleUsers[index];
+
+                              return Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(15),
+                                  onTap: () => _showPublicProfile(user),
+                                  child: Container(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      12,
+                                      10,
+                                      7,
+                                      10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _surfaceColor,
+                                      borderRadius: BorderRadius.circular(15),
+                                      border: Border.all(
+                                        color: _goldColor.withValues(
+                                          alpha: 0.22,
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 42,
+                                          height: 42,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: _deepSurfaceColor,
+                                            border: Border.all(
+                                              color: _goldColor.withValues(
+                                                alpha: 0.55,
+                                              ),
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            user['initial']!,
+                                            style: GoogleFonts.cinzel(
+                                              color: _goldColor,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 11),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                user['name']!,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style:
+                                                    GoogleFonts.merriweather(
+                                                  color: _textPrimaryColor,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                user['user']!,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: GoogleFonts.inter(
+                                                  color: _accentColor,
+                                                  fontSize: 8,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        IconButton(
+                                          tooltip: 'Más opciones',
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed: () async {
+                                            final blocked =
+                                                await _showSocialUserActions(
+                                              user,
+                                            );
+
+                                            if (blocked && mounted) {
+                                              setState(() {});
+                                              modalSetState(() {});
+                                            }
+                                          },
+                                          icon: Icon(
+                                            Icons.more_vert_rounded,
+                                            color: _textSecondaryColor,
+                                            size: 20,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          tooltip: isFollowers
+                                              ? 'Eliminar seguidor'
+                                              : 'Dejar de seguir',
+                                          visualDensity: VisualDensity.compact,
+                                          onPressed: () async {
+                                            final removed =
+                                                await _confirmRemoveSocialUser(
+                                              user: user,
+                                              isFollowers: isFollowers,
+                                            );
+
+                                            if (!removed || !mounted) {
+                                              return;
+                                            }
+
+                                            setState(() {
+                                              users.remove(user);
+                                            });
+                                            modalSetState(() {});
+                                          },
+                                          icon: Icon(
+                                            Icons.close_rounded,
+                                            color: _accentColor.withValues(
+                                              alpha: 0.78,
+                                            ),
+                                            size: 19,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
+                              );
+                            },
+                          ),
+                  ),
+                ],
               ),
             );
           },
         );
       },
     );
+  }
+
+  Future<bool> _showSocialUserActions(Map<String, String> user) async {
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.48),
+      isScrollControlled: true,
+      builder: (actionContext) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+            decoration: BoxDecoration(
+              color: _backgroundColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _goldColor.withValues(alpha: 0.28),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 24,
+                  offset: const Offset(0, 9),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 34,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: _textSecondaryColor.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const SizedBox(height: 13),
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _deepSurfaceColor,
+                        border: Border.all(
+                          color: _goldColor.withValues(alpha: 0.38),
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        user['initial']!,
+                        style: GoogleFonts.cinzel(
+                          color: _goldColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            user['name']!,
+                            style: GoogleFonts.merriweather(
+                              color: _textPrimaryColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            user['user']!,
+                            style: GoogleFonts.inter(
+                              color: _textSecondaryColor,
+                              fontSize: 8,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(13),
+                    onTap: () {
+                      Navigator.of(actionContext).pop(true);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 13,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _accentColor.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(13),
+                        border: Border.all(
+                          color: _accentColor.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 31,
+                            height: 31,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _accentColor.withValues(alpha: 0.11),
+                            ),
+                            child: Icon(
+                              Icons.block_rounded,
+                              color: _accentColor,
+                              size: 17,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Bloquear',
+                                  style: GoogleFonts.inter(
+                                    color: _accentColor,
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'No podrá interactuar contigo ni ver tu perfil.',
+                                  style: GoogleFonts.inter(
+                                    color: _textSecondaryColor,
+                                    fontSize: 7.5,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right_rounded,
+                            color: _accentColor,
+                            size: 19,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (result != true || !mounted) {
+      return false;
+    }
+
+    setState(() {
+      _blockedUsers.add(user['user']!);
+    });
+
+    _showMessage('${user['user']} fue bloqueado.');
+    return true;
+  }
+
+  Future<bool> _confirmRemoveSocialUser({
+    required Map<String, String> user,
+    required bool isFollowers,
+  }) async {
+    final username = user['user'] ?? '@usuario';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 390),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+            decoration: BoxDecoration(
+              color: _backgroundColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _goldColor.withValues(alpha: 0.42),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.20),
+                  blurRadius: 28,
+                  offset: const Offset(0, 12),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _accentColor.withValues(alpha: 0.10),
+                    border: Border.all(
+                      color: _accentColor.withValues(alpha: 0.32),
+                    ),
+                  ),
+                  child: Icon(
+                    isFollowers
+                        ? Icons.person_remove_alt_1_rounded
+                        : Icons.person_off_outlined,
+                    color: _accentColor,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(height: 13),
+                Text(
+                  '¿Eliminar a $username?',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cinzel(
+                    color: _textPrimaryColor,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  isFollowers
+                      ? '$username no recibirá una notificación de que ya no te sigue.'
+                      : '$username no recibirá una notificación de que ya no lo sigues.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    color: _textSecondaryColor,
+                    fontSize: 9,
+                    height: 1.55,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop(false);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _textPrimaryColor,
+                            side: BorderSide(
+                              color: _goldColor.withValues(alpha: 0.38),
+                            ),
+                            backgroundColor:
+                                _surfaceColor.withValues(alpha: 0.48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancelar',
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: FilledButton(
+                          onPressed: () {
+                            Navigator.of(dialogContext).pop(true);
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _accentColor,
+                            foregroundColor: AppColors.background,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Eliminar',
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    return confirmed == true;
   }
 
   void _showPublicProfile(Map<String, String> user) {
