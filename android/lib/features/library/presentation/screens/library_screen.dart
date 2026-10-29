@@ -111,6 +111,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String _view = 'libros';
   String _filter = 'leyendo';
   String _query = '';
+  bool _showFinishSuccess = false;
 
   final List<_PersonalLibraryList> _personalLists = <_PersonalLibraryList>[];
 
@@ -170,6 +171,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
               _buildSearch(),
               const SizedBox(height: 10),
               _buildCounters(),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: _showFinishSuccess
+                    ? Padding(
+                        key: const ValueKey('finish-success'),
+                        padding: const EdgeInsets.only(top: 10),
+                        child: _buildFinishSuccessMessage(),
+                      )
+                    : const SizedBox.shrink(
+                        key: ValueKey('finish-success-empty'),
+                      ),
+              ),
               const SizedBox(height: 12),
               if (_filteredBooks.isEmpty)
                 _buildEmptyState()
@@ -748,7 +763,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
               onTap: () {
                 widget.onProgressChanged(book.id, 100);
                 widget.onStatusChanged(book.id, BookStatus.leido);
-                setState(() {});
+
+                setState(() {
+                  _showFinishSuccess = true;
+                });
+
+                Future<void>.delayed(
+                  const Duration(milliseconds: 2500),
+                  () {
+                    if (!mounted) return;
+
+                    setState(() {
+                      _showFinishSuccess = false;
+                    });
+                  },
+                );
               },
             ),
           ),
@@ -759,6 +788,69 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return _secondaryButton(
       label: review == null ? 'Calificar y reseñar' : 'Ver / editar reseña',
       onTap: () => _openReviewEditor(book),
+    );
+  }
+
+  Widget _buildFinishSuccessMessage() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 13,
+        vertical: 11,
+      ),
+      decoration: BoxDecoration(
+        color: isDark
+            ? const Color(0xFF283125)
+            : const Color(0xFFF4F7EE),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFF78935F).withValues(alpha: 0.72),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: const BoxDecoration(
+              color: Color(0xFF708A56),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.check_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Text(
+              'Libro finalizado correctamente',
+              style: GoogleFonts.merriweather(
+                color: isDark
+                    ? const Color(0xFFE7EEDC)
+                    : const Color(0xFF3F4F33),
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Icon(
+            Icons.auto_stories_rounded,
+            color: AppColors.gold.withValues(alpha: 0.76),
+            size: 20,
+          ),
+        ],
+      ),
     );
   }
 

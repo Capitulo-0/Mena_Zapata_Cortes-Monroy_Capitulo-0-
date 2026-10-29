@@ -2000,23 +2000,53 @@ class HomeScreenState extends State<HomeScreen> {
                             ],
                           )
                         else
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.check_circle_outline_rounded,
-                                size: 15,
-                                color: _gold,
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF4F7EE),
+                              borderRadius: BorderRadius.circular(11),
+                              border: Border.all(
+                                color: const Color(0xFF78935F)
+                                    .withValues(alpha: 0.68),
                               ),
-                              const SizedBox(width: 5),
-                              Text(
-                                'Lectura finalizada',
-                                style: GoogleFonts.inter(
-                                  color: _textSecondary,
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.w600,
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 26,
+                                  height: 26,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF708A56),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.check_rounded,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Libro finalizado correctamente',
+                                    style: GoogleFonts.merriweather(
+                                      color: const Color(0xFF3F4F33),
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.auto_stories_rounded,
+                                  color: _gold.withValues(alpha: 0.78),
+                                  size: 16,
+                                ),
+                              ],
+                            ),
                           ),
                       ],
                     ),
