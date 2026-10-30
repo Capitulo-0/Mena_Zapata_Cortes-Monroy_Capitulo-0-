@@ -37,10 +37,14 @@ class MapsScreen extends StatefulWidget {
     super.key,
     required this.clubs,
     required this.joinedClubIds,
+    required this.currentUsername,
+    required this.currentName,
   });
 
   final List<ReadingClub> clubs;
   final Set<int> joinedClubIds;
+  final String currentUsername;
+  final String currentName;
 
   @override
   State<MapsScreen> createState() => _MapsScreenState();
@@ -327,11 +331,26 @@ class _MapsScreenState extends State<MapsScreen> {
           ),
           const SizedBox(height: 2),
           Text(
-            'Bibliotecas, cafeterías, ferias y eventos literarios cerca de ti.',
-            style: GoogleFonts.inter(
-              fontSize: 9,
+            'Bibliotecas, cafeterías, ferias y eventos literarios cerca de ti,',
+            style: GoogleFonts.merriweather(
+              fontSize: 8,
+              fontStyle: FontStyle.italic,
               fontWeight: FontWeight.w400,
-              color: theme.colorScheme.onSurfaceVariant,
+              color: theme.colorScheme.onSurfaceVariant.withValues(
+                alpha: 0.78,
+              ),
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            '${widget.currentName.trim().toUpperCase()} ✦',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.cinzel(
+              fontSize: 8,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+              color: theme.colorScheme.onSurface,
             ),
           ),
         ],
@@ -499,79 +518,318 @@ class _MapsScreenState extends State<MapsScreen> {
 
   Widget _buildWebDevelopmentView(BuildContext context) {
     final theme = Theme.of(context);
+    final gold = AppColors.goldOf(context);
+    final deep = AppColors.deepOf(context);
 
-    return Container(
+    final resultText = _showJoinedClubs
+        ? '${_joinedClubs.length} ${_joinedClubs.length == 1 ? 'club preparado' : 'clubes preparados'}'
+        : _selectedFilter == null
+            ? '${_filteredPoints.length + _joinedClubs.length} '
+                '${(_filteredPoints.length + _joinedClubs.length) == 1 ? 'punto encontrado' : 'puntos encontrados'}'
+            : '${_filteredPoints.length} '
+                '${_filteredPoints.length == 1 ? 'punto encontrado' : 'puntos encontrados'}';
+
+    final messageCard = Container(
       width: double.infinity,
-      color: theme.colorScheme.surfaceContainerLow,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 76,
-                height: 76,
-                decoration: BoxDecoration(
-                  color: AppColors.goldOf(context).withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.map_outlined,
-                  size: 40,
-                  color: AppColors.goldOf(context),
+      constraints: const BoxConstraints(maxWidth: 390),
+      padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: gold.withValues(alpha: 0.34),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 66,
+            height: 66,
+            decoration: BoxDecoration(
+              color: gold.withValues(alpha: 0.11),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: gold.withValues(alpha: 0.24),
+              ),
+            ),
+            child: Icon(
+              Icons.map_outlined,
+              size: 32,
+              color: gold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'MAPA LISTO PARA TU DISPOSITIVO',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.cinzel(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.25,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Para visualizar el mapa y utilizar sus diferentes funciones, '
+            'deberás permitir el acceso a tu ubicación en Android o iOS.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 9.5,
+              height: 1.5,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: FilledButton.icon(
+              onPressed: () => _showLocationPermissionPreview(context),
+              style: FilledButton.styleFrom(
+                backgroundColor: gold,
+                foregroundColor: deep,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(13),
                 ),
               ),
-              const SizedBox(height: 18),
-              Text(
-                'Mapa disponible en Android e IOS',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.cinzel(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  color: theme.colorScheme.onSurface,
-                ),
+              icon: const Icon(
+                Icons.map_rounded,
+                size: 17,
               ),
-              const SizedBox(height: 10),
-              Text(
-                'Chrome se utiliza para probar rápidamente la interfaz. '
-                'Abre Capítulo 0 en el emulador Android para visualizar Google Maps.',
-                textAlign: TextAlign.center,
+              label: Text(
+                'Abrir mapa',
                 style: GoogleFonts.inter(
-                  fontSize: 12,
-                  height: 1.5,
-                  color: theme.colorScheme.onSurfaceVariant,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 22),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 15,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.goldOf(context).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  _showJoinedClubs
-                      ? '${_joinedClubs.length} ${_joinedClubs.length == 1 ? 'club preparado' : 'clubes preparados'}'
-                      : _selectedFilter == null
-                          ? '${_filteredPoints.length + _joinedClubs.length} '
-                              '${(_filteredPoints.length + _joinedClubs.length) == 1 ? 'punto encontrado' : 'puntos encontrados'}'
-                          : '${_filteredPoints.length} '
-                              '${_filteredPoints.length == 1 ? 'punto encontrado' : 'puntos encontrados'}',
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.deepOf(context),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+            decoration: BoxDecoration(
+              color: gold.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: gold.withValues(alpha: 0.18),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: gold.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.location_on_outlined,
+                    size: 17,
+                    color: gold,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        resultText,
+                        style: GoogleFonts.inter(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Disponibles para visualizar en el mapa',
+                        style: GoogleFonts.inter(
+                          fontSize: 7.5,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.phone_android_rounded,
+                  size: 18,
+                  color: deep.withValues(alpha: 0.78),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return Container(
+          width: double.infinity,
+          color: theme.colorScheme.surfaceContainerLow,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: SizedBox(
+              height: constraints.maxHeight,
+              child: Align(
+                alignment: const Alignment(0, -0.18),
+                child: messageCard,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showLocationPermissionPreview(
+    BuildContext context,
+  ) async {
+    final theme = Theme.of(context);
+    final gold = AppColors.goldOf(context);
+    final deep = AppColors.deepOf(context);
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 390),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: gold.withValues(alpha: 0.42),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 26,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: gold.withValues(alpha: 0.11),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: gold.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.location_on_outlined,
+                    color: gold,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(height: 13),
+                Text(
+                  'PERMITIR UBICACIÓN',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cinzel(
+                    color: theme.colorScheme.onSurface,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  'Capítulo 0 necesita acceso a tu ubicación para mostrar puntos lectores cercanos y centrar el mapa en tu zona.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 9,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: theme.colorScheme.onSurface,
+                            side: BorderSide(
+                              color: gold.withValues(alpha: 0.38),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Ahora no',
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: FilledButton(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: gold,
+                            foregroundColor: deep,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Permitir',
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

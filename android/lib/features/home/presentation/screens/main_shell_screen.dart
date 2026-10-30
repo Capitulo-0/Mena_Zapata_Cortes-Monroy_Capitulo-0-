@@ -723,6 +723,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
       MapsScreen(
         clubs: _clubs,
         joinedClubIds: _joinedClubIds,
+        currentUsername: _profileUsername,
+        currentName: _profileName,
       ),
       ProfileScreen(
         onOpenSettings: () {
