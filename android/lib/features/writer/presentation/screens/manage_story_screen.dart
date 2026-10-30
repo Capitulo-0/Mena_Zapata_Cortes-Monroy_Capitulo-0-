@@ -28,6 +28,8 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
 
   late WriterStory _story;
   bool _isLoading = false;
+  bool _isPublishingStory = false;
+  bool _isDeletingStory = false;
 
   bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
 
@@ -99,12 +101,18 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
   Future<void> _toggleStoryPublication() async {
     if (_isLoading) return;
 
+    final wasPublished = _story.isPublished;
+
     setState(() {
       _isLoading = true;
+      _isPublishingStory = !wasPublished;
     });
 
+    // Simulación visual de escritura en backend.
+    await Future<void>.delayed(const Duration(milliseconds: 1000));
+
     final updatedStory = _story.copyWith(
-      status: _story.isPublished
+      status: wasPublished
           ? WriterStoryStatus.draft
           : WriterStoryStatus.published,
       updatedAt: DateTime.now(),
@@ -117,72 +125,240 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
     setState(() {
       _story = updatedStory;
       _isLoading = false;
+      _isPublishingStory = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _story.isPublished
-              ? 'Historia publicada correctamente.'
-              : 'La historia volvió a borrador.',
+    if (!wasPublished) {
+      _showPublicationSuccessMessage('Historia publicada correctamente');
+      return;
+    }
+
+    _showPublicationSuccessMessage('Historia volvió a borrador');
+  }
+
+  void _showPublicationSuccessMessage(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          duration: const Duration(milliseconds: 2500),
+          padding: EdgeInsets.zero,
+          content: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            decoration: BoxDecoration(
+              color: _isDarkMode
+                  ? const Color(0xFF283125)
+                  : const Color(0xFFF4F7EE),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(0xFF78935F).withValues(alpha: 0.72),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF708A56),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: GoogleFonts.merriweather(
+                      color: _isDarkMode
+                          ? const Color(0xFFE7EEDC)
+                          : const Color(0xFF3F4F33),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.auto_stories_rounded,
+                  color: AppColors.gold.withValues(alpha: 0.76),
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
-    );
+      );
   }
 
   Future<void> _deleteStory() async {
+    if (_isLoading) return;
+
     final confirmed = await showDialog<bool>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) {
-        return AlertDialog(
-          backgroundColor: _surfaceColor,
-          surfaceTintColor: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: AppColors.gold.withValues(alpha: 0.24),
-            ),
-          ),
-          title: Text(
-            'ELIMINAR HISTORIA',
-            style: GoogleFonts.cinzel(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: _headingColor,
-            ),
-          ),
-          content: Text(
-            '¿Quieres eliminar "${_story.title}"? Esta acción no se puede deshacer.',
-            style: GoogleFonts.inter(
-              fontSize: 9.5,
-              height: 1.5,
-              color: _textSecondaryColor,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton.icon(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              icon: const Icon(Icons.delete_outline_rounded, size: 15),
-              label: const Text('Eliminar'),
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                foregroundColor: AppColors.background,
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 26),
+          child: Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(maxWidth: 390),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+            decoration: BoxDecoration(
+              color: _surfaceColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppColors.accent.withValues(alpha: 0.26),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.14),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
-          ],
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.22),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.delete_outline_rounded,
+                    color: AppColors.accent,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(height: 13),
+                Text(
+                  '¿ELIMINAR HISTORIA?',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cinzel(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: _headingColor,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  'Esta historia y todos sus capítulos se eliminarán de forma permanente. Esta acción no se puede deshacer.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 9,
+                    height: 1.5,
+                    color: _textSecondaryColor,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(false),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _headingColor,
+                            side: BorderSide(
+                              color: AppColors.gold.withValues(alpha: 0.42),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancelar',
+                            style: GoogleFonts.inter(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: FilledButton.icon(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(true),
+                          icon: const Icon(
+                            Icons.delete_outline_rounded,
+                            size: 15,
+                          ),
+                          label: Text(
+                            'Eliminar',
+                            style: GoogleFonts.inter(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.accent,
+                            foregroundColor: AppColors.background,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         );
       },
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _isDeletingStory = true;
+    });
+
+    // Simulación visual de eliminación en backend.
+    await Future<void>.delayed(const Duration(milliseconds: 1000));
 
     await _writerService.deleteStory(_story.id);
 
     if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+      _isDeletingStory = false;
+    });
 
     Navigator.of(context).pop(_story);
   }
@@ -316,10 +492,24 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
 
     return Scaffold(
       backgroundColor: _backgroundColor,
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _refreshStory,
-          child: SingleChildScrollView(
+      body: AbsorbPointer(
+        absorbing: _isLoading,
+        child: ColorFiltered(
+          colorFilter: _isLoading
+              ? const ColorFilter.matrix(<double>[
+                  0.2126, 0.7152, 0.0722, 0, 0,
+                  0.2126, 0.7152, 0.0722, 0, 0,
+                  0.2126, 0.7152, 0.0722, 0, 0,
+                  0, 0, 0, 1, 0,
+                ])
+              : const ColorFilter.mode(
+                  Colors.transparent,
+                  BlendMode.dst,
+                ),
+          child: SafeArea(
+            child: RefreshIndicator(
+              onRefresh: _refreshStory,
+              child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(18, 10, 18, 120),
             child: Column(
@@ -355,6 +545,8 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
                 const SizedBox(height: 10),
                 _buildStoryManagement(),
               ],
+            ),
+              ),
             ),
           ),
         ),
@@ -784,14 +976,26 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
                 : (_story.isPublished
                     ? _openPublishedView
                     : _toggleStoryPublication),
-            icon: Icon(
-              _story.isPublished
-                  ? Icons.visibility_outlined
-                  : Icons.upload_rounded,
-              size: 13,
-            ),
+            icon: _isPublishingStory
+                ? const SizedBox(
+                    width: 13,
+                    height: 13,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.8,
+                    ),
+                  )
+                : Icon(
+                    _story.isPublished
+                        ? Icons.visibility_outlined
+                        : Icons.upload_rounded,
+                    size: 13,
+                  ),
             label: Text(
-              _story.isPublished ? 'Vista publicada' : 'Publicar historia',
+              _isPublishingStory
+                  ? 'Publicando...'
+                  : (_story.isPublished
+                      ? 'Vista publicada'
+                      : 'Publicar historia'),
               style: GoogleFonts.inter(
                 fontSize: 7.8,
                 fontWeight: FontWeight.w700,
@@ -846,10 +1050,12 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
               ],
               _managementAction(
                 icon: Icons.delete_outline_rounded,
-                label: 'Eliminar historia',
-                description: 'Elimina la obra y sus capítulos guardados.',
+                label: _isDeletingStory ? 'Eliminando...' : 'Eliminar historia',
+                description: _isDeletingStory
+                    ? 'Eliminando la obra y sus capítulos...'
+                    : 'Elimina la obra y sus capítulos guardados.',
                 destructive: true,
-                onTap: _deleteStory,
+                onTap: _isLoading ? null : _deleteStory,
               ),
             ],
           ),
