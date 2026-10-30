@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../widgets/profile_privacy_store.dart';
+import '../widgets/profile_blocked_users_store.dart';
 import '../../../clubs/models/reading_club.dart';
 import '../../../home/presentation/screens/home_screen.dart';
 import '../../../library/presentation/screens/library_screen.dart';
@@ -186,7 +187,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     },
   ];
 
-  final Set<String> _blockedUsers = <String>{};
+  Set<String> get _blockedUsers => ProfileBlockedUsersStore.usernames;
 
   List<Map<String, String>> get _moods => [
     ..._baseMoods,
@@ -853,149 +854,325 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      useSafeArea: true,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.56),
+      barrierColor: Colors.black.withValues(alpha: 0.58),
       builder: (sheetContext) {
         final bottomInset = MediaQuery.viewInsetsOf(sheetContext).bottom;
+        var isSaving = false;
+        var savingDots = 1;
 
-        return Padding(
-          padding: EdgeInsets.only(bottom: bottomInset),
-          child: TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 340),
-            curve: Curves.easeOutCubic,
-            tween: Tween<double>(begin: 0.965, end: 1),
-            builder: (context, value, child) {
-              return Transform.scale(
-                scale: value,
-                alignment: Alignment.bottomCenter,
-                child: child,
-              );
-            },
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
-              decoration: BoxDecoration(
-                color: _surfaceColor,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: AppColors.gold.withValues(alpha: 0.42),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(
-                      alpha: _isDarkMode ? 0.32 : 0.16,
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final previewEmoji = emojiController.text.trim().isEmpty
+                ? '✨'
+                : emojiController.text.trim();
+            final previewLabel = labelController.text.trim().isEmpty
+                ? 'Mi propio estado'
+                : labelController.text.trim();
+            final previewDetail = detailController.text.trim().isEmpty
+                ? 'Una lectura a mi manera'
+                : detailController.text.trim();
+
+            return Padding(
+              padding: EdgeInsets.only(bottom: bottomInset),
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                decoration: BoxDecoration(
+                  color: _surfaceColor,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: _goldColor.withValues(alpha: 0.38),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(
+                        alpha: _isDarkMode ? 0.34 : 0.18,
+                      ),
+                      blurRadius: 32,
+                      offset: const Offset(0, -10),
                     ),
-                    blurRadius: 28,
-                    offset: const Offset(0, -6),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                top: false,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 38,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: _textSecondaryColor.withValues(alpha: 0.28),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                      ),
-                      const SizedBox(height: 15),
-                      Icon(
-                        Icons.auto_awesome_rounded,
-                        color: AppColors.gold,
-                        size: 20,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'ESTADO PERSONALIZADO',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.cinzel(
-                          color: _headingColor,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.25,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        'Crea un estado lector único para tu perfil',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
-                          color: _textSecondaryColor,
-                          fontSize: 8.5,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      _customMoodField(
-                        controller: emojiController,
-                        label: 'Emoji',
-                        hintText: '✨',
-                        maxLength: 2,
-                      ),
-                      const SizedBox(height: 10),
-                      _customMoodField(
-                        controller: labelController,
-                        label: 'Estado',
-                        hintText: 'Mi propio estado',
-                      ),
-                      const SizedBox(height: 10),
-                      _customMoodField(
-                        controller: detailController,
-                        label: 'Detalle',
-                        hintText: 'Una lectura a mi manera',
-                        maxLines: 2,
-                      ),
-                      const SizedBox(height: 17),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 44,
-                        child: FilledButton(
-                          onPressed: () {
-                            final label = labelController.text.trim();
-                            if (label.isEmpty) return;
-
-                            setState(() {
-                              _customMoodEmoji = emojiController.text.trim().isEmpty
-                                  ? '✨'
-                                  : emojiController.text.trim();
-                              _customMoodLabel = label;
-                              _customMoodDetail = detailController.text.trim().isEmpty
-                                  ? 'Estado lector personalizado'
-                                  : detailController.text.trim();
-                              _moodIndex = _moods.length - 1;
-                            });
-
-                            Navigator.of(sheetContext).pop();
-                          },
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.accent,
-                            foregroundColor: AppColors.background,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
-                          ),
-                          child: Text(
-                            'Guardar estado',
-                            style: GoogleFonts.inter(
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
+                  ],
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Align(
+                          child: Container(
+                            width: 42,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color:
+                                  _textSecondaryColor.withValues(alpha: 0.28),
+                              borderRadius: BorderRadius.circular(99),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 17),
+                        Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: _goldColor.withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(13),
+                                border: Border.all(
+                                  color:
+                                      _goldColor.withValues(alpha: 0.28),
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.auto_awesome_rounded,
+                                color: _goldColor,
+                                size: 21,
+                              ),
+                            ),
+                            const SizedBox(width: 11),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'ESTADO PERSONALIZADO',
+                                    style: GoogleFonts.cinzel(
+                                      color: _headingColor,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.25,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Define cómo quieres aparecer ante otros lectores.',
+                                    style: GoogleFonts.inter(
+                                      color: _textSecondaryColor,
+                                      fontSize: 8.3,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              tooltip: 'Cerrar',
+                              onPressed: isSaving
+                                  ? null
+                                  : () => Navigator.of(sheetContext).pop(),
+                              icon: Icon(
+                                Icons.close_rounded,
+                                color: _headingColor,
+                                size: 20,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'VISTA PREVIA',
+                          style: GoogleFonts.inter(
+                            color: _textSecondaryColor,
+                            fontSize: 7.4,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.7,
+                          ),
+                        ),
+                        const SizedBox(height: 7),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 11,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _backgroundColor,
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(
+                              color: _goldColor.withValues(alpha: 0.36),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 38,
+                                height: 38,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: _goldColor.withValues(alpha: 0.10),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Text(
+                                  previewEmoji,
+                                  style: const TextStyle(fontSize: 18),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      previewLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.merriweather(
+                                        color: _headingColor,
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      previewDetail,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.inter(
+                                        color: _textSecondaryColor,
+                                        fontSize: 7.8,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'PERSONALIZACIÓN',
+                          style: GoogleFonts.inter(
+                            color: _textSecondaryColor,
+                            fontSize: 7.4,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.7,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 86,
+                              child: _customMoodField(
+                                controller: emojiController,
+                                label: 'Emoji',
+                                hintText: '✨',
+                                maxLength: 2,
+                                enabled: !isSaving,
+                                onChanged: (_) => setModalState(() {}),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _customMoodField(
+                                controller: labelController,
+                                label: 'Estado',
+                                hintText: 'Mi propio estado',
+                                enabled: !isSaving,
+                                onChanged: (_) => setModalState(() {}),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 11),
+                        _customMoodField(
+                          controller: detailController,
+                          label: 'Detalle',
+                          hintText: 'Una lectura a mi manera',
+                          maxLines: 2,
+                          enabled: !isSaving,
+                          onChanged: (_) => setModalState(() {}),
+                        ),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: FilledButton(
+                            onPressed: isSaving
+                                ? null
+                                : () async {
+                                    final label =
+                                        labelController.text.trim();
+                                    if (label.isEmpty) return;
+
+                                    setModalState(() {
+                                      isSaving = true;
+                                      savingDots = 1;
+                                    });
+
+                                    for (var step = 0;
+                                        step < 4;
+                                        step++) {
+                                      await Future<void>.delayed(
+                                        const Duration(milliseconds: 250),
+                                      );
+
+                                      if (!sheetContext.mounted) return;
+
+                                      setModalState(() {
+                                        savingDots = (savingDots % 3) + 1;
+                                      });
+                                    }
+
+                                    if (!mounted ||
+                                        !sheetContext.mounted) {
+                                      return;
+                                    }
+
+                                    setState(() {
+                                      _customMoodEmoji =
+                                          emojiController.text.trim().isEmpty
+                                              ? '✨'
+                                              : emojiController.text.trim();
+                                      _customMoodLabel = label;
+                                      _customMoodDetail =
+                                          detailController.text.trim().isEmpty
+                                              ? 'Estado lector personalizado'
+                                              : detailController.text.trim();
+                                      _moodIndex = _moods.length - 1;
+                                    });
+
+                                    Navigator.of(sheetContext).pop();
+                                  },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: isSaving
+                                  ? _accentColor.withValues(alpha: 0.58)
+                                  : _accentColor,
+                              disabledBackgroundColor:
+                                  _accentColor.withValues(alpha: 0.58),
+                              foregroundColor: AppColors.background,
+                              disabledForegroundColor:
+                                  AppColors.background.withValues(alpha: 0.82),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            child: Text(
+                              isSaving
+                                  ? 'Guardando${'.' * savingDots}'
+                                  : 'Guardar estado',
+                              style: GoogleFonts.inter(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -1006,20 +1183,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
     detailController.dispose();
   }
 
+
   Widget _customMoodField({
     required TextEditingController controller,
     required String label,
     required String hintText,
     int maxLines = 1,
     int? maxLength,
+    bool enabled = true,
+    ValueChanged<String>? onChanged,
   }) {
-    return TextField(
+    final isMultiline = maxLines > 1;
+
+    final field = TextField(
       controller: controller,
-      maxLines: maxLines,
+      enabled: enabled,
+      onChanged: onChanged,
+      maxLines: isMultiline ? null : 1,
+      minLines: isMultiline ? null : 1,
+      expands: isMultiline,
+      textAlignVertical: TextAlignVertical.center,
       maxLength: maxLength,
       style: GoogleFonts.inter(
         color: _textPrimaryColor,
         fontSize: 10.5,
+        height: 1.2,
       ),
       decoration: InputDecoration(
         labelText: label,
@@ -1036,26 +1224,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         filled: true,
         fillColor: _backgroundColor,
-        contentPadding: const EdgeInsets.symmetric(
+        contentPadding: EdgeInsets.symmetric(
           horizontal: 14,
-          vertical: 13,
+          vertical: isMultiline ? 0 : 13,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
-            color: AppColors.gold.withValues(alpha: 0.48),
+            color: _goldColor.withValues(alpha: 0.48),
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(
-            color: AppColors.gold.withValues(alpha: 0.95),
+            color: _goldColor.withValues(alpha: 0.95),
             width: 1.25,
           ),
         ),
       ),
     );
+
+    if (!isMultiline) return field;
+
+    return SizedBox(
+      height: 58,
+      child: field,
+    );
   }
+
 
   Widget _buildClubsCard() {
     final joinedClubs = _joinedClubs;
@@ -2256,19 +2452,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 
   Widget _buildTabs() {
+    final worksCount = widget.publishedStories.length;
+    const badgesCount = 5;
+
     final tabs = [
-      {'id': 'favoritos', 'label': 'Favoritos ($_favoriteCount)'},
-      {
-        'id': 'resenas',
-        'label':
-            'Mis Reseñas (${widget.reviews.values.where((review) => review.isPublic).length})',
-      },
+      {'id': 'favoritos', 'label': 'Favoritos'},
+      {'id': 'resenas', 'label': 'Mis Reseñas'},
       {'id': 'lecturas', 'label': 'Mis Lecturas'},
       {
         'id': 'obras',
-        'label': 'Mis obras (${widget.publishedStories.length})',
+        'label': worksCount > 0 ? 'Mis obras ($worksCount)' : 'Mis obras',
       },
-      {'id': 'insignias', 'label': 'Insignias (5)'},
+      {
+        'id': 'insignias',
+        'label': badgesCount > 0 ? 'Insignias ($badgesCount)' : 'Insignias',
+      },
     ];
 
     return SingleChildScrollView(
@@ -3643,7 +3841,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       },
       {
         'icon': Icons.star_rounded,
-        'title': '${widget.reviews.length} reseñas guardadas',
+        'title': '${widget.reviews.values.where((review) => review.isPublic).length} reseñas guardadas',
         'description': 'Compartes tu opinión sobre lo que lees.',
       },
       {
@@ -3891,6 +4089,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
       builder: (sheetContext) {
+        String? socialSuccessMessage;
+
         return StatefulBuilder(
           builder: (context, modalSetState) {
             final visibleUsers = users
@@ -3984,6 +4184,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Divider(
                     height: 1,
                     color: _goldColor.withValues(alpha: 0.16),
+                  ),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 260),
+                    child: socialSuccessMessage != null
+                        ? Padding(
+                            key: const ValueKey('social-block-success'),
+                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 13,
+                                vertical: 11,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _isDarkMode
+                                    ? const Color(0xFF283125)
+                                    : const Color(0xFFF4F7EE),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: const Color(0xFF78935F)
+                                      .withValues(alpha: 0.72),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 34,
+                                    height: 34,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF708A56),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.check_rounded,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 11),
+                                  Expanded(
+                                    child: Text(
+                                      socialSuccessMessage!,
+                                      style: GoogleFonts.merriweather(
+                                        color: _isDarkMode
+                                            ? const Color(0xFFE7EEDC)
+                                            : const Color(0xFF3F4F33),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.person_off_outlined,
+                                    color: _goldColor.withValues(alpha: 0.76),
+                                    size: 20,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(
+                            key: ValueKey('social-block-success-empty'),
+                          ),
                   ),
                   Expanded(
                     child: visibleUsers.isEmpty
@@ -4112,7 +4382,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                                             if (blocked && mounted) {
                                               setState(() {});
-                                              modalSetState(() {});
+
+                                              modalSetState(() {
+                                                socialSuccessMessage =
+                                                    '${user['user'] ?? 'Usuario'} bloqueado correctamente';
+                                              });
+
+                                              Future<void>.delayed(
+                                                const Duration(
+                                                  milliseconds: 2500,
+                                                ),
+                                                () {
+                                                  if (!sheetContext.mounted) {
+                                                    return;
+                                                  }
+
+                                                  modalSetState(() {
+                                                    socialSuccessMessage = null;
+                                                  });
+                                                },
+                                              );
                                             }
                                           },
                                           icon: Icon(
@@ -4334,12 +4623,267 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return false;
     }
 
-    setState(() {
-      _blockedUsers.add(user['user']!);
-    });
+    final confirmed = await _confirmBlockUser(user);
 
-    _showMessage('${user['user']} fue bloqueado.');
+    if (confirmed != true || !mounted) {
+      return false;
+    }
+
+    ProfileBlockedUsersStore.block(user);
+
+    if (mounted) {
+      setState(() {});
+    }
+
     return true;
+  }
+
+  Future<bool?> _confirmBlockUser(Map<String, String> user) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        var isBlocking = false;
+        var blockingDots = 1;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 390),
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                decoration: BoxDecoration(
+                  color: _backgroundColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _accentColor.withValues(alpha: 0.50),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.20),
+                      blurRadius: 28,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _accentColor.withValues(alpha: 0.10),
+                        border: Border.all(
+                          color: _accentColor.withValues(alpha: 0.35),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.block_rounded,
+                        color: _accentColor,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(height: 13),
+                    Text(
+                      '¿Bloquear a ${user['user']}?',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.cinzel(
+                        color: _textPrimaryColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      'Este usuario no podrá ver tu perfil ni nada relacionado a ti.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        color: _textSecondaryColor,
+                        fontSize: 9,
+                        height: 1.55,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 42,
+                            child: OutlinedButton(
+                              onPressed: isBlocking
+                                  ? null
+                                  : () => Navigator.of(
+                                        dialogContext,
+                                      ).pop(false),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _textPrimaryColor,
+                                disabledForegroundColor:
+                                    _textSecondaryColor.withValues(alpha: 0.55),
+                                side: BorderSide(
+                                  color: _goldColor.withValues(alpha: 0.38),
+                                ),
+                                backgroundColor:
+                                    _surfaceColor.withValues(alpha: 0.48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                'Cancelar',
+                                style: GoogleFonts.inter(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: SizedBox(
+                            height: 42,
+                            child: FilledButton(
+                              onPressed: isBlocking
+                                  ? null
+                                  : () async {
+                                      setDialogState(() {
+                                        isBlocking = true;
+                                        blockingDots = 1;
+                                      });
+
+                                      for (var step = 0;
+                                          step < 4;
+                                          step++) {
+                                        await Future<void>.delayed(
+                                          const Duration(milliseconds: 250),
+                                        );
+
+                                        if (!dialogContext.mounted) return;
+
+                                        setDialogState(() {
+                                          blockingDots =
+                                              (blockingDots % 3) + 1;
+                                        });
+                                      }
+
+                                      if (!dialogContext.mounted) return;
+                                      Navigator.of(dialogContext).pop(true);
+                                    },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: isBlocking
+                                    ? _accentColor.withValues(alpha: 0.58)
+                                    : _accentColor,
+                                disabledBackgroundColor:
+                                    _accentColor.withValues(alpha: 0.58),
+                                foregroundColor: AppColors.background,
+                                disabledForegroundColor:
+                                    AppColors.background.withValues(alpha: 0.82),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                isBlocking
+                                    ? 'Bloqueando${'.' * blockingDots}'
+                                    : 'Bloquear',
+                                style: GoogleFonts.inter(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+
+  void _showActionSuccessMessage(String message) {
+    if (!mounted) return;
+
+    final isDark = _isDarkMode;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          duration: const Duration(milliseconds: 2500),
+          padding: EdgeInsets.zero,
+          content: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF283125)
+                  : const Color(0xFFF4F7EE),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(0xFF78935F).withValues(alpha: 0.72),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF708A56),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: GoogleFonts.merriweather(
+                      color: isDark
+                          ? const Color(0xFFE7EEDC)
+                          : const Color(0xFF3F4F33),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.person_off_outlined,
+                  color: _goldColor.withValues(alpha: 0.76),
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
   }
 
   Future<bool> _confirmRemoveSocialUser({
