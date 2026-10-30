@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/profile_gender_preference.dart';
 import '../widgets/profile_privacy_store.dart';
+import '../widgets/profile_blocked_users_store.dart';
 
 
 import '../../../../core/theme/app_colors.dart';
@@ -68,7 +69,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _showClubs = true;
   bool _privacyUpdating = false;
 
-  final List<Map<String, String>> _blockedUsers = [];
+  List<Map<String, String>> get _blockedUsers =>
+      ProfileBlockedUsersStore.blockedUsers.value;
 
   Color get _background =>
       widget.isDarkMode ? AppColors.darkBackground : AppColors.background;
@@ -435,12 +437,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                           OutlinedButton(
-                            onPressed: () {
-                              setState(() {
-                                _blockedUsers.removeAt(index);
-                              });
+                            onPressed: () async {
+                              final confirmed =
+                                  await _confirmUnblockUser(user);
 
-                              _showMessage('Usuario desbloqueado.');
+                              if (confirmed != true || !mounted) {
+                                return;
+                              }
+
+                              final username = user['username'] ?? '';
+                              ProfileBlockedUsersStore.unblock(username);
+                              setState(() {});
+
+                              _showSettingsSuccessMessage(
+                                'Se desbloqueó $username',
+                              );
                             },
                             style: OutlinedButton.styleFrom(
                               foregroundColor: _textPrimary,
@@ -468,6 +479,181 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
       ],
+    );
+  }
+
+  Future<bool?> _confirmUnblockUser(Map<String, String> user) {
+    final username = user['username'] ?? '@usuario';
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        var isUnblocking = false;
+        var unblockingDots = 1;
+
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 390),
+                padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                decoration: BoxDecoration(
+                  color: _background,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _gold.withValues(alpha: 0.48),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.20),
+                      blurRadius: 28,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _gold.withValues(alpha: 0.11),
+                        border: Border.all(
+                          color: _gold.withValues(alpha: 0.32),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.lock_open_rounded,
+                        color: _gold,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(height: 13),
+                    Text(
+                      '¿Desbloquear a $username?',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.cinzel(
+                        color: _textPrimary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Text(
+                      'Este usuario podrá volver a ver tu perfil y el contenido relacionado a ti.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.inter(
+                        color: _textSecondary,
+                        fontSize: 9,
+                        height: 1.55,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 42,
+                            child: OutlinedButton(
+                              onPressed: isUnblocking
+                                  ? null
+                                  : () => Navigator.of(
+                                        dialogContext,
+                                      ).pop(false),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: _textPrimary,
+                                disabledForegroundColor:
+                                    _textSecondary.withValues(alpha: 0.55),
+                                side: BorderSide(
+                                  color: _gold.withValues(alpha: 0.38),
+                                ),
+                                backgroundColor:
+                                    _surface.withValues(alpha: 0.48),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                'Cancelar',
+                                style: GoogleFonts.inter(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: SizedBox(
+                            height: 42,
+                            child: FilledButton(
+                              onPressed: isUnblocking
+                                  ? null
+                                  : () async {
+                                      setDialogState(() {
+                                        isUnblocking = true;
+                                        unblockingDots = 1;
+                                      });
+
+                                      for (var step = 0;
+                                          step < 4;
+                                          step++) {
+                                        await Future<void>.delayed(
+                                          const Duration(milliseconds: 250),
+                                        );
+
+                                        if (!dialogContext.mounted) return;
+
+                                        setDialogState(() {
+                                          unblockingDots =
+                                              (unblockingDots % 3) + 1;
+                                        });
+                                      }
+
+                                      if (!dialogContext.mounted) return;
+                                      Navigator.of(dialogContext).pop(true);
+                                    },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: isUnblocking
+                                    ? _accent.withValues(alpha: 0.58)
+                                    : _accent,
+                                disabledBackgroundColor:
+                                    _accent.withValues(alpha: 0.58),
+                                foregroundColor: AppColors.background,
+                                disabledForegroundColor:
+                                    AppColors.background.withValues(alpha: 0.82),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                isUnblocking
+                                    ? 'Desbloqueando${'.' * unblockingDots}'
+                                    : 'Desbloquear',
+                                style: GoogleFonts.inter(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -1183,48 +1369,78 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 12),
                     _fieldLabel('Formato de lectura'),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: _surface,
-                        borderRadius: BorderRadius.circular(11),
-                        border: Border.all(
-                          color: _gold.withValues(alpha: 0.55),
-                        ),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: tempReadingFormat,
-                          isExpanded: true,
-                          dropdownColor: _surface,
-                          style: GoogleFonts.inter(
-                            color: _textPrimary,
-                            fontSize: 11,
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'Físico',
-                              child: Text('Físico'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Digital',
-                              child: Text('Digital'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Ambos',
-                              child: Text('Ambos'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            if (value == null) {
-                              return;
-                            }
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: isSaving
+                            ? null
+                            : () async {
+                                final selected =
+                                    await _showReadingFormatPicker(
+                                  bottomSheetContext,
+                                  tempReadingFormat,
+                                );
 
-                            setModalState(() {
-                              tempReadingFormat = value;
-                            });
-                          },
+                                if (selected == null ||
+                                    !bottomSheetContext.mounted) {
+                                  return;
+                                }
+
+                                setModalState(() {
+                                  tempReadingFormat = selected;
+                                });
+                              },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 13,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _surface,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _gold.withValues(alpha: 0.55),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 31,
+                                height: 31,
+                                decoration: BoxDecoration(
+                                  color: _gold.withValues(alpha: 0.10),
+                                  borderRadius: BorderRadius.circular(9),
+                                ),
+                                child: Icon(
+                                  tempReadingFormat == 'Físico'
+                                      ? Icons.menu_book_rounded
+                                      : tempReadingFormat == 'Digital'
+                                          ? Icons.tablet_mac_rounded
+                                          : Icons.auto_stories_rounded,
+                                  color: _gold,
+                                  size: 17,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  tempReadingFormat,
+                                  style: GoogleFonts.inter(
+                                    color: _textPrimary,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: _textSecondary,
+                                size: 20,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1373,8 +1589,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                             .addPostFrameCallback((_) {
                                           if (!mounted) return;
 
-                                          _showMessage(
-                                            'Perfil actualizado correctamente.',
+                                          _showSettingsSuccessMessage(
+                                            'Perfil actualizado correctamente',
                                           );
                                         });
                                       },
@@ -1431,6 +1647,267 @@ class _SettingsScreenState extends State<SettingsScreen> {
     usernameController.dispose();
     biographyController.dispose();
     goalController.dispose();
+  }
+
+  Future<String?> _showReadingFormatPicker(
+    BuildContext parentContext,
+    String currentValue,
+  ) {
+    final options = <Map<String, Object>>[
+      {
+        'value': 'Físico',
+        'icon': Icons.menu_book_rounded,
+        'description': 'Prefiero leer libros impresos.',
+      },
+      {
+        'value': 'Digital',
+        'icon': Icons.tablet_mac_rounded,
+        'description': 'Prefiero leer desde dispositivos digitales.',
+      },
+      {
+        'value': 'Ambos',
+        'icon': Icons.auto_stories_rounded,
+        'description': 'Alterno entre formato físico y digital.',
+      },
+    ];
+
+    return showModalBottomSheet<String>(
+      context: parentContext,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.48),
+      builder: (pickerContext) {
+        return SafeArea(
+          top: false,
+          child: Container(
+            margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+            decoration: BoxDecoration(
+              color: _background,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: _gold.withValues(alpha: 0.30),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.18),
+                  blurRadius: 24,
+                  offset: const Offset(0, 9),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: _textSecondary.withValues(alpha: 0.26),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: _gold.withValues(alpha: 0.11),
+                        borderRadius: BorderRadius.circular(11),
+                      ),
+                      child: Icon(
+                        Icons.chrome_reader_mode_outlined,
+                        color: _gold,
+                        size: 19,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'FORMATO DE LECTURA',
+                            style: GoogleFonts.cinzel(
+                              color: _textPrimary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Selecciona tu formato preferido.',
+                            style: GoogleFonts.inter(
+                              color: _textSecondary,
+                              fontSize: 8,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ...options.map((option) {
+                  final value = option['value']! as String;
+                  final icon = option['icon']! as IconData;
+                  final description = option['description']! as String;
+                  final selected = currentValue == value;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => Navigator.of(pickerContext).pop(value),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(11),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? _accent.withValues(alpha: 0.08)
+                                : _surface,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: selected
+                                  ? _accent.withValues(alpha: 0.45)
+                                  : _gold.withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? _accent.withValues(alpha: 0.12)
+                                      : _gold.withValues(alpha: 0.09),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Icon(
+                                  icon,
+                                  color: selected ? _accent : _gold,
+                                  size: 18,
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      value,
+                                      style: GoogleFonts.inter(
+                                        color: _textPrimary,
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      description,
+                                      style: GoogleFonts.inter(
+                                        color: _textSecondary,
+                                        fontSize: 7.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (selected)
+                                Icon(
+                                  Icons.check_circle_rounded,
+                                  color: _accent,
+                                  size: 19,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSettingsSuccessMessage(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          duration: const Duration(milliseconds: 2500),
+          padding: EdgeInsets.zero,
+          content: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+            decoration: BoxDecoration(
+              color: widget.isDarkMode
+                  ? const Color(0xFF283125)
+                  : const Color(0xFFF4F7EE),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(0xFF78935F).withValues(alpha: 0.72),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF708A56),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: GoogleFonts.merriweather(
+                      color: widget.isDarkMode
+                          ? const Color(0xFFE7EEDC)
+                          : const Color(0xFF3F4F33),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.person_outline_rounded,
+                  color: _gold.withValues(alpha: 0.76),
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
   }
 
   Widget _fieldLabel(String text) {
