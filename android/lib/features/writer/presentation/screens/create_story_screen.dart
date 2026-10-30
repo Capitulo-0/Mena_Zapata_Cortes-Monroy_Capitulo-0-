@@ -36,6 +36,11 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   String? _selectedCover;
   bool _isSaving = false;
 
+  late final String _initialTitle;
+  late final String _initialSynopsis;
+  late final String? _initialGenre;
+  late final String? _initialCover;
+
   bool get _isEditing => widget.story != null;
 
   bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
@@ -71,6 +76,11 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
         : null;
 
     _selectedCover = widget.story?.coverPath;
+
+    _initialTitle = _titleController.text;
+    _initialSynopsis = _synopsisController.text;
+    _initialGenre = _selectedGenre;
+    _initialCover = _selectedCover;
 
     _titleController.addListener(_refreshForm);
     _synopsisController.addListener(_refreshForm);
@@ -255,6 +265,153 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     }
   }
 
+  bool get _hasUnsavedChanges {
+    return _titleController.text != _initialTitle ||
+        _synopsisController.text != _initialSynopsis ||
+        _selectedGenre != _initialGenre ||
+        _selectedCover != _initialCover;
+  }
+
+  Future<bool> _confirmExit() async {
+    if (!_hasUnsavedChanges) return true;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 26),
+          child: Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(maxWidth: 390),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+            decoration: BoxDecoration(
+              color: _surfaceColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppColors.gold.withValues(alpha: 0.34),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.14),
+                  blurRadius: 24,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent.withValues(alpha: 0.08),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: AppColors.accent.withValues(alpha: 0.20),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.edit_note_rounded,
+                    color: AppColors.accent,
+                    size: 25,
+                  ),
+                ),
+                const SizedBox(height: 13),
+                Text(
+                  '¿SALIR DEL EDITOR?',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cinzel(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: _headingColor,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  'Si sales ahora, los cambios que aún no hayas guardado en esta historia se perderán.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    fontSize: 9,
+                    height: 1.5,
+                    color: _textSecondaryColor,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: OutlinedButton(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(false),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: _headingColor,
+                            side: BorderSide(
+                              color: AppColors.gold.withValues(alpha: 0.42),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Seguir editando',
+                            style: GoogleFonts.inter(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: SizedBox(
+                        height: 42,
+                        child: FilledButton(
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(true),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.accent,
+                            foregroundColor: AppColors.background,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Salir',
+                            style: GoogleFonts.inter(
+                              fontSize: 8.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    return confirmed ?? false;
+  }
+
+  Future<void> _goBack() async {
+    final canExit = await _confirmExit();
+
+    if (!mounted || !canExit) return;
+
+    Navigator.of(context).pop();
+  }
+
   Future<WriterStory?> _saveStory({required bool closeAfterSaving}) async {
     if (_isSaving) return null;
 
@@ -306,8 +463,14 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _backgroundColor,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        await _goBack();
+      },
+      child: Scaffold(
+        backgroundColor: _backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(18, 10, 18, 120),
@@ -344,12 +507,13 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
           ),
         ),
       ),
+      ),
     );
   }
 
   Widget _buildBackButton() {
     return TextButton.icon(
-      onPressed: () => Navigator.of(context).pop(),
+      onPressed: _goBack,
       icon: const Icon(Icons.arrow_back_rounded, size: 16),
       label: Text(
         _isEditing ? 'Volver' : 'Volver',
