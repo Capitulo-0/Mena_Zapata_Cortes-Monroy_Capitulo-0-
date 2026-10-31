@@ -2127,7 +2127,7 @@ class HomeScreenState extends State<HomeScreen> {
                       right: index < visible.length - 1 ? 7 : 0,
                     ),
                     child: SizedBox(
-                      height: 204,
+                      height: 226,
                       child: _recommendedBookCard(visible[index]),
                     ),
                   ),
@@ -2166,82 +2166,163 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _recommendedBookCard(Map<String, dynamic> book) {
+    final author = book['author'] as String;
+    final isUserAuthor = author.startsWith('@');
+
     return InkWell(
       onTap: () => _showBookDetails(book),
-      borderRadius: BorderRadius.circular(13),
+      borderRadius: BorderRadius.circular(15),
       child: Container(
         height: double.infinity,
         decoration: BoxDecoration(
           color: _surface,
-          borderRadius: BorderRadius.circular(13),
-          border: Border.all(color: _gold),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(
+            color: _gold.withValues(alpha: 0.72),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.055),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Stack(
-              children: [
-                _networkCover(
-                  book['cover'] as String,
-                  width: double.infinity,
-                  height: 128,
-                  radius: 0,
-                ),
-                Positioned(right: 5, top: 5, child: _availabilityBadge()),
-              ],
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(7, 7, 7, 7),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(
-                      height: 24,
-                      child: Text(
-                        book['title'] as String,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.merriweather(
-                          color: _textPrimary,
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                          height: 1.3,
+            SizedBox(
+              height: 122,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _networkCover(
+                    book['cover'] as String,
+                    width: double.infinity,
+                    height: 122,
+                    radius: 0,
+                  ),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.03),
+                              Colors.black.withValues(alpha: 0.20),
+                            ],
+                            stops: const [0.45, 0.72, 1],
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    SizedBox(
-                      height: 13,
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(9, 8, 9, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      book['title'] as String,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.merriweather(
+                        color: _textPrimary,
+                        fontSize: 8.4,
+                        fontWeight: FontWeight.w700,
+                        height: 1.28,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        Container(
+                          width: 3,
+                          height: 3,
+                          decoration: BoxDecoration(
+                            color: isUserAuthor ? _accent : _gold,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Text(
+                            author,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.inter(
+                              color:
+                                  isUserAuthor ? _accent : _textSecondary,
+                              fontSize: 6.8,
+                              fontWeight: isUserAuthor
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2E793E).withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: const Color(0xFF2E793E).withValues(alpha: 0.34),
+                        ),
+                      ),
                       child: Text(
-                        book['author'] as String,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        'GRATIS',
                         style: GoogleFonts.inter(
-                          color: (book['author'] as String).startsWith('@')
-                              ? _accent
-                              : _textSecondary,
-                          fontSize: 7,
-                          fontWeight: (book['author'] as String).startsWith('@')
-                              ? FontWeight.w700
-                              : FontWeight.w400,
+                          color: const Color(0xFF2E793E),
+                          fontSize: 5.6,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.25,
                         ),
                       ),
                     ),
                     const Spacer(),
-                    Row(
-                      children: [
-                        Icon(Icons.star_rounded, color: _gold, size: 11),
-                        Text(
-                          ' ${book['rating']}',
-                          style: GoogleFonts.inter(
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _gold.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.star_rounded,
                             color: _gold,
-                            fontSize: 7,
-                            fontWeight: FontWeight.w700,
+                            size: 10.5,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 3),
+                          Text(
+                            '${book['rating']}',
+                            style: GoogleFonts.inter(
+                              color: _textPrimary,
+                              fontSize: 6.7,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -2625,24 +2706,41 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _sectionTitle(String text) {
+    final dividerColor = _textSecondary.withValues(alpha: 0.34);
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Row(
         children: [
-          Expanded(
-            child: Text(
-              text,
-              style: GoogleFonts.cinzel(
-                color: _textPrimary,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
+          Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.visible,
+            softWrap: false,
+            style: GoogleFonts.cinzel(
+              color: _textPrimary,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          Container(
-            width: 4,
-            height: 4,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: _gold),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 1,
+                    color: dividerColor,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Icon(
+                  Icons.auto_awesome_rounded,
+                  size: 8,
+                  color: dividerColor,
+                ),
+              ],
+            ),
           ),
         ],
       ),
