@@ -10,6 +10,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../profile/presentation/widgets/profile_gender_preference.dart';
 import '../../../clubs/models/reading_club.dart';
 import '../../../library/presentation/screens/library_screen.dart';
+import '../../../library/presentation/widgets/book_interaction_store.dart';
 import '../../../writer/models/writer_chapter.dart';
 import '../../../writer/models/writer_story.dart';
 import '../../../writer/presentation/screens/published_story_screen.dart';
@@ -4333,7 +4334,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       'liked': false,
       'replying': false,
       'repliesExpanded': false,
-      'replies': <String>[],
+      'replyPublic': true,
+      'replies': <Map<String, dynamic>>[],
     },
     {
       'user': '@clubdelasletras',
@@ -4343,7 +4345,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       'liked': false,
       'replying': false,
       'repliesExpanded': false,
-      'replies': <String>[],
+      'replyPublic': true,
+      'replies': <Map<String, dynamic>>[],
     },
   ];
 
@@ -4374,6 +4377,12 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       _comments.length,
       (_) => TextEditingController(),
     );
+
+    final bookId = widget.book['id'] as int;
+    for (var index = 0; index < _comments.length; index++) {
+      _comments[index]['replies'] =
+          BookInteractionStore.repliesFor(bookId, index);
+    }
 
     _favorite = widget.initiallyFavorite;
 
@@ -5046,7 +5055,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     final liked = comment['liked'] as bool;
     final replying = comment['replying'] as bool;
     final repliesExpanded = comment['repliesExpanded'] as bool;
-    final replies = comment['replies'] as List<String>;
+    final replies = comment['replies'] as List<Map<String, dynamic>>;
+    final replyPublic = comment['replyPublic'] as bool;
     final controller = _replyControllers[index];
 
     return Container(
@@ -5196,14 +5206,23 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             child: replying
                 ? Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                          child: TextField(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: _background,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: _gold.withValues(alpha: 0.20),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
                             controller: controller,
-                            minLines: 1,
-                            maxLines: 3,
+                            minLines: 2,
+                            maxLines: 4,
                             style: GoogleFonts.inter(
                               color: _textPrimary,
                               fontSize: 7,
@@ -5216,7 +5235,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                                 fontSize: 6.7,
                               ),
                               filled: true,
-                              fillColor: _background,
+                              fillColor: _surface,
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 10,
                                 vertical: 8,
@@ -5233,42 +5252,147 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        SizedBox(
-                          height: 34,
-                          child: FilledButton(
-                            onPressed: () {
-                              final reply = controller.text.trim();
-                              if (reply.isEmpty) return;
-
-                              setState(() {
-                                replies.add(reply);
-                                comment['replying'] = false;
-                                comment['repliesExpanded'] = true;
-                                controller.clear();
-                              });
-                            },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _accent,
-                              foregroundColor: AppColors.background,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(9),
+                          const SizedBox(height: 8),
+                          Text(
+                            'PRIVACIDAD DE LA RESPUESTA',
+                            style: GoogleFonts.cinzel(
+                              color: _textPrimary,
+                              fontSize: 6.4,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 32,
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              color: _surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _gold.withValues(alpha: 0.24),
                               ),
                             ),
-                            child: Text(
-                              'Responder',
-                              style: GoogleFonts.inter(
-                                fontSize: 6.4,
-                                fontWeight: FontWeight.w700,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        comment['replyPublic'] = true;
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: replyPublic
+                                            ? _deep
+                                            : Colors.transparent,
+                                        borderRadius:
+                                            BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '🌐 Pública',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 6.4,
+                                          fontWeight: FontWeight.w700,
+                                          color: replyPublic
+                                              ? AppColors.background
+                                              : _textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        comment['replyPublic'] = false;
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: !replyPublic
+                                            ? _deep
+                                            : Colors.transparent,
+                                        borderRadius:
+                                            BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '🔒 Privada',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 6.4,
+                                          fontWeight: FontWeight.w700,
+                                          color: !replyPublic
+                                              ? AppColors.background
+                                              : _textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: SizedBox(
+                              height: 34,
+                              child: FilledButton(
+                                onPressed: () {
+                                  final reply = controller.text.trim();
+                                  if (reply.isEmpty) return;
+
+                                  setState(() {
+                                    replies.add({
+                                      'text': reply,
+                                      'isPublic': replyPublic,
+                                    });
+                                    BookInteractionStore.saveReplies(
+                                      widget.book['id'] as int,
+                                      index,
+                                      replies,
+                                    );
+                                    comment['replying'] = false;
+                                    comment['repliesExpanded'] = true;
+                                    comment['replyPublic'] = true;
+                                    controller.clear();
+                                  });
+                                },
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: _accent,
+                                  foregroundColor:
+                                      AppColors.background,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(9),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Responder',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 6.6,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   )
                 : const SizedBox.shrink(),
@@ -5281,6 +5405,10 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                     padding: const EdgeInsets.only(top: 8, left: 12),
                     child: Column(
                       children: replies.map((reply) {
+                        final isPublic =
+                            reply['isPublic'] as bool? ?? true;
+                        final replyText = reply['text'] as String? ?? '';
+
                         return Container(
                           width: double.infinity,
                           margin: const EdgeInsets.only(bottom: 6),
@@ -5295,17 +5423,33 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                widget.currentUsername,
-                                style: GoogleFonts.inter(
-                                  color: _accent,
-                                  fontSize: 6.2,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      isPublic
+                                          ? widget.currentUsername
+                                          : '@anonimo',
+                                      style: GoogleFonts.inter(
+                                        color: _accent,
+                                        fontSize: 6.2,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    isPublic ? '🌐 Pública' : '🔒 Privada',
+                                    style: GoogleFonts.inter(
+                                      color: _textSecondary,
+                                      fontSize: 5.6,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                reply,
+                                replyText,
                                 style: GoogleFonts.merriweather(
                                   color: _textPrimary,
                                   fontSize: 6.8,
@@ -5805,120 +5949,316 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       'Acoso o lenguaje ofensivo',
       'Otro motivo',
     ];
+
+    final detailController = TextEditingController();
     String? selectedReason;
+    var isSending = false;
 
     await showDialog<void>(
       context: context,
+      barrierDismissible: !isSending,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: _surface,
-              surfaceTintColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: _gold.withValues(alpha: 0.24),
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(maxWidth: 390),
+                padding: const EdgeInsets.fromLTRB(17, 16, 17, 16),
+                decoration: BoxDecoration(
+                  color: _surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _gold.withValues(alpha: 0.30),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-              ),
-              title: Text(
-                'REPORTAR PUBLICACIÓN',
-                style: GoogleFonts.cinzel(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: _accent,
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: reasons.map((reason) {
-                  final selected = selectedReason == reason;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 7),
-                    child: InkWell(
-                      onTap: () {
-                        setDialogState(() {
-                          selectedReason = reason;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 11,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? _accent.withValues(alpha: 0.08)
-                              : _background,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: selected
-                                ? _accent.withValues(alpha: 0.40)
-                                : _gold.withValues(alpha: 0.22),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              selected
-                                  ? Icons.radio_button_checked_rounded
-                                  : Icons.radio_button_unchecked_rounded,
-                              size: 15,
-                              color: selected
-                                  ? _accent
-                                  : _textSecondary,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                reason,
-                                style: GoogleFonts.inter(
-                                  fontSize: 8.2,
-                                  fontWeight: selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                  color: _textPrimary,
-                                ),
+                child: AbsorbPointer(
+                  absorbing: isSending,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: _accent.withValues(alpha: 0.08),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: _accent.withValues(alpha: 0.20),
                               ),
                             ),
-                          ],
+                            child: Icon(
+                              Icons.flag_rounded,
+                              color: _accent,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'MODERACIÓN',
+                                  style: GoogleFonts.cinzel(
+                                    fontSize: 7.2,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.65,
+                                    color: _accent,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Reportar publicación',
+                                  style: GoogleFonts.merriweather(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: _textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Selecciona el motivo que mejor describe el problema.',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 7.5,
+                                    height: 1.4,
+                                    color: _textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () =>
+                                Navigator.of(dialogContext).pop(),
+                            customBorder: const CircleBorder(),
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: _gold.withValues(alpha: 0.34),
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 15,
+                                color: _textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      ...reasons.map((reason) {
+                        final selected = selectedReason == reason;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 7),
+                          child: InkWell(
+                            onTap: () {
+                              setDialogState(() {
+                                selectedReason = reason;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(10),
+                            child: AnimatedContainer(
+                              duration:
+                                  const Duration(milliseconds: 170),
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 11,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? _accent.withValues(alpha: 0.08)
+                                    : _background,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: selected
+                                      ? _accent.withValues(alpha: 0.42)
+                                      : _gold.withValues(alpha: 0.22),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    selected
+                                        ? Icons
+                                            .radio_button_checked_rounded
+                                        : Icons
+                                            .radio_button_unchecked_rounded,
+                                    size: 15,
+                                    color: selected
+                                        ? _accent
+                                        : _textSecondary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      reason,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 8,
+                                        fontWeight: selected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        color: _textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 5),
+                      Text(
+                        'DETALLE ADICIONAL · OPCIONAL',
+                        style: GoogleFonts.cinzel(
+                          fontSize: 6.7,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.45,
+                          color: _textSecondary,
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancelar'),
-                ),
-                FilledButton(
-                  onPressed: selectedReason == null
-                      ? null
-                      : () {
-                          Navigator.of(dialogContext).pop();
-                          _showModerationSuccess(
-                            title: 'Publicación reportada',
-                            message:
-                                'Gracias. El reporte fue enviado para revisión.',
-                          );
-                        },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _accent,
-                    foregroundColor: AppColors.background,
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: detailController,
+                        minLines: 2,
+                        maxLines: 4,
+                        maxLength: 300,
+                        style: GoogleFonts.inter(
+                          fontSize: 7.5,
+                          color: _textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          hintText:
+                              'Cuéntanos brevemente qué ocurrió...',
+                          counterText: '',
+                          filled: true,
+                          fillColor: _background,
+                          hintStyle: GoogleFonts.inter(
+                            fontSize: 7.2,
+                            color: _textSecondary,
+                          ),
+                          contentPadding:
+                              const EdgeInsets.symmetric(
+                            horizontal: 11,
+                            vertical: 10,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(9),
+                            borderSide: BorderSide(
+                              color: _gold.withValues(alpha: 0.28),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(9),
+                            borderSide: BorderSide(color: _gold),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 40,
+                        child: FilledButton(
+                          onPressed: selectedReason == null
+                              ? null
+                              : () async {
+                                  setDialogState(() {
+                                    isSending = true;
+                                  });
+
+                                  await Future<void>.delayed(
+                                    const Duration(milliseconds: 1000),
+                                  );
+
+                                  if (!dialogContext.mounted) return;
+                                  Navigator.of(dialogContext).pop();
+
+                                  if (!mounted) return;
+                                  _showModerationSuccess(
+                                    title: 'Publicación reportada',
+                                    message:
+                                        'Gracias. El reporte fue enviado para revisión.',
+                                  );
+                                },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _accent,
+                            disabledBackgroundColor: isSending
+                                ? Colors.grey.shade600
+                                : _accent.withValues(alpha: 0.30),
+                            foregroundColor: AppColors.background,
+                            disabledForegroundColor: isSending
+                                ? Colors.white
+                                : AppColors.background
+                                    .withValues(alpha: 0.72),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: isSending
+                              ? Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child:
+                                          CircularProgressIndicator(
+                                        strokeWidth: 1.8,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Text(
+                                      'Enviando reporte...',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 7.8,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  'Enviar reporte',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Text('Enviar reporte'),
                 ),
-              ],
+              ),
             );
           },
         );
       },
     );
+
+    detailController.dispose();
   }
 
   Future<void> _showShareDialog(BuildContext pageContext) async {
@@ -6011,20 +6351,12 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                         Expanded(
                           child: _shareOption(
                             label: 'W · WhatsApp',
-                            onTap: () => _fakeShare(
-                              dialogContext,
-                              'WhatsApp',
-                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: _shareOption(
                             label: 'I · Instagram',
-                            onTap: () => _fakeShare(
-                              dialogContext,
-                              'Instagram',
-                            ),
                           ),
                         ),
                       ],
@@ -6035,35 +6367,12 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                         Expanded(
                           child: _shareOption(
                             label: 'X · X',
-                            onTap: () => _fakeShare(
-                              dialogContext,
-                              'X',
-                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: _shareOption(
                             label: '↗ · Enlace',
-                            onTap: () async {
-                              await Clipboard.setData(
-                                ClipboardData(
-                                  text:
-                                      'Capítulo 0 · $_title · ${_authorHandle.isEmpty ? _author : _authorHandle}',
-                                ),
-                              );
-
-                              if (!dialogContext.mounted) return;
-                              Navigator.of(dialogContext).pop();
-
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content:
-                                      Text('Enlace de la obra copiado.'),
-                                ),
-                              );
-                            },
                           ),
                         ),
                       ],
@@ -6102,10 +6411,9 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
 
   Widget _shareOption({
     required String label,
-    required VoidCallback onTap,
   }) {
     return InkWell(
-      onTap: onTap,
+      onTap: null,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         alignment: Alignment.center,
@@ -6133,20 +6441,6 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     );
   }
 
-  void _fakeShare(
-    BuildContext dialogContext,
-    String destination,
-  ) {
-    Navigator.of(dialogContext).pop();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Compartir en $destination estará disponible próximamente.',
-        ),
-      ),
-    );
-  }
 
   Future<void> _showModerationSuccess({
     required String title,

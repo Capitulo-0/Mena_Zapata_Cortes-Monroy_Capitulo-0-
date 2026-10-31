@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../widgets/book_interaction_store.dart';
 
 enum BookStatus { porLeer, leyendo, leido }
 
@@ -50,22 +50,25 @@ class _PersonalLibraryList {
     required this.name,
     required this.description,
     required this.emoji,
+    this.bookIds = const <int>[],
   });
 
   final String name;
   final String description;
   final String emoji;
-  final List<int> bookIds = const <int>[];
+  final List<int> bookIds;
 
   _PersonalLibraryList copyWith({
     String? name,
     String? description,
     String? emoji,
+    List<int>? bookIds,
   }) {
     return _PersonalLibraryList(
       name: name ?? this.name,
       description: description ?? this.description,
       emoji: emoji ?? this.emoji,
+      bookIds: bookIds ?? this.bookIds,
     );
   }
 }
@@ -785,9 +788,67 @@ class _LibraryScreenState extends State<LibraryScreen> {
       );
     }
 
-    return _secondaryButton(
-      label: review == null ? 'Calificar y reseñar' : 'Ver / editar reseña',
+    return _reviewLibraryButton(
+      hasReview: review != null,
       onTap: () => _openReviewEditor(book),
+    );
+  }
+
+  Widget _reviewLibraryButton({
+    required bool hasReview,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      width: double.infinity,
+      height: 34,
+      child: hasReview
+          ? OutlinedButton.icon(
+              onPressed: onTap,
+              icon: const Icon(
+                Icons.rate_review_outlined,
+                size: 13,
+              ),
+              label: Text(
+                'Ver / editar reseña',
+                style: GoogleFonts.inter(
+                  fontSize: 7.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.accentOf(context),
+                backgroundColor:
+                    AppColors.accentOf(context).withValues(alpha: 0.05),
+                side: BorderSide(
+                  color: AppColors.accentOf(context)
+                      .withValues(alpha: 0.45),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(9),
+                ),
+              ),
+            )
+          : FilledButton.icon(
+              onPressed: onTap,
+              icon: const Icon(
+                Icons.star_outline_rounded,
+                size: 14,
+              ),
+              label: Text(
+                'Calificar y reseñar',
+                style: GoogleFonts.inter(
+                  fontSize: 7.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.deepOf(context),
+                foregroundColor: AppColors.goldOf(context),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(9),
+                ),
+              ),
+            ),
     );
   }
 
@@ -1204,6 +1265,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ),
                 const SizedBox(height: 12),
                 _libraryOptionTile(
+                  icon: Icons.playlist_add_rounded,
+                  title: 'Agregar libro',
+                  highlighted: true,
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    Future<void>.delayed(
+                      const Duration(milliseconds: 160),
+                      () => _showAddBookToListSheet(index),
+                    );
+                  },
+                ),
+                const SizedBox(height: 8),
+                _libraryOptionTile(
                   icon: Icons.edit_outlined,
                   title: 'Editar lista',
                   trailing: const Icon(Icons.chevron_right_rounded),
@@ -1218,6 +1293,712 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showAddBookToListSheet(int index) async {
+    final originalList = _personalLists[index];
+    final selectedBookIds = <int>{...originalList.bookIds};
+    var isSaving = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.58),
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final availableBooks = _booksInLibrary.where((book) {
+              final status = widget.statuses[book.id];
+              final validStatus =
+                  status == BookStatus.leyendo ||
+                  status == BookStatus.porLeer;
+
+              return validStatus && !selectedBookIds.contains(book.id);
+            }).toList();
+
+            final selectedBooks = _booksInLibrary.where((book) {
+              return selectedBookIds.contains(book.id);
+            }).toList();
+
+            final hasChanges =
+                !Set<int>.from(originalList.bookIds)
+                    .containsAll(selectedBookIds) ||
+                !selectedBookIds.containsAll(originalList.bookIds);
+            final canSave = hasChanges && !isSaving;
+
+            return DraggableScrollableSheet(
+              expand: false,
+              initialChildSize: 0.78,
+              minChildSize: 0.58,
+              maxChildSize: 0.94,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundOf(context),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(26),
+                    ),
+                    border: Border(
+                      top: BorderSide(
+                        color: AppColors.gold.withValues(alpha: 0.35),
+                      ),
+                    ),
+                  ),
+                  child: SafeArea(
+                    top: false,
+                    child: ListView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.fromLTRB(18, 9, 18, 24),
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 38,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppColors.deepOf(context),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 46,
+                              height: 46,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: AppColors.goldOf(context)
+                                    .withValues(alpha: 0.13),
+                                borderRadius: BorderRadius.circular(13),
+                              ),
+                              child: Text(
+                                originalList.emoji,
+                                style: const TextStyle(fontSize: 22),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'AGREGAR LIBROS',
+                                    style: GoogleFonts.cinzel(
+                                      color: AppColors.textPrimaryOf(context),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.35,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    originalList.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.merriweather(
+                                      color: AppColors.textPrimaryOf(context),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              height: 34,
+                              child: FilledButton.icon(
+                                onPressed: canSave
+                                    ? () async {
+                                        setSheetState(() {
+                                          isSaving = true;
+                                        });
+
+                                        await Future<void>.delayed(
+                                          const Duration(milliseconds: 1000),
+                                        );
+
+                                        if (!sheetContext.mounted) return;
+
+                                        setState(() {
+                                          _personalLists[index] =
+                                              _personalLists[index].copyWith(
+                                            bookIds: selectedBookIds.toList(),
+                                          );
+                                        });
+
+                                        Navigator.of(sheetContext).pop();
+
+                                        final isDark =
+                                            Theme.of(context).brightness ==
+                                                Brightness.dark;
+
+                                        ScaffoldMessenger.of(context)
+                                          ..hideCurrentSnackBar()
+                                          ..showSnackBar(
+                                            SnackBar(
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              elevation: 0,
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              margin:
+                                                  const EdgeInsets.fromLTRB(
+                                                16,
+                                                0,
+                                                16,
+                                                18,
+                                              ),
+                                              duration: const Duration(
+                                                milliseconds: 2500,
+                                              ),
+                                              padding: EdgeInsets.zero,
+                                              content: Container(
+                                                width: double.infinity,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 13,
+                                                  vertical: 11,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: isDark
+                                                      ? const Color(0xFF283125)
+                                                      : const Color(0xFFF4F7EE),
+                                                  borderRadius:
+                                                      BorderRadius.circular(14),
+                                                  border: Border.all(
+                                                    color:
+                                                        const Color(0xFF78935F)
+                                                            .withValues(
+                                                      alpha: 0.72,
+                                                    ),
+                                                  ),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black
+                                                          .withValues(
+                                                        alpha: 0.08,
+                                                      ),
+                                                      blurRadius: 12,
+                                                      offset:
+                                                          const Offset(0, 4),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      width: 34,
+                                                      height: 34,
+                                                      decoration:
+                                                          const BoxDecoration(
+                                                        color:
+                                                            Color(0xFF708A56),
+                                                        shape:
+                                                            BoxShape.circle,
+                                                      ),
+                                                      child: const Icon(
+                                                        Icons.check_rounded,
+                                                        color: Colors.white,
+                                                        size: 20,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 11),
+                                                    Expanded(
+                                                      child: Text(
+                                                        selectedBookIds.isEmpty
+                                                            ? 'Guardado correctamente'
+                                                            : 'Libros guardados correctamente a ${originalList.name}',
+                                                        maxLines: 2,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        style: GoogleFonts
+                                                            .merriweather(
+                                                          color: isDark
+                                                              ? const Color(
+                                                                  0xFFE7EEDC,
+                                                                )
+                                                              : const Color(
+                                                                  0xFF3F4F33,
+                                                                ),
+                                                          fontSize: 9,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Icon(
+                                                      Icons
+                                                          .playlist_add_check_rounded,
+                                                      color: AppColors.gold
+                                                          .withValues(
+                                                        alpha: 0.76,
+                                                      ),
+                                                      size: 20,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                      }
+                                    : null,
+                                icon: isSaving
+                                    ? const SizedBox(
+                                        width: 13,
+                                        height: 13,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 1.8,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.save_outlined,
+                                        size: 14,
+                                      ),
+                                label: Text(
+                                  isSaving ? 'Guardando...' : 'Guardar',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 7.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                style: FilledButton.styleFrom(
+                                  backgroundColor:
+                                      AppColors.deepOf(context),
+                                  disabledBackgroundColor: isSaving
+                                      ? Colors.grey.shade600
+                                      : AppColors.deepOf(context)
+                                          .withValues(alpha: 0.22),
+                                  foregroundColor:
+                                      AppColors.backgroundOf(context),
+                                  disabledForegroundColor: isSaving
+                                      ? Colors.white
+                                      : AppColors.textSecondaryOf(context),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(9),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Selecciona libros que ya estén en tu biblioteca con estado Leyendo o Por leer.',
+                          style: GoogleFonts.inter(
+                            color: AppColors.textSecondaryOf(context),
+                            fontSize: 8,
+                            height: 1.45,
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+
+                        Text(
+                          'LIBROS DISPONIBLES',
+                          style: GoogleFonts.cinzel(
+                            color: AppColors.textPrimaryOf(context),
+                            fontSize: 9.4,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.35,
+                          ),
+                        ),
+                        const SizedBox(height: 9),
+
+                        if (availableBooks.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 22,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceOf(context),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: AppColors.gold
+                                    .withValues(alpha: 0.30),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.library_books_outlined,
+                                  size: 26,
+                                  color: AppColors.goldOf(context),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'No hay más libros disponibles',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.merriweather(
+                                    color:
+                                        AppColors.textPrimaryOf(context),
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Todos los libros disponibles ya están agregados o no están en Leyendo / Por leer.',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.inter(
+                                    color:
+                                        AppColors.textSecondaryOf(context),
+                                    fontSize: 7.4,
+                                    height: 1.45,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ...availableBooks.map((book) {
+                            final status = widget.statuses[book.id];
+                            final statusLabel =
+                                status == BookStatus.leyendo
+                                    ? 'LEYENDO'
+                                    : 'POR LEER';
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 9),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceOf(context),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: AppColors.gold
+                                        .withValues(alpha: 0.28),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    _cover(book.cover, 46, 64),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            book.title,
+                                            maxLines: 2,
+                                            overflow:
+                                                TextOverflow.ellipsis,
+                                            style: GoogleFonts.merriweather(
+                                              color:
+                                                  AppColors.textPrimaryOf(
+                                                context,
+                                              ),
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w700,
+                                              height: 1.35,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            book.author,
+                                            maxLines: 1,
+                                            overflow:
+                                                TextOverflow.ellipsis,
+                                            style: GoogleFonts.inter(
+                                              color:
+                                                  AppColors.textSecondaryOf(
+                                                context,
+                                              ),
+                                              fontSize: 7.2,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Container(
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                              horizontal: 7,
+                                              vertical: 3,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  status ==
+                                                          BookStatus.leyendo
+                                                      ? AppColors.accentOf(
+                                                          context,
+                                                        ).withValues(
+                                                          alpha: 0.10,
+                                                        )
+                                                      : AppColors.goldOf(
+                                                          context,
+                                                        ).withValues(
+                                                          alpha: 0.10,
+                                                        ),
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                            ),
+                                            child: Text(
+                                              statusLabel,
+                                              style: GoogleFonts.inter(
+                                                color:
+                                                    status ==
+                                                            BookStatus.leyendo
+                                                        ? AppColors.accentOf(
+                                                            context,
+                                                          )
+                                                        : AppColors.goldOf(
+                                                            context,
+                                                          ),
+                                                fontSize: 5.8,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: 0.25,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    FilledButton(
+                                      onPressed: isSaving
+                                          ? null
+                                          : () {
+                                        setSheetState(() {
+                                          selectedBookIds.add(book.id);
+                                        });
+                                      },
+                                      style: FilledButton.styleFrom(
+                                        backgroundColor:
+                                            AppColors.deepOf(context),
+                                        foregroundColor:
+                                            AppColors.backgroundOf(context),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 8,
+                                        ),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(9),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        'Agregar',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 7,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+
+                        const SizedBox(height: 18),
+                        Row(
+                          children: [
+                            Text(
+                              'LIBROS AGREGADOS',
+                              style: GoogleFonts.cinzel(
+                                color:
+                                    AppColors.textPrimaryOf(context),
+                                fontSize: 9.4,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.35,
+                              ),
+                            ),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.accentOf(context)
+                                    .withValues(alpha: 0.10),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                '${selectedBooks.length}',
+                                style: GoogleFonts.inter(
+                                  color: AppColors.accentOf(context),
+                                  fontSize: 6.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 9),
+
+                        if (selectedBooks.isEmpty)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 22,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceOf(context),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: AppColors.gold
+                                    .withValues(alpha: 0.24),
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Icon(
+                                  Icons.playlist_add_rounded,
+                                  size: 26,
+                                  color: AppColors.goldOf(context),
+                                ),
+                                const SizedBox(height: 7),
+                                Text(
+                                  'Aún no agregas libros',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.merriweather(
+                                    color:
+                                        AppColors.textPrimaryOf(context),
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Los libros que selecciones aparecerán en esta sección antes de guardar.',
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.inter(
+                                    color:
+                                        AppColors.textSecondaryOf(context),
+                                    fontSize: 7.4,
+                                    height: 1.45,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          ...selectedBooks.map((book) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 9),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceOf(context),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: AppColors.accentOf(context)
+                                        .withValues(alpha: 0.28),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    _cover(book.cover, 46, 64),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            book.title,
+                                            maxLines: 2,
+                                            overflow:
+                                                TextOverflow.ellipsis,
+                                            style: GoogleFonts.merriweather(
+                                              color:
+                                                  AppColors.textPrimaryOf(
+                                                context,
+                                              ),
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            book.author,
+                                            maxLines: 1,
+                                            overflow:
+                                                TextOverflow.ellipsis,
+                                            style: GoogleFonts.inter(
+                                              color:
+                                                  AppColors.textSecondaryOf(
+                                                context,
+                                              ),
+                                              fontSize: 7.2,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    OutlinedButton.icon(
+                                      onPressed: isSaving
+                                          ? null
+                                          : () {
+                                        setSheetState(() {
+                                          selectedBookIds.remove(book.id);
+                                        });
+                                      },
+                                      icon: const Icon(
+                                        Icons.remove_circle_outline_rounded,
+                                        size: 13,
+                                      ),
+                                      label: Text(
+                                        'Quitar',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 7,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor:
+                                            AppColors.accentOf(context),
+                                        side: BorderSide(
+                                          color: AppColors.accentOf(context)
+                                              .withValues(alpha: 0.42),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 9,
+                                          vertical: 8,
+                                        ),
+                                        minimumSize: Size.zero,
+                                        tapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(9),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );
@@ -1581,9 +2362,72 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         ),
                       )
                     else
-                      ...list.bookIds.map(
-                        (bookId) => Text('Libro $bookId'),
-                      ),
+                      ...list.bookIds.map((bookId) {
+                        LibraryBook? book;
+
+                        for (final candidate in widget.books) {
+                          if (candidate.id == bookId) {
+                            book = candidate;
+                            break;
+                          }
+                        }
+
+                        if (book == null) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 9),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(9),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceOf(context),
+                              borderRadius: BorderRadius.circular(13),
+                              border: Border.all(
+                                color:
+                                    AppColors.gold.withValues(alpha: 0.26),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                _cover(book.cover, 40, 56),
+                                const SizedBox(width: 9),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        book.title,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.merriweather(
+                                          color:
+                                              AppColors.textPrimaryOf(context),
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        book.author,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: GoogleFonts.inter(
+                                          color: AppColors
+                                              .textSecondaryOf(context),
+                                          fontSize: 7,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
                   ],
                 ),
               ),
@@ -2404,20 +3248,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
             Expanded(
               child: _exportShareOption(
                 label: 'W · WhatsApp',
-                onTap: () => _fakeLibraryExport(
-                  dialogContext,
-                  'WhatsApp',
-                ),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: _exportShareOption(
                 label: 'I · Instagram',
-                onTap: () => _fakeLibraryExport(
-                  dialogContext,
-                  'Instagram',
-                ),
               ),
             ),
           ],
@@ -2428,33 +3264,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
             Expanded(
               child: _exportShareOption(
                 label: 'X · X',
-                onTap: () => _fakeLibraryExport(
-                  dialogContext,
-                  'X',
-                ),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
               child: _exportShareOption(
                 label: '↗ · Enlace',
-                onTap: () async {
-                  await Clipboard.setData(
-                    ClipboardData(text: linkText),
-                  );
-
-                  if (!dialogContext.mounted) return;
-                  Navigator.of(dialogContext).pop();
-
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Enlace de exportación copiado.',
-                      ),
-                    ),
-                  );
-                },
               ),
             ),
           ],
@@ -2465,10 +3280,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Widget _exportShareOption({
     required String label,
-    required VoidCallback onTap,
   }) {
     return InkWell(
-      onTap: onTap,
+      onTap: null,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         alignment: Alignment.center,
@@ -2497,26 +3311,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  void _fakeLibraryExport(
-    BuildContext dialogContext,
-    String destination,
-  ) {
-    Navigator.of(dialogContext).pop();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Exportar a $destination estará disponible próximamente.',
-        ),
-      ),
-    );
-  }
-
   Future<void> _showCreateListSheet() async {
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
 
     var selectedEmoji = '♥';
+    var isCreating = false;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -2526,7 +3326,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            final canCreate = nameController.text.trim().isNotEmpty;
+            final canCreate =
+                nameController.text.trim().isNotEmpty && !isCreating;
 
             return Padding(
               padding: EdgeInsets.only(
@@ -2616,7 +3417,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: InkWell(
-                                onTap: () async {
+                                onTap: isCreating
+                                    ? null
+                                    : () async {
                                   final emoji =
                                       await _showEmojiPicker(selectedEmoji);
 
@@ -2671,6 +3474,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         const SizedBox(height: 6),
                         TextField(
                           controller: nameController,
+                          enabled: !isCreating,
                           maxLength: 50,
                           onChanged: (_) => setSheetState(() {}),
                           style: GoogleFonts.inter(
@@ -2687,6 +3491,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         const SizedBox(height: 6),
                         TextField(
                           controller: descriptionController,
+                          enabled: !isCreating,
                           minLines: 3,
                           maxLines: 4,
                           maxLength: 180,
@@ -2707,8 +3512,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
                               child: SizedBox(
                                 height: 42,
                                 child: OutlinedButton(
-                                  onPressed: () =>
-                                      Navigator.of(sheetContext).pop(),
+                                  onPressed: isCreating
+                                      ? null
+                                      : () =>
+                                          Navigator.of(sheetContext).pop(),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor:
                                         AppColors.textPrimaryOf(context),
@@ -2735,7 +3542,19 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                 height: 42,
                                 child: FilledButton(
                                   onPressed: canCreate
-                                      ? () {
+                                      ? () async {
+                                          FocusScope.of(context).unfocus();
+
+                                          setSheetState(() {
+                                            isCreating = true;
+                                          });
+
+                                          await Future<void>.delayed(
+                                            const Duration(milliseconds: 1000),
+                                          );
+
+                                          if (!sheetContext.mounted) return;
+
                                           final list = _PersonalLibraryList(
                                             name: nameController.text.trim(),
                                             description: descriptionController
@@ -2755,22 +3574,52 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                   style: FilledButton.styleFrom(
                                     backgroundColor:
                                         AppColors.deepOf(context),
-                                    disabledBackgroundColor:
-                                        AppColors.deepOf(context)
+                                    disabledBackgroundColor: isCreating
+                                        ? Colors.grey.shade600
+                                        : AppColors.deepOf(context)
                                             .withValues(alpha: 0.30),
                                     foregroundColor:
                                         AppColors.backgroundOf(context),
+                                    disabledForegroundColor:
+                                        AppColors.backgroundOf(context)
+                                            .withValues(alpha: 0.88),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(11),
                                     ),
                                   ),
-                                  child: Text(
-                                    'Crear lista',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
+                                  child: isCreating
+                                      ? Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            SizedBox(
+                                              width: 13,
+                                              height: 13,
+                                              child:
+                                                  CircularProgressIndicator(
+                                                strokeWidth: 1.8,
+                                                color: AppColors
+                                                    .backgroundOf(context),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 7),
+                                            Text(
+                                              'Creando lista...',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 8.5,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ],
+                                        )
+                                      : Text(
+                                          'Crear lista',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
                                 ),
                               ),
                             ),
@@ -3082,7 +3931,8 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
       'liked': false,
       'replying': false,
       'repliesExpanded': false,
-      'replies': <String>[],
+      'replyPublic': true,
+      'replies': <Map<String, dynamic>>[],
     },
     {
       'user': '@clubdelasletras',
@@ -3092,7 +3942,8 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
       'liked': false,
       'replying': false,
       'repliesExpanded': false,
-      'replies': <String>[],
+      'replyPublic': true,
+      'replies': <Map<String, dynamic>>[],
     },
   ];
 
@@ -3133,6 +3984,11 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
       _comments.length,
       (_) => TextEditingController(),
     );
+
+    for (var index = 0; index < _comments.length; index++) {
+      _comments[index]['replies'] =
+          BookInteractionStore.repliesFor(widget.book.id, index);
+    }
 
     _favorite = widget.initiallyFavorite;
     _status = widget.status;
@@ -3851,7 +4707,8 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
     final liked = comment['liked'] as bool;
     final replying = comment['replying'] as bool;
     final repliesExpanded = comment['repliesExpanded'] as bool;
-    final replies = comment['replies'] as List<String>;
+    final replies = comment['replies'] as List<Map<String, dynamic>>;
+    final replyPublic = comment['replyPublic'] as bool;
     final controller = _replyControllers[index];
 
     return Container(
@@ -4001,14 +4858,23 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
             child: replying
                 ? Padding(
                     padding: const EdgeInsets.only(top: 8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(
-                          child: TextField(
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(9),
+                      decoration: BoxDecoration(
+                        color: _background,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: _gold.withValues(alpha: 0.20),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          TextField(
                             controller: controller,
-                            minLines: 1,
-                            maxLines: 3,
+                            minLines: 2,
+                            maxLines: 4,
                             style: GoogleFonts.inter(
                               color: _textPrimary,
                               fontSize: 7,
@@ -4021,7 +4887,7 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
                                 fontSize: 6.7,
                               ),
                               filled: true,
-                              fillColor: _background,
+                              fillColor: _surface,
                               contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 10,
                                 vertical: 8,
@@ -4038,42 +4904,147 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        SizedBox(
-                          height: 34,
-                          child: FilledButton(
-                            onPressed: () {
-                              final reply = controller.text.trim();
-                              if (reply.isEmpty) return;
-
-                              setState(() {
-                                replies.add(reply);
-                                comment['replying'] = false;
-                                comment['repliesExpanded'] = true;
-                                controller.clear();
-                              });
-                            },
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _accent,
-                              foregroundColor: AppColors.background,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(9),
+                          const SizedBox(height: 8),
+                          Text(
+                            'PRIVACIDAD DE LA RESPUESTA',
+                            style: GoogleFonts.cinzel(
+                              color: _textPrimary,
+                              fontSize: 6.4,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 32,
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              color: _surface,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _gold.withValues(alpha: 0.24),
                               ),
                             ),
-                            child: Text(
-                              'Responder',
-                              style: GoogleFonts.inter(
-                                fontSize: 6.4,
-                                fontWeight: FontWeight.w700,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        comment['replyPublic'] = true;
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: replyPublic
+                                            ? _deep
+                                            : Colors.transparent,
+                                        borderRadius:
+                                            BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '🌐 Pública',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 6.4,
+                                          fontWeight: FontWeight.w700,
+                                          color: replyPublic
+                                              ? AppColors.background
+                                              : _textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        comment['replyPublic'] = false;
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: !replyPublic
+                                            ? _deep
+                                            : Colors.transparent,
+                                        borderRadius:
+                                            BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '🔒 Privada',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 6.4,
+                                          fontWeight: FontWeight.w700,
+                                          color: !replyPublic
+                                              ? AppColors.background
+                                              : _textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: SizedBox(
+                              height: 34,
+                              child: FilledButton(
+                                onPressed: () {
+                                  final reply = controller.text.trim();
+                                  if (reply.isEmpty) return;
+
+                                  setState(() {
+                                    replies.add({
+                                      'text': reply,
+                                      'isPublic': replyPublic,
+                                    });
+                                    BookInteractionStore.saveReplies(
+                                      widget.book.id,
+                                      index,
+                                      replies,
+                                    );
+                                    comment['replying'] = false;
+                                    comment['repliesExpanded'] = true;
+                                    comment['replyPublic'] = true;
+                                    controller.clear();
+                                  });
+                                },
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: _accent,
+                                  foregroundColor:
+                                      AppColors.background,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(9),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Responder',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 6.6,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   )
                 : const SizedBox.shrink(),
@@ -4086,6 +5057,10 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
                     padding: const EdgeInsets.only(top: 8, left: 12),
                     child: Column(
                       children: replies.map((reply) {
+                        final isPublic =
+                            reply['isPublic'] as bool? ?? true;
+                        final replyText = reply['text'] as String? ?? '';
+
                         return Container(
                           width: double.infinity,
                           margin: const EdgeInsets.only(bottom: 6),
@@ -4100,17 +5075,33 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                widget.currentUsername,
-                                style: GoogleFonts.inter(
-                                  color: _accent,
-                                  fontSize: 6.2,
-                                  fontWeight: FontWeight.w800,
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      isPublic
+                                          ? widget.currentUsername
+                                          : '@anonimo',
+                                      style: GoogleFonts.inter(
+                                        color: _accent,
+                                        fontSize: 6.2,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                  Text(
+                                    isPublic ? '🌐 Pública' : '🔒 Privada',
+                                    style: GoogleFonts.inter(
+                                      color: _textSecondary,
+                                      fontSize: 5.6,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                reply,
+                                replyText,
                                 style: GoogleFonts.merriweather(
                                   color: _textPrimary,
                                   fontSize: 6.8,
@@ -4610,120 +5601,316 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
       'Acoso o lenguaje ofensivo',
       'Otro motivo',
     ];
+
+    final detailController = TextEditingController();
     String? selectedReason;
+    var isSending = false;
 
     await showDialog<void>(
       context: context,
+      barrierDismissible: !isSending,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: _surface,
-              surfaceTintColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: _gold.withValues(alpha: 0.24),
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(maxWidth: 390),
+                padding: const EdgeInsets.fromLTRB(17, 16, 17, 16),
+                decoration: BoxDecoration(
+                  color: _surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _gold.withValues(alpha: 0.30),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-              ),
-              title: Text(
-                'REPORTAR PUBLICACIÓN',
-                style: GoogleFonts.cinzel(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: _accent,
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: reasons.map((reason) {
-                  final selected = selectedReason == reason;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 7),
-                    child: InkWell(
-                      onTap: () {
-                        setDialogState(() {
-                          selectedReason = reason;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 11,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? _accent.withValues(alpha: 0.08)
-                              : _background,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: selected
-                                ? _accent.withValues(alpha: 0.40)
-                                : _gold.withValues(alpha: 0.22),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              selected
-                                  ? Icons.radio_button_checked_rounded
-                                  : Icons.radio_button_unchecked_rounded,
-                              size: 15,
-                              color: selected
-                                  ? _accent
-                                  : _textSecondary,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                reason,
-                                style: GoogleFonts.inter(
-                                  fontSize: 8.2,
-                                  fontWeight: selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                  color: _textPrimary,
-                                ),
+                child: AbsorbPointer(
+                  absorbing: isSending,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: _accent.withValues(alpha: 0.08),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: _accent.withValues(alpha: 0.20),
                               ),
                             ),
-                          ],
+                            child: Icon(
+                              Icons.flag_rounded,
+                              color: _accent,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'MODERACIÓN',
+                                  style: GoogleFonts.cinzel(
+                                    fontSize: 7.2,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.65,
+                                    color: _accent,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Reportar publicación',
+                                  style: GoogleFonts.merriweather(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: _textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Selecciona el motivo que mejor describe el problema.',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 7.5,
+                                    height: 1.4,
+                                    color: _textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () =>
+                                Navigator.of(dialogContext).pop(),
+                            customBorder: const CircleBorder(),
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: _gold.withValues(alpha: 0.34),
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 15,
+                                color: _textSecondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      ...reasons.map((reason) {
+                        final selected = selectedReason == reason;
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 7),
+                          child: InkWell(
+                            onTap: () {
+                              setDialogState(() {
+                                selectedReason = reason;
+                              });
+                            },
+                            borderRadius: BorderRadius.circular(10),
+                            child: AnimatedContainer(
+                              duration:
+                                  const Duration(milliseconds: 170),
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 11,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? _accent.withValues(alpha: 0.08)
+                                    : _background,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: selected
+                                      ? _accent.withValues(alpha: 0.42)
+                                      : _gold.withValues(alpha: 0.22),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    selected
+                                        ? Icons
+                                            .radio_button_checked_rounded
+                                        : Icons
+                                            .radio_button_unchecked_rounded,
+                                    size: 15,
+                                    color: selected
+                                        ? _accent
+                                        : _textSecondary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      reason,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 8,
+                                        fontWeight: selected
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        color: _textPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 5),
+                      Text(
+                        'DETALLE ADICIONAL · OPCIONAL',
+                        style: GoogleFonts.cinzel(
+                          fontSize: 6.7,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.45,
+                          color: _textSecondary,
                         ),
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancelar'),
-                ),
-                FilledButton(
-                  onPressed: selectedReason == null
-                      ? null
-                      : () {
-                          Navigator.of(dialogContext).pop();
-                          _showModerationSuccess(
-                            title: 'Publicación reportada',
-                            message:
-                                'Gracias. El reporte fue enviado para revisión.',
-                          );
-                        },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _accent,
-                    foregroundColor: AppColors.background,
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: detailController,
+                        minLines: 2,
+                        maxLines: 4,
+                        maxLength: 300,
+                        style: GoogleFonts.inter(
+                          fontSize: 7.5,
+                          color: _textPrimary,
+                        ),
+                        decoration: InputDecoration(
+                          hintText:
+                              'Cuéntanos brevemente qué ocurrió...',
+                          counterText: '',
+                          filled: true,
+                          fillColor: _background,
+                          hintStyle: GoogleFonts.inter(
+                            fontSize: 7.2,
+                            color: _textSecondary,
+                          ),
+                          contentPadding:
+                              const EdgeInsets.symmetric(
+                            horizontal: 11,
+                            vertical: 10,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(9),
+                            borderSide: BorderSide(
+                              color: _gold.withValues(alpha: 0.28),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(9),
+                            borderSide: BorderSide(color: _gold),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 40,
+                        child: FilledButton(
+                          onPressed: selectedReason == null
+                              ? null
+                              : () async {
+                                  setDialogState(() {
+                                    isSending = true;
+                                  });
+
+                                  await Future<void>.delayed(
+                                    const Duration(milliseconds: 1000),
+                                  );
+
+                                  if (!dialogContext.mounted) return;
+                                  Navigator.of(dialogContext).pop();
+
+                                  if (!mounted) return;
+                                  _showModerationSuccess(
+                                    title: 'Publicación reportada',
+                                    message:
+                                        'Gracias. El reporte fue enviado para revisión.',
+                                  );
+                                },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _accent,
+                            disabledBackgroundColor: isSending
+                                ? Colors.grey.shade600
+                                : _accent.withValues(alpha: 0.30),
+                            foregroundColor: AppColors.background,
+                            disabledForegroundColor: isSending
+                                ? Colors.white
+                                : AppColors.background
+                                    .withValues(alpha: 0.72),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: isSending
+                              ? Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child:
+                                          CircularProgressIndicator(
+                                        strokeWidth: 1.8,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Text(
+                                      'Enviando reporte...',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 7.8,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  'Enviar reporte',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Text('Enviar reporte'),
                 ),
-              ],
+              ),
             );
           },
         );
       },
     );
+
+    detailController.dispose();
   }
 
   Future<void> _showShareDialog(BuildContext pageContext) async {
@@ -4816,20 +6003,12 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
                         Expanded(
                           child: _shareOption(
                             label: 'W · WhatsApp',
-                            onTap: () => _fakeShare(
-                              dialogContext,
-                              'WhatsApp',
-                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: _shareOption(
                             label: 'I · Instagram',
-                            onTap: () => _fakeShare(
-                              dialogContext,
-                              'Instagram',
-                            ),
                           ),
                         ),
                       ],
@@ -4840,35 +6019,12 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
                         Expanded(
                           child: _shareOption(
                             label: 'X · X',
-                            onTap: () => _fakeShare(
-                              dialogContext,
-                              'X',
-                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: _shareOption(
                             label: '↗ · Enlace',
-                            onTap: () async {
-                              await Clipboard.setData(
-                                ClipboardData(
-                                  text:
-                                      'Capítulo 0 · $_title · ${_authorHandle.isEmpty ? _author : _authorHandle}',
-                                ),
-                              );
-
-                              if (!dialogContext.mounted) return;
-                              Navigator.of(dialogContext).pop();
-
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content:
-                                      Text('Enlace de la obra copiado.'),
-                                ),
-                              );
-                            },
                           ),
                         ),
                       ],
@@ -4907,10 +6063,9 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
 
   Widget _shareOption({
     required String label,
-    required VoidCallback onTap,
   }) {
     return InkWell(
-      onTap: onTap,
+      onTap: null,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         alignment: Alignment.center,
@@ -4933,21 +6088,6 @@ class _LibraryUniversalBookDetailScreenState extends State<_LibraryUniversalBook
             fontWeight: FontWeight.w700,
             color: _textPrimary,
           ),
-        ),
-      ),
-    );
-  }
-
-  void _fakeShare(
-    BuildContext dialogContext,
-    String destination,
-  ) {
-    Navigator.of(dialogContext).pop();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Compartir en $destination estará disponible próximamente.',
         ),
       ),
     );
@@ -5496,12 +6636,23 @@ class _ReviewDialogState extends State<_ReviewDialog> {
   late bool _isPublic;
   late TextEditingController _controller;
 
+  bool get _isEditing => widget.initial != null;
+
+  Color get _background => AppColors.backgroundOf(context);
+  Color get _surface => AppColors.surfaceOf(context);
+  Color get _textPrimary => AppColors.textPrimaryOf(context);
+  Color get _textSecondary => AppColors.textSecondaryOf(context);
+  Color get _gold => AppColors.goldOf(context);
+  Color get _accent => AppColors.accentOf(context);
+  Color get _deep => AppColors.deepOf(context);
+
   @override
   void initState() {
     super.initState();
     _rating = widget.initial?.rating ?? 5;
     _isPublic = widget.initial?.isPublic ?? true;
-    _controller = TextEditingController(text: widget.initial?.text ?? '');
+    _controller =
+        TextEditingController(text: widget.initial?.text ?? '');
   }
 
   @override
@@ -5512,116 +6663,342 @@ class _ReviewDialogState extends State<_ReviewDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: AppColors.backgroundOf(context),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      title: Text(
-        'Calificar y reseñar',
-        style: GoogleFonts.cinzel(
-          color: AppColors.textPrimaryOf(context),
-          fontSize: 15,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.bookTitle,
-              style: GoogleFonts.merriweather(
-                color: AppColors.textPrimaryOf(context),
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: List.generate(5, (index) {
-                final value = index + 1;
-                return IconButton(
-                  onPressed: () => setState(() => _rating = value),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 34,
-                    minHeight: 34,
-                  ),
-                  icon: Icon(
-                    value <= _rating
-                        ? Icons.star_rounded
-                        : Icons.star_border_rounded,
-                    color: AppColors.gold,
-                    size: 27,
-                  ),
-                );
-              }),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _controller,
-              maxLines: 5,
-              style: GoogleFonts.inter(fontSize: 10),
-              decoration: InputDecoration(
-                hintText: '¿Qué te pareció este libro?',
-                filled: true,
-                fillColor: AppColors.surfaceOf(context),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SwitchListTile.adaptive(
-              contentPadding: EdgeInsets.zero,
-              title: Text(
-                'Reseña pública',
-                style: GoogleFonts.inter(
-                  color: AppColors.textPrimaryOf(context),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              subtitle: Text(
-                _isPublic
-                    ? 'Visible para la comunidad'
-                    : 'Solo visible para ti',
-                style: GoogleFonts.inter(
-                  color: AppColors.textSecondaryOf(context),
-                  fontSize: 7.5,
-                ),
-              ),
-              value: _isPublic,
-              activeTrackColor: AppColors.gold,
-              onChanged: (value) => setState(() => _isPublic = value),
+    final canSave = _rating > 0 && _controller.text.trim().isNotEmpty;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 22),
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: 400),
+        padding: const EdgeInsets.fromLTRB(16, 15, 16, 16),
+        decoration: BoxDecoration(
+          color: _surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: _gold.withValues(alpha: 0.28),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 24,
+              offset: const Offset(0, 10),
             ),
           ],
         ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancelar'),
-        ),
-        FilledButton(
-          onPressed: () {
-            final text = _controller.text.trim();
-            if (text.isEmpty) return;
-            widget.onSave(
-              BookReview(rating: _rating, text: text, isPublic: _isPublic),
-            );
-            Navigator.of(context).pop();
-          },
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.accent,
-            foregroundColor: AppColors.background,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: _gold.withValues(alpha: 0.11),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _gold.withValues(alpha: 0.26),
+                      ),
+                    ),
+                    child: Icon(
+                      _isEditing
+                          ? Icons.rate_review_outlined
+                          : Icons.star_outline_rounded,
+                      color: _gold,
+                      size: 21,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _isEditing
+                              ? 'EDITAR RESEÑA'
+                              : 'CALIFICAR Y RESEÑAR',
+                          style: GoogleFonts.cinzel(
+                            color: _accent,
+                            fontSize: 7.4,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.65,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.bookTitle,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.merriweather(
+                            color: _textPrimary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => Navigator.of(context).pop(),
+                    customBorder: const CircleBorder(),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _gold.withValues(alpha: 0.34),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 15,
+                        color: _textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 15),
+              Text(
+                'TU CALIFICACIÓN',
+                style: GoogleFonts.cinzel(
+                  color: _textPrimary,
+                  fontSize: 7.2,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Row(
+                children: List.generate(5, (index) {
+                  final value = index + 1;
+                  final selected = value <= _rating;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 7),
+                    child: InkWell(
+                      onTap: () => setState(() => _rating = value),
+                      customBorder: const CircleBorder(),
+                      child: Icon(
+                        selected
+                            ? Icons.star_rounded
+                            : Icons.star_border_rounded,
+                        color: _gold,
+                        size: 24,
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _controller,
+                minLines: 4,
+                maxLines: 6,
+                maxLength: 500,
+                onChanged: (_) => setState(() {}),
+                style: GoogleFonts.merriweather(
+                  color: _textPrimary,
+                  fontSize: 8.2,
+                  height: 1.45,
+                ),
+                decoration: InputDecoration(
+                  hintText: '¿Qué te pareció esta lectura?',
+                  counterText: '',
+                  filled: true,
+                  fillColor: _background,
+                  hintStyle: GoogleFonts.merriweather(
+                    color: _textSecondary,
+                    fontSize: 8,
+                  ),
+                  contentPadding: const EdgeInsets.fromLTRB(
+                    11,
+                    10,
+                    11,
+                    10,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(9),
+                    borderSide: BorderSide(
+                      color: _gold.withValues(alpha: 0.34),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(9),
+                    borderSide: BorderSide(color: _gold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 11),
+              Text(
+                'PRIVACIDAD DE LA RESEÑA',
+                style: GoogleFonts.cinzel(
+                  color: _textPrimary,
+                  fontSize: 7.1,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 7),
+              Container(
+                height: 34,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: _background,
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(
+                    color: _gold.withValues(alpha: 0.28),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _privacyButton(
+                        label: '🌐  Pública',
+                        selected: _isPublic,
+                        onTap: () =>
+                            setState(() => _isPublic = true),
+                      ),
+                    ),
+                    Expanded(
+                      child: _privacyButton(
+                        label: '🔒  Privada',
+                        selected: !_isPublic,
+                        onTap: () =>
+                            setState(() => _isPublic = false),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _isPublic
+                    ? 'Visible para todos los lectores y en Mis reseñas.'
+                    : 'Se mostrará como anónima para la comunidad.',
+                style: GoogleFonts.inter(
+                  color: _textSecondary,
+                  fontSize: 6.7,
+                ),
+              ),
+              const SizedBox(height: 5),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  '${_controller.text.length} / 500',
+                  style: GoogleFonts.inter(
+                    color: _textSecondary,
+                    fontSize: 6.2,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 38,
+                      child: OutlinedButton(
+                        onPressed: () =>
+                            Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _textPrimary,
+                          side: BorderSide(
+                            color: _gold.withValues(alpha: 0.34),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                        ),
+                        child: Text(
+                          'Cancelar',
+                          style: GoogleFonts.inter(
+                            fontSize: 7.4,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: SizedBox(
+                      height: 38,
+                      child: FilledButton(
+                        onPressed: canSave
+                            ? () {
+                                final review = BookReview(
+                                  rating: _rating,
+                                  text: _controller.text.trim(),
+                                  isPublic: _isPublic,
+                                );
+
+                                widget.onSave(review);
+                                Navigator.of(context).pop();
+                              }
+                            : null,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _accent,
+                          disabledBackgroundColor:
+                              _accent.withValues(alpha: 0.30),
+                          foregroundColor: AppColors.background,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                        ),
+                        child: Text(
+                          _isEditing
+                              ? 'Guardar cambios'
+                              : 'Publicar reseña',
+                          style: GoogleFonts.inter(
+                            fontSize: 7.4,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-          child: const Text('Guardar reseña'),
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _privacyButton({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(7),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: selected ? _deep : Colors.transparent,
+          borderRadius: BorderRadius.circular(7),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            color: selected
+                ? AppColors.background
+                : _textPrimary,
+            fontSize: 6.8,
+            fontWeight: selected
+                ? FontWeight.w700
+                : FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 }
