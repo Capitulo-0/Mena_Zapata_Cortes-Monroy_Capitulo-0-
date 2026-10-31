@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,19 +14,20 @@ class _MockChapterComment {
     required this.username,
     required this.text,
     required this.likes,
-    List<String>? replies,
-  }) : replies = replies ?? <String>[];
+    List<Map<String, dynamic>>? replies,
+  }) : replies = replies ?? <Map<String, dynamic>>[];
 
   final String id;
   final String username;
   final String text;
-  final List<String> replies;
+  final List<Map<String, dynamic>> replies;
 
   int likes;
   bool liked = false;
   bool hidden = false;
   bool replying = false;
   bool repliesExpanded = false;
+  bool replyPublic = true;
 }
 
 class PublishedStoryScreen extends StatefulWidget {
@@ -169,13 +169,34 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
           final storedReplies = decoded[comment.id];
 
           if (storedReplies is List) {
+            final parsedReplies = <Map<String, dynamic>>[];
+
+            for (final storedReply in storedReplies) {
+              if (storedReply is String && storedReply.trim().isNotEmpty) {
+                // Compatibilidad con respuestas guardadas antes de añadir privacidad.
+                parsedReplies.add({
+                  'text': storedReply.trim(),
+                  'isPublic': true,
+                });
+                continue;
+              }
+
+              if (storedReply is Map) {
+                final replyText =
+                    storedReply['text']?.toString().trim() ?? '';
+
+                if (replyText.isEmpty) continue;
+
+                parsedReplies.add({
+                  'text': replyText,
+                  'isPublic': storedReply['isPublic'] as bool? ?? true,
+                });
+              }
+            }
+
             comment.replies
               ..clear()
-              ..addAll(
-                storedReplies
-                    .whereType<String>()
-                    .where((reply) => reply.trim().isNotEmpty),
-              );
+              ..addAll(parsedReplies);
           }
         }
       }
@@ -194,12 +215,14 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
   Future<void> _savePersistedReplies() async {
     final preferences = await SharedPreferences.getInstance();
 
-    final data = <String, List<String>>{};
+    final data = <String, List<Map<String, dynamic>>>{};
 
     for (final comments in _commentsByChapter.values) {
       for (final comment in comments) {
         if (comment.replies.isNotEmpty) {
-          data[comment.id] = List<String>.from(comment.replies);
+          data[comment.id] = comment.replies
+              .map((reply) => Map<String, dynamic>.from(reply))
+              .toList();
         }
       }
     }
@@ -1123,15 +1146,16 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                 ? Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Container(
-                      padding: const EdgeInsets.fromLTRB(9, 8, 7, 6),
+                      padding: const EdgeInsets.fromLTRB(9, 8, 9, 8),
                       decoration: BoxDecoration(
                         color: _surfaceColor(context),
-                        borderRadius: BorderRadius.circular(9),
+                        borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                           color: AppColors.gold.withValues(alpha: 0.22),
                         ),
                       ),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           TextField(
                             controller: controller,
@@ -1144,7 +1168,6 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                             ),
                             decoration: InputDecoration(
                               isDense: true,
-                              border: InputBorder.none,
                               hintText:
                                   'Responder a ${comment.username}...',
                               counterStyle: GoogleFonts.inter(
@@ -1155,8 +1178,116 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                                 fontSize: 6.8,
                                 color: _textSecondaryColor(context),
                               ),
+                              filled: true,
+                              fillColor: _backgroundColor(context),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 9,
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(9),
+                                borderSide: BorderSide(
+                                  color: AppColors.gold.withValues(alpha: 0.26),
+                                ),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(9),
+                                borderSide: const BorderSide(
+                                  color: AppColors.gold,
+                                ),
+                              ),
                             ),
                           ),
+                          const SizedBox(height: 7),
+                          Text(
+                            'PRIVACIDAD DE LA RESPUESTA',
+                            style: GoogleFonts.cinzel(
+                              color: _headingColor(context),
+                              fontSize: 6.3,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.35,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Container(
+                            height: 32,
+                            padding: const EdgeInsets.all(3),
+                            decoration: BoxDecoration(
+                              color: _backgroundColor(context),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color:
+                                    AppColors.gold.withValues(alpha: 0.24),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        comment.replyPublic = true;
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 180),
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: comment.replyPublic
+                                            ? AppColors.deepOf(context)
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '🌐 Pública',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 6.4,
+                                          fontWeight: FontWeight.w700,
+                                          color: comment.replyPublic
+                                              ? AppColors.backgroundOf(context)
+                                              : _textPrimaryColor(context),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        comment.replyPublic = false;
+                                      });
+                                    },
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 180),
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: !comment.replyPublic
+                                            ? AppColors.deepOf(context)
+                                            : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        '🔒 Privada',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 6.4,
+                                          fontWeight: FontWeight.w700,
+                                          color: !comment.replyPublic
+                                              ? AppColors.backgroundOf(context)
+                                              : _textPrimaryColor(context),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
@@ -1165,6 +1296,7 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                                   controller.clear();
                                   setState(() {
                                     comment.replying = false;
+                                    comment.replyPublic = true;
                                   });
                                 },
                                 style: TextButton.styleFrom(
@@ -1178,22 +1310,28 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                                 ),
                                 child: Text(
                                   'Cancelar',
-                                  style: GoogleFonts.inter(fontSize: 5.8),
+                                  style:
+                                      GoogleFonts.inter(fontSize: 5.8),
                                 ),
                               ),
                               const SizedBox(width: 4),
                               FilledButton(
                                 onPressed: () {
-                                  final replyText = controller.text.trim();
+                                  final replyText =
+                                      controller.text.trim();
 
                                   if (replyText.isEmpty) {
                                     return;
                                   }
 
                                   setState(() {
-                                    comment.replies.add(replyText);
+                                    comment.replies.add({
+                                      'text': replyText,
+                                      'isPublic': comment.replyPublic,
+                                    });
                                     comment.replying = false;
                                     comment.repliesExpanded = true;
+                                    comment.replyPublic = true;
                                   });
 
                                   controller.clear();
@@ -1201,7 +1339,8 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                                 },
                                 style: FilledButton.styleFrom(
                                   backgroundColor: AppColors.accent,
-                                  foregroundColor: AppColors.background,
+                                  foregroundColor:
+                                      AppColors.background,
                                   minimumSize: Size.zero,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 9,
@@ -1267,8 +1406,11 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
 
   Widget _buildReplyCard(
     BuildContext context,
-    String reply,
+    Map<String, dynamic> reply,
   ) {
+    final isPublic = reply['isPublic'] as bool? ?? true;
+    final replyText = reply['text']?.toString() ?? '';
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
@@ -1288,17 +1430,31 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '↳ ${widget.currentUsername}',
-            style: GoogleFonts.inter(
-              fontSize: 6.2,
-              fontWeight: FontWeight.w800,
-              color: AppColors.accent,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '↳ ${isPublic ? widget.currentUsername : '@anonimo'}',
+                  style: GoogleFonts.inter(
+                    fontSize: 6.2,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.accent,
+                  ),
+                ),
+              ),
+              Text(
+                isPublic ? '🌐 Pública' : '🔒 Privada',
+                style: GoogleFonts.inter(
+                  fontSize: 5.5,
+                  fontWeight: FontWeight.w600,
+                  color: _textSecondaryColor(context),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 4),
           Text(
-            reply,
+            replyText,
             style: GoogleFonts.merriweather(
               fontSize: 7,
               height: 1.4,
@@ -2270,123 +2426,405 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
       'Otro motivo',
     ];
 
+    final detailController = TextEditingController();
     String? selectedReason;
+    var isSending = false;
 
     await showDialog<void>(
       context: context,
+      barrierDismissible: !isSending,
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: _surfaceColor(dialogContext),
-              surfaceTintColor: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-                side: BorderSide(
-                  color: AppColors.gold.withValues(alpha: 0.24),
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding:
+                  const EdgeInsets.symmetric(horizontal: 24),
+              child: Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(maxWidth: 390),
+                padding: const EdgeInsets.fromLTRB(17, 16, 17, 16),
+                decoration: BoxDecoration(
+                  color: _surfaceColor(dialogContext),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: AppColors.gold.withValues(alpha: 0.30),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-              ),
-              title: Text(
-                'REPORTAR PUBLICACIÓN',
-                style: GoogleFonts.cinzel(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent,
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: reasons.map((reason) {
-                  final selected = selectedReason == reason;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 7),
-                    child: InkWell(
-                      onTap: () {
-                        setDialogState(() {
-                          selectedReason = reason;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 11,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? AppColors.accent.withValues(alpha: 0.08)
-                              : _backgroundColor(dialogContext),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: selected
-                                ? AppColors.accent.withValues(alpha: 0.40)
-                                : AppColors.gold.withValues(alpha: 0.22),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              selected
-                                  ? Icons.radio_button_checked_rounded
-                                  : Icons.radio_button_unchecked_rounded,
-                              size: 15,
-                              color: selected
-                                  ? AppColors.accent
-                                  : _textSecondaryColor(dialogContext),
+                child: AbsorbPointer(
+                  absorbing: isSending,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 42,
+                            height: 42,
+                            decoration: BoxDecoration(
+                              color: AppColors.accent
+                                  .withValues(alpha: 0.08),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.accent
+                                    .withValues(alpha: 0.20),
+                              ),
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                reason,
-                                style: GoogleFonts.inter(
-                                  fontSize: 8.2,
-                                  fontWeight: selected
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                  color: _textPrimaryColor(dialogContext),
+                            child: const Icon(
+                              Icons.flag_rounded,
+                              color: AppColors.accent,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'MODERACIÓN',
+                                  style: GoogleFonts.cinzel(
+                                    fontSize: 7.2,
+                                    fontWeight:
+                                        FontWeight.w700,
+                                    letterSpacing: 0.65,
+                                    color: AppColors.accent,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Reportar publicación',
+                                  style:
+                                      GoogleFonts.merriweather(
+                                    fontSize: 14,
+                                    fontWeight:
+                                        FontWeight.w700,
+                                    color: _headingColor(
+                                      dialogContext,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Selecciona el motivo que mejor describe el problema.',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 7.5,
+                                    height: 1.4,
+                                    color:
+                                        _textSecondaryColor(
+                                      dialogContext,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () =>
+                                Navigator.of(dialogContext)
+                                    .pop(),
+                            customBorder:
+                                const CircleBorder(),
+                            child: Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.gold
+                                      .withValues(
+                                    alpha: 0.34,
+                                  ),
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.close_rounded,
+                                size: 15,
+                                color:
+                                    _textSecondaryColor(
+                                  dialogContext,
                                 ),
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('Cancelar'),
-                ),
-                FilledButton(
-                  onPressed: selectedReason == null
-                      ? null
-                      : () {
-                          Navigator.of(dialogContext).pop();
+                      const SizedBox(height: 14),
+                      ...reasons.map((reason) {
+                        final selected =
+                            selectedReason == reason;
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Reporte enviado para revisión.',
+                        return Padding(
+                          padding:
+                              const EdgeInsets.only(
+                            bottom: 7,
+                          ),
+                          child: InkWell(
+                            onTap: () {
+                              setDialogState(() {
+                                selectedReason = reason;
+                              });
+                            },
+                            borderRadius:
+                                BorderRadius.circular(10),
+                            child: AnimatedContainer(
+                              duration: const Duration(
+                                milliseconds: 170,
+                              ),
+                              width: double.infinity,
+                              padding:
+                                  const EdgeInsets.symmetric(
+                                horizontal: 11,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? AppColors.accent
+                                        .withValues(
+                                          alpha: 0.08,
+                                        )
+                                    : _backgroundColor(
+                                        dialogContext,
+                                      ),
+                                borderRadius:
+                                    BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: selected
+                                      ? AppColors.accent
+                                          .withValues(
+                                            alpha: 0.42,
+                                          )
+                                      : AppColors.gold
+                                          .withValues(
+                                            alpha: 0.22,
+                                          ),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    selected
+                                        ? Icons
+                                            .radio_button_checked_rounded
+                                        : Icons
+                                            .radio_button_unchecked_rounded,
+                                    size: 15,
+                                    color: selected
+                                        ? AppColors.accent
+                                        : _textSecondaryColor(
+                                            dialogContext,
+                                          ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      reason,
+                                      style:
+                                          GoogleFonts.inter(
+                                        fontSize: 8,
+                                        fontWeight: selected
+                                            ? FontWeight
+                                                .w700
+                                            : FontWeight
+                                                .w500,
+                                        color:
+                                            _textPrimaryColor(
+                                          dialogContext,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          );
-                        },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: AppColors.background,
+                          ),
+                        );
+                      }),
+                      const SizedBox(height: 5),
+                      Text(
+                        'DETALLE ADICIONAL · OPCIONAL',
+                        style: GoogleFonts.cinzel(
+                          fontSize: 6.7,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.45,
+                          color: _textSecondaryColor(
+                            dialogContext,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: detailController,
+                        minLines: 2,
+                        maxLines: 4,
+                        maxLength: 300,
+                        style: GoogleFonts.inter(
+                          fontSize: 7.5,
+                          color: _textPrimaryColor(
+                            dialogContext,
+                          ),
+                        ),
+                        decoration: InputDecoration(
+                          hintText:
+                              'Cuéntanos brevemente qué ocurrió...',
+                          counterText: '',
+                          filled: true,
+                          fillColor:
+                              _backgroundColor(dialogContext),
+                          hintStyle: GoogleFonts.inter(
+                            fontSize: 7.2,
+                            color: _textSecondaryColor(
+                              dialogContext,
+                            ),
+                          ),
+                          contentPadding:
+                              const EdgeInsets.symmetric(
+                            horizontal: 11,
+                            vertical: 10,
+                          ),
+                          enabledBorder:
+                              OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(9),
+                            borderSide: BorderSide(
+                              color: AppColors.gold
+                                  .withValues(alpha: 0.28),
+                            ),
+                          ),
+                          focusedBorder:
+                              OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(9),
+                            borderSide:
+                                const BorderSide(
+                              color: AppColors.gold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 40,
+                        child: FilledButton(
+                          onPressed: selectedReason == null
+                              ? null
+                              : () async {
+                                  setDialogState(() {
+                                    isSending = true;
+                                  });
+
+                                  await Future<void>.delayed(
+                                    const Duration(
+                                      milliseconds: 1000,
+                                    ),
+                                  );
+
+                                  if (!dialogContext.mounted) {
+                                    return;
+                                  }
+
+                                  Navigator.of(dialogContext)
+                                      .pop();
+
+                                  if (!mounted) return;
+
+                                  ScaffoldMessenger.of(
+                                    this.context,
+                                  ).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Reporte enviado para revisión.',
+                                      ),
+                                    ),
+                                  );
+                                },
+                          style: FilledButton.styleFrom(
+                            backgroundColor:
+                                AppColors.accent,
+                            disabledBackgroundColor:
+                                isSending
+                                    ? Colors.grey.shade600
+                                    : AppColors.accent
+                                        .withValues(
+                                          alpha: 0.30,
+                                        ),
+                            foregroundColor:
+                                AppColors.background,
+                            disabledForegroundColor:
+                                isSending
+                                    ? Colors.white
+                                    : AppColors.background
+                                        .withValues(
+                                          alpha: 0.72,
+                                        ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(10),
+                            ),
+                          ),
+                          child: isSending
+                              ? Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment
+                                          .center,
+                                  mainAxisSize:
+                                      MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child:
+                                          CircularProgressIndicator(
+                                        strokeWidth: 1.8,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 7),
+                                    Text(
+                                      'Enviando reporte...',
+                                      style:
+                                          GoogleFonts.inter(
+                                        fontSize: 7.8,
+                                        fontWeight:
+                                            FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  'Enviar reporte',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 8,
+                                    fontWeight:
+                                        FontWeight.w800,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: const Text('Enviar reporte'),
                 ),
-              ],
+              ),
             );
           },
         );
       },
     );
+
+    detailController.dispose();
   }
 
   Future<void> _showShareDialog(BuildContext context) async {
@@ -2479,11 +2917,6 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                           child: _shareOption(
                             dialogContext,
                             label: 'W · WhatsApp',
-                            onTap: () => _fakeShare(
-                              context,
-                              dialogContext,
-                              'WhatsApp',
-                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -2491,11 +2924,6 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                           child: _shareOption(
                             dialogContext,
                             label: 'I · Instagram',
-                            onTap: () => _fakeShare(
-                              context,
-                              dialogContext,
-                              'Instagram',
-                            ),
                           ),
                         ),
                       ],
@@ -2507,11 +2935,6 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                           child: _shareOption(
                             dialogContext,
                             label: 'X · X',
-                            onTap: () => _fakeShare(
-                              context,
-                              dialogContext,
-                              'X',
-                            ),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -2519,26 +2942,6 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                           child: _shareOption(
                             dialogContext,
                             label: '↗ · Enlace',
-                            onTap: () async {
-                              await Clipboard.setData(
-                                ClipboardData(
-                                  text:
-                                      'Capítulo 0 · ${widget.story.title} · ${widget.displayedAuthorUsername}',
-                                ),
-                              );
-
-                              if (!dialogContext.mounted) return;
-                              Navigator.of(dialogContext).pop();
-
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'Enlace de la obra copiado.',
-                                  ),
-                                ),
-                              );
-                            },
                           ),
                         ),
                       ],
@@ -2578,10 +2981,9 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
   Widget _shareOption(
     BuildContext context, {
     required String label,
-    required VoidCallback onTap,
   }) {
     return InkWell(
-      onTap: onTap,
+      onTap: null,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         alignment: Alignment.center,
@@ -2606,21 +3008,6 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
     );
   }
 
-  void _fakeShare(
-    BuildContext pageContext,
-    BuildContext dialogContext,
-    String destination,
-  ) {
-    Navigator.of(dialogContext).pop();
-
-    ScaffoldMessenger.of(pageContext).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Compartir en $destination estará disponible próximamente.',
-        ),
-      ),
-    );
-  }
 
   List<Color> _coverColors(String? cover) {
     switch (cover) {
