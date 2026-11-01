@@ -18,27 +18,19 @@ class WriterStory {
   });
 
   final String id;
-
   final String title;
   final String synopsis;
   final String genre;
-
   final String? coverPath;
-
   final WriterStoryStatus status;
-
   final List<WriterChapter> chapters;
-
   final DateTime createdAt;
   final DateTime updatedAt;
-
   final int followers;
   final double rating;
 
   bool get isPublished => status == WriterStoryStatus.published;
-
   bool get isDraft => status == WriterStoryStatus.draft;
-
   int get chapterCount => chapters.length;
 
   int get publishedChapterCount =>
