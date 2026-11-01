@@ -24,6 +24,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool obscureConfirmPassword = true;
   bool isGenderMenuOpen = false;
   bool isLoggingIn = false;
+  bool isRegistering = false;
   int loginDots = 1;
 
   final loginEmailController = TextEditingController();
@@ -36,6 +37,30 @@ class _AuthScreenState extends State<AuthScreen> {
   final registerConfirmPasswordController = TextEditingController();
 
   String? selectedGender;
+  String? customGender;
+
+  bool get _passwordHasMinLength =>
+      registerPasswordController.text.length >= 8;
+
+  bool get _passwordHasUppercase =>
+      RegExp(r'[A-Z]').hasMatch(registerPasswordController.text);
+
+  bool get _passwordHasLowercase =>
+      RegExp(r'[a-z]').hasMatch(registerPasswordController.text);
+
+  bool get _passwordHasNumber =>
+      RegExp(r'[0-9]').hasMatch(registerPasswordController.text);
+
+  bool get _passwordHasSpecial =>
+      RegExp(r'[!@#\$%^&*()_\-+=\[\]{};:"\\|,.<>/?`~]')
+          .hasMatch(registerPasswordController.text);
+
+  bool get _passwordIsValid =>
+      _passwordHasMinLength &&
+      _passwordHasUppercase &&
+      _passwordHasLowercase &&
+      _passwordHasNumber &&
+      _passwordHasSpecial;
 
   @override
   void dispose() {
@@ -237,7 +262,7 @@ class _AuthScreenState extends State<AuthScreen> {
           controller: loginEmailController,
           keyboardType: TextInputType.emailAddress,
           decoration: _inputDecoration(
-            hintText: 'tu@correo.com',
+            hintText: 'tucorreo@example.com',
             prefixIcon: Icons.mail_outline_rounded,
           ),
         ),
@@ -373,12 +398,12 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ),
         const SizedBox(height: 22),
-        _buildLabel('Nombre completo'),
+        _buildLabel('Nombre y apellido'),
         const SizedBox(height: 7),
         TextField(
           controller: registerNameController,
           decoration: _inputDecoration(
-            hintText: 'Ej: Constanza Mena',
+            hintText: 'Ej: Juan Perez',
             prefixIcon: Icons.person_outline,
           ),
         ),
@@ -414,7 +439,7 @@ class _AuthScreenState extends State<AuthScreen> {
           controller: registerEmailController,
           keyboardType: TextInputType.emailAddress,
           decoration: _inputDecoration(
-            hintText: 'tu@correo.com',
+            hintText: 'tucorreo@example.com',
             prefixIcon: Icons.mail_outline_rounded,
           ),
         ),
@@ -424,6 +449,9 @@ class _AuthScreenState extends State<AuthScreen> {
         TextField(
           controller: registerPasswordController,
           obscureText: obscurePassword,
+          onChanged: (_) {
+            setState(() {});
+          },
           decoration: _inputDecoration(
             hintText: '••••••••',
             prefixIcon: Icons.lock_outline_rounded,
@@ -441,12 +469,66 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 9),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(11, 10, 11, 10),
+          decoration: BoxDecoration(
+            color: AppColors.surfaceSoft.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(
+              color: AppColors.gold.withValues(alpha: 0.22),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'REQUISITOS DE CONTRASEÑA',
+                style: GoogleFonts.cinzel(
+                  color: AppColors.deep,
+                  fontSize: 7.5,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.35,
+                ),
+              ),
+              const SizedBox(height: 7),
+              _passwordRequirement(
+                label: '8 caracteres mínimo',
+                fulfilled: _passwordHasMinLength,
+              ),
+              const SizedBox(height: 5),
+              _passwordRequirement(
+                label: 'Una letra mayúscula',
+                fulfilled: _passwordHasUppercase,
+              ),
+              const SizedBox(height: 5),
+              _passwordRequirement(
+                label: 'Una letra minúscula',
+                fulfilled: _passwordHasLowercase,
+              ),
+              const SizedBox(height: 5),
+              _passwordRequirement(
+                label: 'Un número',
+                fulfilled: _passwordHasNumber,
+              ),
+              const SizedBox(height: 5),
+              _passwordRequirement(
+                label: 'Un carácter especial (@, -, _, !, etc.)',
+                fulfilled: _passwordHasSpecial,
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 16),
         _buildLabel('Confirmar contraseña'),
         const SizedBox(height: 7),
         TextField(
           controller: registerConfirmPasswordController,
           obscureText: obscureConfirmPassword,
+          onChanged: (_) {
+            setState(() {});
+          },
           decoration: _inputDecoration(
             hintText: '••••••••',
             prefixIcon: Icons.lock_outline_rounded,
@@ -465,10 +547,14 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
           ),
         ),
+        const SizedBox(height: 8),
+        if (registerConfirmPasswordController.text.isNotEmpty)
+          _passwordConfirmationStatus(),
         const SizedBox(height: 22),
         _buildPrimaryButton(
-          text: 'Crear cuenta',
-          onPressed: _register,
+          text: isRegistering ? 'Creando cuenta...' : 'Crear cuenta',
+          loading: isRegistering,
+          onPressed: isRegistering ? null : _register,
         ),
         const SizedBox(height: 18),
         _buildDivider('o continúa con'),
@@ -488,11 +574,19 @@ class _AuthScreenState extends State<AuthScreen> {
     final options = <String>[
       'Mujer',
       'Hombre',
-      'No binario',
       'Prefiero no decirlo',
+      'Prefiero decirlo yo',
     ];
 
+    final displayGender =
+        selectedGender == 'Prefiero decirlo yo' &&
+                customGender != null &&
+                customGender!.trim().isNotEmpty
+            ? customGender!.trim()
+            : selectedGender;
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         InkWell(
           onTap: () {
@@ -500,26 +594,30 @@ class _AuthScreenState extends State<AuthScreen> {
               isGenderMenuOpen = !isGenderMenuOpen;
             });
           },
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(11),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOutCubic,
-            height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOut,
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: 48),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 11,
+            ),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(11),
               border: Border.all(
                 color: isGenderMenuOpen
                     ? AppColors.gold
                     : AppColors.gold.withValues(alpha: 0.55),
-                width: isGenderMenuOpen ? 1.15 : 1,
+                width: isGenderMenuOpen ? 1.35 : 1,
               ),
               boxShadow: isGenderMenuOpen
                   ? [
                       BoxShadow(
                         color: AppColors.gold.withValues(alpha: 0.10),
-                        blurRadius: 10,
+                        blurRadius: 12,
                         offset: const Offset(0, 3),
                       ),
                     ]
@@ -527,34 +625,27 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
             child: Row(
               children: [
-                const Icon(
-                  Icons.people_outline,
-                  size: 20,
-                  color: AppColors.deep,
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    selectedGender ?? 'Selecciona una opción',
+                    displayGender ?? 'Selecciona una opción',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.inter(
-                      color: selectedGender == null
+                      color: displayGender == null
                           ? AppColors.textSecondary
-                          : AppColors.deep,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w400,
+                          : AppColors.textPrimary,
+                      fontSize: 11,
                     ),
                   ),
                 ),
                 AnimatedRotation(
                   turns: isGenderMenuOpen ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 220),
+                  duration: const Duration(milliseconds: 180),
                   curve: Curves.easeOutCubic,
-                  child: Icon(
+                  child: const Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    size: 20,
-                    color: isGenderMenuOpen
-                        ? AppColors.gold
-                        : AppColors.textSecondary,
+                    color: AppColors.gold,
+                    size: 19,
                   ),
                 ),
               ],
@@ -562,93 +653,595 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
         ),
         AnimatedSize(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOutCubic,
+          duration: const Duration(milliseconds: 190),
+          curve: Curves.easeOut,
           alignment: Alignment.topCenter,
           child: isGenderMenuOpen
               ? Padding(
                   padding: const EdgeInsets.only(top: 7),
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0.96, end: 1),
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutBack,
-                    builder: (context, scale, child) {
-                      return Transform.scale(
-                        scale: scale,
-                        alignment: Alignment.topCenter,
-                        child: child,
-                      );
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppColors.gold.withValues(alpha: 0.45),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.10),
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
+                  child: Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: AppColors.surface,
+                      borderRadius: BorderRadius.circular(13),
+                      border: Border.all(
+                        color: AppColors.gold.withValues(alpha: 0.62),
                       ),
-                      child: Column(
-                        children: options.map((option) {
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ...List.generate(options.length, (index) {
+                          final option = options[index];
                           final selected = selectedGender == option;
+                          final alternate = index.isOdd;
 
-                          return InkWell(
-                            onTap: () {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              InkWell(
+                                onTap: () async {
+                                  if (option == 'Prefiero decirlo yo') {
+                                    setState(() {
+                                      isGenderMenuOpen = false;
+                                    });
+
+                                    final value =
+                                        await _openCustomGenderEditor();
+
+                                    if (!mounted || value == null) return;
+
+                                    setState(() {
+                                      customGender = value;
+                                      selectedGender = 'Prefiero decirlo yo';
+                                    });
+                                    return;
+                                  }
+
+                                  setState(() {
+                                    selectedGender = option;
+                                    isGenderMenuOpen = false;
+                                  });
+                                },
+                                child: AnimatedContainer(
+                                  duration:
+                                      const Duration(milliseconds: 150),
+                                  curve: Curves.easeOut,
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 13,
+                                    vertical: 12,
+                                  ),
+                                  color: selected
+                                      ? AppColors.accent
+                                          .withValues(alpha: 0.08)
+                                      : alternate
+                                          ? AppColors.surfaceSoft
+                                              .withValues(alpha: 0.34)
+                                          : AppColors.surface,
+                                  child: Row(
+                                    children: [
+                                      AnimatedContainer(
+                                        duration:
+                                            const Duration(milliseconds: 160),
+                                        width: 26,
+                                        height: 26,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: selected
+                                              ? AppColors.gold
+                                                  .withValues(alpha: 0.16)
+                                              : AppColors.background,
+                                          border: Border.all(
+                                            color: selected
+                                                ? AppColors.gold
+                                                : AppColors.gold
+                                                    .withValues(alpha: 0.22),
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          selected
+                                              ? Icons.check_rounded
+                                              : Icons.person_outline_rounded,
+                                          size: 13,
+                                          color: selected
+                                              ? AppColors.gold
+                                              : AppColors.textSecondary,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          option,
+                                          style: GoogleFonts.inter(
+                                            color: selected
+                                                ? AppColors.accent
+                                                : AppColors.textPrimary,
+                                            fontSize: 10,
+                                            fontWeight: selected
+                                                ? FontWeight.w700
+                                                : FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      if (selected)
+                                        Text(
+                                          'ACTUAL',
+                                          style: GoogleFonts.inter(
+                                            color: AppColors.gold,
+                                            fontSize: 6,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0.7,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (index < options.length - 1)
+                                Divider(
+                                  height: 1,
+                                  thickness: 1,
+                                  color: AppColors.gold
+                                      .withValues(alpha: 0.12),
+                                ),
+                            ],
+                          );
+                        }),
+                        if (customGender != null &&
+                            customGender!.trim().isNotEmpty) ...[
+                          Divider(
+                            height: 1,
+                            thickness: 1,
+                            color:
+                                AppColors.gold.withValues(alpha: 0.12),
+                          ),
+                          InkWell(
+                            onTap: () async {
                               setState(() {
-                                selectedGender = option;
                                 isGenderMenuOpen = false;
                               });
+
+                              final value = await _openCustomGenderEditor(
+                                initialValue: customGender,
+                              );
+
+                              if (!mounted || value == null) return;
+
+                              setState(() {
+                                customGender = value;
+                                selectedGender = 'Prefiero decirlo yo';
+                              });
                             },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 160),
+                            child: Container(
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
+                                horizontal: 13,
                                 vertical: 11,
                               ),
-                              color: selected
-                                  ? AppColors.gold.withValues(alpha: 0.10)
-                                  : Colors.transparent,
+                              color: selectedGender == 'Prefiero decirlo yo'
+                                  ? AppColors.accent
+                                      .withValues(alpha: 0.08)
+                                  : AppColors.surfaceSoft
+                                      .withValues(alpha: 0.18),
                               child: Row(
                                 children: [
+                                  Container(
+                                    width: 26,
+                                    height: 26,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color:
+                                          AppColors.gold.withValues(alpha: 0.16),
+                                      border: Border.all(
+                                        color: AppColors.gold,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.check_rounded,
+                                      size: 13,
+                                      color: AppColors.gold,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      option,
+                                      customGender!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: GoogleFonts.inter(
-                                        color: selected
-                                            ? AppColors.deep
-                                            : AppColors.textPrimary,
-                                        fontSize: 11.5,
-                                        fontWeight: selected
-                                            ? FontWeight.w600
-                                            : FontWeight.w400,
+                                        color: AppColors.accent,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                   ),
-                                  if (selected)
-                                    const Icon(
-                                      Icons.check_rounded,
-                                      size: 16,
-                                      color: AppColors.gold,
+                                  const Icon(
+                                    Icons.edit_outlined,
+                                    size: 12,
+                                    color: AppColors.accent,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Editar',
+                                    style: GoogleFonts.inter(
+                                      color: AppColors.accent,
+                                      fontSize: 7.5,
+                                      fontWeight: FontWeight.w700,
                                     ),
+                                  ),
                                 ],
                               ),
                             ),
-                          );
-                        }).toList(),
-                      ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 )
               : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  Future<String?> _openCustomGenderEditor({
+    String? initialValue,
+  }) async {
+    final controller = TextEditingController(
+      text: initialValue ?? '',
+    );
+
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.48),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final canSave = controller.text.trim().isNotEmpty;
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.viewInsetsOf(context).bottom,
+              ),
+              child: SafeArea(
+                top: false,
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: AppColors.gold.withValues(alpha: 0.42),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.18),
+                        blurRadius: 28,
+                        offset: const Offset(0, -5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 38,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppColors.textSecondary
+                                .withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 17),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '¿Cuál es tu género?',
+                                  style: GoogleFonts.cinzel(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  initialValue == null
+                                      ? 'Escribe cómo quieres identificarte en la aplicación.'
+                                      : 'Edita cómo quieres identificarte en la aplicación.',
+                                  style: GoogleFonts.inter(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 8.5,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: () =>
+                                Navigator.of(sheetContext).pop(),
+                            borderRadius: BorderRadius.circular(999),
+                            child: const Padding(
+                              padding: EdgeInsets.all(5),
+                              child: Icon(
+                                Icons.close_rounded,
+                                color: AppColors.textSecondary,
+                                size: 17,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 15),
+                      TextField(
+                        controller: controller,
+                        autofocus: true,
+                        maxLength: 50,
+                        maxLines: 1,
+                        textCapitalization:
+                            TextCapitalization.sentences,
+                        textInputAction: TextInputAction.done,
+                        onChanged: (_) => setSheetState(() {}),
+                        onSubmitted: (_) {
+                          if (controller.text.trim().isNotEmpty) {
+                            Navigator.of(sheetContext)
+                                .pop(controller.text.trim());
+                          }
+                        },
+                        style: GoogleFonts.inter(
+                          color: AppColors.textPrimary,
+                          fontSize: 11,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: 'Ej. No binario',
+                          hintStyle: GoogleFonts.inter(
+                            color: AppColors.textSecondary
+                                .withValues(alpha: 0.70),
+                            fontSize: 10,
+                          ),
+                          counterStyle: GoogleFonts.inter(
+                            color: AppColors.textSecondary,
+                            fontSize: 7,
+                          ),
+                          filled: true,
+                          fillColor: AppColors.surface,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 13,
+                            vertical: 13,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(11),
+                            borderSide: BorderSide(
+                              color: AppColors.gold
+                                  .withValues(alpha: 0.44),
+                            ),
+                          ),
+                          focusedBorder: const OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.all(Radius.circular(11)),
+                            borderSide: BorderSide(
+                              color: AppColors.gold,
+                              width: 1.25,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 11),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          SizedBox(
+                            height: 36,
+                            child: TextButton(
+                              onPressed: () =>
+                                  Navigator.of(sheetContext).pop(),
+                              style: TextButton.styleFrom(
+                                foregroundColor:
+                                    AppColors.textSecondary,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                              ),
+                              child: Text(
+                                'Cancelar',
+                                style: GoogleFonts.inter(
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          AnimatedOpacity(
+                            duration:
+                                const Duration(milliseconds: 140),
+                            opacity: canSave ? 1 : 0.42,
+                            child: SizedBox(
+                              width: 92,
+                              height: 36,
+                              child: FilledButton(
+                                onPressed: canSave
+                                    ? () {
+                                        Navigator.of(sheetContext).pop(
+                                          controller.text.trim(),
+                                        );
+                                      }
+                                    : null,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.accent,
+                                  foregroundColor:
+                                      AppColors.background,
+                                  disabledBackgroundColor:
+                                      AppColors.accent
+                                          .withValues(alpha: 0.30),
+                                  disabledForegroundColor:
+                                      AppColors.background
+                                          .withValues(alpha: 0.75),
+                                  elevation: 0,
+                                  padding:
+                                      const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(10),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Listo',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    await Future<void>.delayed(
+      const Duration(milliseconds: 280),
+    );
+    controller.dispose();
+
+    return result;
+  }
+
+  Widget _passwordConfirmationStatus() {
+    final matches = registerPasswordController.text.isNotEmpty &&
+        registerConfirmPasswordController.text ==
+            registerPasswordController.text;
+
+    final color = matches
+        ? const Color(0xFF6F8F57)
+        : const Color(0xFFB75A52);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: 10,
+        vertical: 8,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: color.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.12),
+            ),
+            child: Icon(
+              matches
+                  ? Icons.check_rounded
+                  : Icons.close_rounded,
+              size: 12,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              matches
+                  ? 'Las contraseñas coinciden'
+                  : 'Las contraseñas no son iguales',
+              style: GoogleFonts.inter(
+                color: color,
+                fontSize: 8,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _passwordRequirement({
+    required String label,
+    required bool fulfilled,
+  }) {
+    final color = fulfilled
+        ? const Color(0xFF6F8F57)
+        : AppColors.textSecondary.withValues(alpha: 0.82);
+
+    return Row(
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: fulfilled
+                ? const Color(0xFF6F8F57).withValues(alpha: 0.13)
+                : Colors.transparent,
+            border: Border.all(
+              color: fulfilled
+                  ? const Color(0xFF6F8F57).withValues(alpha: 0.72)
+                  : AppColors.gold.withValues(alpha: 0.24),
+            ),
+          ),
+          child: Icon(
+            fulfilled
+                ? Icons.check_rounded
+                : Icons.circle_outlined,
+            size: fulfilled ? 11 : 7,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: 7),
+        Expanded(
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 160),
+            style: GoogleFonts.inter(
+              color: color,
+              fontSize: 7.8,
+              fontWeight:
+                  fulfilled ? FontWeight.w700 : FontWeight.w500,
+            ),
+            child: Text(label),
+          ),
         ),
       ],
     );
@@ -765,11 +1358,7 @@ class _AuthScreenState extends State<AuthScreen> {
     return SizedBox(
       height: 46,
       child: OutlinedButton.icon(
-        onPressed: () {
-          showTemporaryMessage(
-            'Inicio con Google simulado.',
-          );
-        },
+        onPressed: null,
         icon: const Icon(
           Icons.g_mobiledata_rounded,
           size: 22,
@@ -783,7 +1372,9 @@ class _AuthScreenState extends State<AuthScreen> {
         ),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.deep,
+          disabledForegroundColor: AppColors.deep,
           backgroundColor: AppColors.surface,
+          disabledBackgroundColor: AppColors.surface,
           side: BorderSide(
             color: AppColors.gold.withValues(alpha: 0.55),
           ),
@@ -887,48 +1478,458 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _selectBirthDate() async {
-    final selectedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime(2000),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
-    );
+    final now = DateTime.now();
+    DateTime selectedDate = DateTime(2000, 1, 1);
 
-    if (selectedDate == null) {
-      return;
+    final existing = registerBirthDateController.text.trim();
+    if (existing.isNotEmpty) {
+      final parts = existing.split('-');
+      if (parts.length == 3) {
+        final day = int.tryParse(parts[0]);
+        final month = int.tryParse(parts[1]);
+        final year = int.tryParse(parts[2]);
+
+        if (day != null && month != null && year != null) {
+          selectedDate = DateTime(year, month, day);
+        }
+      }
     }
 
+    final result = await showModalBottomSheet<DateTime>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.58),
+      builder: (sheetContext) {
+        var draftDate = selectedDate;
+
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: AppColors.gold.withValues(alpha: 0.36),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.20),
+                    blurRadius: 30,
+                    offset: const Offset(0, -8),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.textSecondary.withValues(alpha: 0.28),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: AppColors.gold.withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(13),
+                            border: Border.all(
+                              color: AppColors.gold.withValues(alpha: 0.28),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.cake_outlined,
+                            color: AppColors.gold,
+                            size: 21,
+                          ),
+                        ),
+                        const SizedBox(width: 11),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'FECHA DE NACIMIENTO',
+                                style: GoogleFonts.cinzel(
+                                  color: AppColors.deep,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                'Selecciona tu fecha de nacimiento.',
+                                style: GoogleFonts.inter(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 8.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          icon: const Icon(Icons.close_rounded),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 13,
+                        vertical: 11,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: AppColors.gold.withValues(alpha: 0.32),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.event_rounded,
+                            color: AppColors.gold,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 9),
+                          Text(
+                            '${draftDate.day.toString().padLeft(2, '0')} / '
+                            '${draftDate.month.toString().padLeft(2, '0')} / '
+                            '${draftDate.year}',
+                            style: GoogleFonts.merriweather(
+                              color: AppColors.deep,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    CalendarDatePicker(
+                      initialDate: draftDate,
+                      firstDate: DateTime(1900),
+                      lastDate: now,
+                      onDateChanged: (date) {
+                        setSheetState(() {
+                          draftDate = date;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 44,
+                            child: OutlinedButton.icon(
+                              onPressed: () =>
+                                  Navigator.of(sheetContext).pop(),
+                              icon: const Icon(
+                                Icons.close_rounded,
+                                size: 15,
+                              ),
+                              label: Text(
+                                'Cancelar',
+                                style: GoogleFonts.inter(
+                                  fontSize: 8.8,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.textSecondary,
+                                backgroundColor: AppColors.background,
+                                side: BorderSide(
+                                  color: AppColors.gold.withValues(alpha: 0.38),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 11,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 2,
+                          child: SizedBox(
+                            height: 44,
+                            child: FilledButton.icon(
+                              onPressed: () {
+                                Navigator.of(sheetContext).pop(draftDate);
+                              },
+                              icon: const Icon(
+                                Icons.check_circle_outline_rounded,
+                                size: 16,
+                              ),
+                              label: Text(
+                                'Confirmar fecha',
+                                style: GoogleFonts.inter(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.1,
+                                ),
+                              ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.deep,
+                                foregroundColor: AppColors.gold,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(13),
+                                  side: BorderSide(
+                                    color:
+                                        AppColors.gold.withValues(alpha: 0.48),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result == null) return;
+
     registerBirthDateController.text =
-        '${selectedDate.day.toString().padLeft(2, '0')}-'
-        '${selectedDate.month.toString().padLeft(2, '0')}-'
-        '${selectedDate.year}';
+        '${result.day.toString().padLeft(2, '0')}-'
+        '${result.month.toString().padLeft(2, '0')}-'
+        '${result.year}';
   }
 
-  void _register() {
+  void _showAuthErrorMessage(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          duration: const Duration(milliseconds: 2200),
+          padding: EdgeInsets.zero,
+          content: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 13,
+              vertical: 11,
+            ),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF2F0),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(0xFFB75A52)
+                    .withValues(alpha: 0.68),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFB75A52),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: GoogleFonts.merriweather(
+                      color: const Color(0xFF7A3732),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.lock_outline_rounded,
+                  color: AppColors.gold.withValues(alpha: 0.72),
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+  }
+
+  Future<void> _register() async {
     if (registerNameController.text.trim().isEmpty ||
         registerBirthDateController.text.trim().isEmpty ||
         selectedGender == null ||
         registerEmailController.text.trim().isEmpty ||
         registerPasswordController.text.isEmpty ||
         registerConfirmPasswordController.text.isEmpty) {
-      showTemporaryMessage(
-        'Completa todos los campos.',
+      _showAuthErrorMessage(
+        'Completa todos los campos',
+      );
+      return;
+    }
+
+    if (!_passwordIsValid) {
+      _showAuthErrorMessage(
+        'La contraseña no cumple los requisitos',
       );
       return;
     }
 
     if (registerPasswordController.text !=
         registerConfirmPasswordController.text) {
-      showTemporaryMessage(
-        'Las contraseñas no coinciden.',
+      _showAuthErrorMessage(
+        'Las contraseñas no son iguales',
       );
       return;
     }
 
-    showTemporaryMessage(
-      'Registro simulado correctamente.',
+    setState(() {
+      isRegistering = true;
+    });
+
+    await Future<void>.delayed(
+      const Duration(milliseconds: 2500),
     );
+
+    if (!mounted) return;
+
+    setState(() {
+      isRegistering = false;
+    });
+
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+          duration: const Duration(milliseconds: 1500),
+          padding: EdgeInsets.zero,
+          content: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 13,
+              vertical: 11,
+            ),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF4F7EE),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: const Color(0xFF78935F)
+                    .withValues(alpha: 0.72),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF708A56),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Text(
+                    'Cuenta creada correctamente',
+                    style: GoogleFonts.merriweather(
+                      color: const Color(0xFF3F4F33),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                Icon(
+                  Icons.person_add_alt_1_rounded,
+                  color: AppColors.gold.withValues(alpha: 0.76),
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+
+    await Future<void>.delayed(
+      const Duration(milliseconds: 1500),
+    );
+
+    if (!mounted) return;
+
+    registerNameController.clear();
+    registerBirthDateController.clear();
+    registerEmailController.clear();
+    registerPasswordController.clear();
+    registerConfirmPasswordController.clear();
+
+    setState(() {
+      selectedGender = null;
+      customGender = null;
+      isGenderMenuOpen = false;
+      obscurePassword = true;
+      obscureConfirmPassword = true;
+    });
+
+    _changeTab(true);
   }
+
 }
 
 class _AuthHeaderDelegate extends SliverPersistentHeaderDelegate {
