@@ -19,6 +19,7 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.isGuest,
+    required this.onGuestRestrictedAction,
     required this.onOpenLibrary,
     required this.onOpenWriter,
     required this.onOpenPoints,
@@ -40,6 +41,7 @@ class HomeScreen extends StatefulWidget {
   });
 
   final bool isGuest;
+  final VoidCallback onGuestRestrictedAction;
   final VoidCallback onOpenLibrary;
   final VoidCallback onOpenWriter;
   final VoidCallback onOpenPoints;
@@ -2799,6 +2801,8 @@ class HomeScreenState extends State<HomeScreen> {
             Navigator.of(context).pop();
             widget.onOpenLibrary();
           },
+          isGuest: widget.isGuest,
+          onGuestRestrictedAction: widget.onGuestRestrictedAction,
         ),
       ),
     );
@@ -4233,6 +4237,8 @@ class HomeScreenState extends State<HomeScreen> {
           onToggleFavorite: () {
             widget.onToggleCommunityStoryFavorite(publishedStory);
           },
+          isGuest: widget.isGuest,
+          onGuestRestrictedAction: widget.onGuestRestrictedAction,
         ),
       ),
     );
@@ -4362,7 +4368,7 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   void _guestMessage(String feature) {
-    _showMessage('Inicia sesión para acceder a $feature.');
+    widget.onGuestRestrictedAction();
   }
 
   void _showMessage(String text) {
@@ -4390,6 +4396,8 @@ class HomeBookDetailScreen extends StatefulWidget {
     required this.onToggleFavorite,
     required this.onOpenOwnProfile,
     required this.onAddToLibrary,
+    required this.isGuest,
+    required this.onGuestRestrictedAction,
   });
 
   final Map<String, dynamic> book;
@@ -4400,6 +4408,8 @@ class HomeBookDetailScreen extends StatefulWidget {
   final VoidCallback onToggleFavorite;
   final VoidCallback onOpenOwnProfile;
   final VoidCallback onAddToLibrary;
+  final bool isGuest;
+  final VoidCallback onGuestRestrictedAction;
 
   @override
   State<HomeBookDetailScreen> createState() => _HomeBookDetailScreenState();
@@ -4519,6 +4529,13 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
         _compactHeader = compact;
       });
     }
+  }
+
+  bool _guardGuestAction() {
+    if (!widget.isGuest) return false;
+
+    widget.onGuestRestrictedAction();
+    return true;
   }
 
   @override
@@ -5044,6 +5061,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   Widget _favoriteButton() {
     return InkWell(
       onTap: () {
+        if (_guardGuestAction()) return;
+
         widget.onToggleFavorite();
 
         setState(() {
@@ -5090,7 +5109,10 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
 
   Widget _heroMenuButton() {
     return InkWell(
-      onTap: () => _showReportMenu(context),
+      onTap: () {
+        if (_guardGuestAction()) return;
+        _showReportMenu(context);
+      },
       borderRadius: BorderRadius.circular(9),
       child: Container(
         width: 34,
@@ -5183,7 +5205,10 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                 ),
               ),
               InkWell(
-                onTap: () => _showCommentMenu(index),
+                onTap: () {
+                  if (_guardGuestAction()) return;
+                  _showCommentMenu(index);
+                },
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
                   width: 28,
@@ -5218,6 +5243,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             children: [
               InkWell(
                 onTap: () {
+                  if (_guardGuestAction()) return;
+
                   setState(() {
                     comment['liked'] = !liked;
                     comment['likes'] =
@@ -5256,6 +5283,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
               const SizedBox(width: 15),
               InkWell(
                 onTap: () {
+                  if (_guardGuestAction()) return;
+
                   setState(() {
                     comment['replying'] = !replying;
                   });
@@ -5448,6 +5477,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                               height: 34,
                               child: FilledButton(
                                 onPressed: () {
+                                  if (_guardGuestAction()) return;
+
                                   final reply = controller.text.trim();
                                   if (reply.isEmpty) return;
 
@@ -7017,6 +7048,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   }
 
   void _openReviewEditor() {
+    if (_guardGuestAction()) return;
+
     setState(() {
       _draftRating = _rating;
       _draftReviewIsPublic = _reviewIsPublic;
@@ -7035,6 +7068,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   }
 
   void _publishReview() {
+    if (_guardGuestAction()) return;
+
     final text = _reviewController.text.trim();
 
     if (text.isEmpty || _draftRating <= 0) {
