@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key, required this.onFinished});
+  const SplashScreen({
+    super.key,
+    required this.onFinished,
+  });
 
   final VoidCallback onFinished;
 
@@ -18,7 +21,6 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
 
-    // El Splash se muestra durante 3 segundos.
     _timer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
         widget.onFinished();
