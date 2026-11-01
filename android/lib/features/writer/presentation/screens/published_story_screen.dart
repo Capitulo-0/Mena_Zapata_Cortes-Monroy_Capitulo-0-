@@ -38,6 +38,8 @@ class PublishedStoryScreen extends StatefulWidget {
     this.authorUsername,
     this.initiallyFavorite = false,
     this.onToggleFavorite,
+    this.isGuest = false,
+    this.onGuestRestrictedAction,
   });
 
   final WriterStory story;
@@ -52,6 +54,8 @@ class PublishedStoryScreen extends StatefulWidget {
   final String? authorUsername;
   final bool initiallyFavorite;
   final VoidCallback? onToggleFavorite;
+  final bool isGuest;
+  final VoidCallback? onGuestRestrictedAction;
 
   String get displayedAuthorUsername =>
       authorUsername?.trim().isNotEmpty == true
@@ -98,6 +102,13 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
 
     chapters.sort((a, b) => a.order.compareTo(b.order));
     return chapters;
+  }
+
+  bool _guardGuestAction() {
+    if (!widget.isGuest) return false;
+
+    widget.onGuestRestrictedAction?.call();
+    return true;
   }
 
   @override
@@ -526,6 +537,8 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
   Widget _buildFavoriteChip() {
     return InkWell(
       onTap: () {
+        if (_guardGuestAction()) return;
+
         widget.onToggleFavorite?.call();
 
         setState(() {
@@ -984,6 +997,8 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
               ),
               GestureDetector(
                 onTapDown: (details) {
+                  if (_guardGuestAction()) return;
+
                   _showCommentMenu(
                     context,
                     chapter,
@@ -1024,6 +1039,8 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
             children: [
               InkWell(
                 onTap: () {
+                  if (_guardGuestAction()) return;
+
                   setState(() {
                     comment.liked = !comment.liked;
                     comment.likes += comment.liked ? 1 : -1;
@@ -1072,6 +1089,8 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
               const SizedBox(width: 9),
               InkWell(
                 onTap: () {
+                  if (_guardGuestAction()) return;
+
                   setState(() {
                     comment.replying = !comment.replying;
                   });
@@ -1317,6 +1336,8 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
                               const SizedBox(width: 4),
                               FilledButton(
                                 onPressed: () {
+                                  if (_guardGuestAction()) return;
+
                                   final replyText =
                                       controller.text.trim();
 

@@ -16,17 +16,27 @@ class WriterScreen extends StatefulWidget {
     required this.currentName,
     required this.currentUsername,
     this.onStoriesChanged,
+    this.isGuest = false,
+    this.onGuestRestrictedAction,
   });
 
   final String currentName;
   final String currentUsername;
   final ValueChanged<List<WriterStory>>? onStoriesChanged;
+  final bool isGuest;
+  final VoidCallback? onGuestRestrictedAction;
 
   @override
   State<WriterScreen> createState() => _WriterScreenState();
 }
 
 class _WriterScreenState extends State<WriterScreen> {
+  bool _blockGuestAction() {
+    if (!widget.isGuest) return false;
+    widget.onGuestRestrictedAction?.call();
+    return true;
+  }
+
   final WriterLocalService _writerService = WriterLocalService();
 
   List<WriterStory> _stories = [];
@@ -95,6 +105,8 @@ class _WriterScreenState extends State<WriterScreen> {
 
 
   Future<void> _openCreateStory() async {
+    if (_blockGuestAction()) return;
+
     final result = await Navigator.of(context).push<WriterStory>(
       MaterialPageRoute(builder: (_) => const CreateStoryScreen()),
     );
@@ -105,6 +117,8 @@ class _WriterScreenState extends State<WriterScreen> {
   }
 
   Future<void> _openEditStory(WriterStory story) async {
+    if (_blockGuestAction()) return;
+
     final result = await Navigator.of(context).push<WriterStory>(
       MaterialPageRoute(
         builder: (_) => CreateStoryScreen(story: story),
@@ -128,6 +142,8 @@ class _WriterScreenState extends State<WriterScreen> {
   }
 
   Future<void> _openManageStory(WriterStory story) async {
+    if (_blockGuestAction()) return;
+
     await Navigator.of(context).push<WriterStory>(
       MaterialPageRoute(
         builder: (_) => ManageStoryScreen(
@@ -877,6 +893,8 @@ class _WriterScreenState extends State<WriterScreen> {
     WriterStory story,
     Offset tapPosition,
   ) async {
+    if (_blockGuestAction()) return;
+
     await showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,

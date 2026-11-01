@@ -19,12 +19,16 @@ class MainShellScreen extends StatefulWidget {
     super.key,
     required this.isGuest,
     required this.onLogout,
+    required this.onGuestLoginRequested,
+    required this.onGuestRegisterRequested,
     required this.isDarkMode,
     required this.onDarkModeChanged,
   });
 
   final bool isGuest;
   final VoidCallback onLogout;
+  final VoidCallback onGuestLoginRequested;
+  final VoidCallback onGuestRegisterRequested;
   final bool isDarkMode;
   final ValueChanged<bool> onDarkModeChanged;
 
@@ -510,8 +514,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _selectTab(int index) {
-    if (widget.isGuest && (index == 1 || index == 2 || index == 4)) {
-      _showGuestAccessDialog(index);
+    if (widget.isGuest && (index == 3 || index == 4)) {
+      _showGuestAccessDialog();
       return;
     }
 
@@ -545,105 +549,175 @@ class _MainShellScreenState extends State<MainShellScreen> {
     _homeKey.currentState?.showGeminiAssistant();
   }
 
-  void _showGuestAccessDialog(int index) {
-    String title;
-    String message;
-
-    switch (index) {
-      case 1:
-        title = 'Tu biblioteca te está esperando';
-        message = 'Inicia sesión para guardar tus lecturas, organizar tu estantería y llevar tu progreso.';
-        break;
-
-      case 2:
-        title = 'Convierte tus ideas en historias';
-        message = 'Para crear, guardar y publicar tus propias historias necesitas una cuenta de Capítulo 0.';
-        break;
-
-      case 4:
-        title = 'Haz tu experiencia más personal';
-        message = 'Inicia sesión para acceder a tu perfil, seguidores, reseñas y preferencias literarias.';
-        break;
-
-      default:
-        title = 'Inicia sesión';
-        message = 'Esta función requiere una cuenta.';
-    }
-
-    showModalBottomSheet<void>(
+  void _showGuestAccessDialog() {
+    showDialog<void>(
       context: context,
-      backgroundColor: AppColors.surfaceOf(context),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(24, 26, 24, 30),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.auto_stories_outlined,
-                color: AppColors.goldOf(context),
-                size: 42,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.62),
+      builder: (dialogContext) {
+        final background = AppColors.backgroundOf(dialogContext);
+        final surface = AppColors.surfaceOf(dialogContext);
+        final textPrimary = AppColors.textPrimaryOf(dialogContext);
+        final textSecondary = AppColors.textSecondaryOf(dialogContext);
+        final gold = AppColors.goldOf(dialogContext);
+        final accent = AppColors.accentOf(dialogContext);
+        final deep = AppColors.deepOf(dialogContext);
+
+        return PopScope(
+          canPop: false,
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(maxWidth: 390),
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+            decoration: BoxDecoration(
+              color: surface,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: gold.withValues(alpha: 0.48),
               ),
-              const SizedBox(height: 16),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.cinzel(
-                  color: AppColors.deepOf(context),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.22),
+                  blurRadius: 28,
+                  offset: const Offset(0, 12),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  color: AppColors.textSecondaryOf(context),
-                  fontSize: 12,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    widget.onLogout();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accentOf(context),
-                    foregroundColor: AppColors.backgroundOf(context),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: gold.withValues(alpha: 0.11),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: gold.withValues(alpha: 0.34),
                     ),
                   ),
-                  child: Text(
-                    'Iniciar sesión',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+                  child: Icon(
+                    Icons.auto_stories_outlined,
+                    color: gold,
+                    size: 28,
                   ),
                 ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: Text(
-                  'Seguir como invitado',
+                const SizedBox(height: 15),
+                Text(
+                  'ESTÁS EN MODO INVITADO',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cinzel(
+                    color: textPrimary,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.35,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Para acceder a las diferentes funcionalidades de Capítulo 0, inicia sesión o crea una cuenta.',
+                  textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
-                    color: AppColors.accentOf(context),
-                    fontWeight: FontWeight.w600,
+                    color: textSecondary,
+                    fontSize: 9.5,
+                    height: 1.5,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 43,
+                        child: FilledButton(
+                          onPressed: () {
+                            final navigator = Navigator.of(
+                              dialogContext,
+                              rootNavigator: true,
+                            );
+
+                            navigator.pop();
+                            navigator.popUntil((route) => route.isFirst);
+
+                            widget.onGuestLoginRequested();
+                          },
+                          style: FilledButton.styleFrom(
+                            backgroundColor: accent,
+                            foregroundColor: background,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Iniciar sesión',
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: SizedBox(
+                        height: 43,
+                        child: OutlinedButton(
+                          onPressed: () {
+                            final navigator = Navigator.of(
+                              dialogContext,
+                              rootNavigator: true,
+                            );
+
+                            navigator.pop();
+                            navigator.popUntil((route) => route.isFirst);
+
+                            widget.onGuestRegisterRequested();
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: deep,
+                            backgroundColor: background,
+                            side: BorderSide(
+                              color: gold.withValues(alpha: 0.72),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Registrarse',
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  style: TextButton.styleFrom(
+                    foregroundColor: textSecondary,
+                  ),
+                  child: Text(
+                    'Seguir en modo invitado',
+                    style: GoogleFonts.inter(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
+        ),
         );
       },
     );
@@ -683,32 +757,64 @@ class _MainShellScreenState extends State<MainShellScreen> {
         currentName: _profileName,
         currentUsername: _profileUsername,
         reviews: _bookReviews,
-        onReviewSaved: _saveBookReview,
+        onReviewSaved: (bookId, review) {
+          if (widget.isGuest) {
+            _showGuestAccessDialog();
+            return;
+          }
+          _saveBookReview(bookId, review);
+        },
         favoriteBookIds: _favoriteBookIds,
-        onToggleFavoriteBook: _toggleFavoriteBook,
+        onToggleFavoriteBook: (bookId) {
+          if (widget.isGuest) {
+            _showGuestAccessDialog();
+            return;
+          }
+          _toggleFavoriteBook(bookId);
+        },
         favoriteCommunityStoryIds:
             _favoriteCommunityStories.keys.toSet(),
-        onToggleCommunityStoryFavorite:
-            _toggleFavoriteCommunityStory,
+        onToggleCommunityStoryFavorite: (story) {
+          if (widget.isGuest) {
+            _showGuestAccessDialog();
+            return;
+          }
+          _toggleFavoriteCommunityStory(story);
+        },
         clubs: _clubs,
         joinedClubIds: _joinedClubIds,
-        onToggleClub: _toggleClub,
+        onToggleClub: (clubId) {
+          if (widget.isGuest) {
+            _showGuestAccessDialog();
+            return;
+          }
+          _toggleClub(clubId);
+        },
         continueReadingBook: _lastAdvancedBook,
         continueReadingProgress: _lastAdvancedBookProgress,
-        onContinueReadingProgressChanged: _changeBookProgress,
+        onContinueReadingProgressChanged: (bookId, progress) {
+          if (widget.isGuest) {
+            _showGuestAccessDialog();
+            return;
+          }
+          _changeBookProgress(bookId, progress);
+        },
+        onGuestRestrictedAction: _showGuestAccessDialog,
         onOpenLibrary: () => _selectTab(1),
         onOpenWriter: () => _selectTab(2),
         onOpenPoints: () => _selectTab(3),
         onOpenProfile: () => _selectTab(4),
       ),
       LibraryScreen(
-        books: _libraryBooks,
-        statuses: _bookStatuses,
-        progresses: _bookProgresses,
-        reviews: _bookReviews,
-        favorites: _favoriteBookIds,
-        currentName: _profileName,
-        currentUsername: _profileUsername,
+        isGuest: widget.isGuest,
+        onGuestRestrictedAction: _showGuestAccessDialog,
+        books: widget.isGuest ? const <LibraryBook>[] : _libraryBooks,
+        statuses: widget.isGuest ? const <int, BookStatus>{} : _bookStatuses,
+        progresses: widget.isGuest ? const <int, int>{} : _bookProgresses,
+        reviews: widget.isGuest ? const <int, BookReview>{} : _bookReviews,
+        favorites: widget.isGuest ? const <int>{} : _favoriteBookIds,
+        currentName: widget.isGuest ? 'Invitado' : _profileName,
+        currentUsername: widget.isGuest ? '@invitado' : _profileUsername,
         onOpenProfile: () => _selectTab(4),
         onStatusChanged: _changeBookStatus,
         onProgressChanged: _changeBookProgress,
@@ -716,8 +822,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onToggleFavorite: _toggleFavoriteBook,
       ),
       WriterScreen(
-        currentName: _profileName,
-        currentUsername: _profileUsername,
+        isGuest: widget.isGuest,
+        onGuestRestrictedAction: _showGuestAccessDialog,
+        currentName: widget.isGuest ? 'Invitado' : _profileName,
+        currentUsername: widget.isGuest ? '@invitado' : _profileUsername,
         onStoriesChanged: _handleWriterStoriesChanged,
       ),
       MapsScreen(

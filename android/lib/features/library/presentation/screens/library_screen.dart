@@ -88,6 +88,8 @@ class LibraryScreen extends StatefulWidget {
     required this.onProgressChanged,
     required this.onReviewSaved,
     required this.onToggleFavorite,
+    this.isGuest = false,
+    this.onGuestRestrictedAction,
   });
 
   final List<LibraryBook> books;
@@ -103,12 +105,20 @@ class LibraryScreen extends StatefulWidget {
   final void Function(int bookId, int progress) onProgressChanged;
   final void Function(int bookId, BookReview review) onReviewSaved;
   final void Function(int bookId) onToggleFavorite;
+  final bool isGuest;
+  final VoidCallback? onGuestRestrictedAction;
 
   @override
   State<LibraryScreen> createState() => _LibraryScreenState();
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
+  bool _blockGuestAction() {
+    if (!widget.isGuest) return false;
+    widget.onGuestRestrictedAction?.call();
+    return true;
+  }
+
   final TextEditingController _searchController = TextEditingController();
 
   String _view = 'libros';
@@ -2205,6 +2215,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _showPersonalListDetail(int index) async {
+    if (_blockGuestAction()) return;
     final list = _personalLists[index];
 
     await showModalBottomSheet<void>(
@@ -2439,6 +2450,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _showLibraryOptions() async {
+    if (_blockGuestAction()) return;
+
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -2604,6 +2617,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _showExportLibraryDialog() async {
+    if (_blockGuestAction()) return;
     final total = _booksInLibrary.length;
     final reading = _count(BookStatus.leyendo);
     final pending = _count(BookStatus.porLeer);
@@ -2624,6 +2638,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _showExportListDialog() async {
+    if (_blockGuestAction()) return;
     if (_personalLists.isEmpty) {
       await showGeneralDialog<void>(
         context: context,
@@ -3312,6 +3327,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   Future<void> _showCreateListSheet() async {
+    if (_blockGuestAction()) return;
     final nameController = TextEditingController();
     final descriptionController = TextEditingController();
 

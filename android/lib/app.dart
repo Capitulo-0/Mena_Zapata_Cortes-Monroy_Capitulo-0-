@@ -19,10 +19,12 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
 
   bool isGuest = false;
   bool isDarkMode = false;
+  bool _authStartsInLogin = true;
 
   void _finishSplash() {
     setState(() {
       stage = AppStage.auth;
+      _authStartsInLogin = true;
     });
   }
 
@@ -33,11 +35,16 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
     });
   }
 
-  void _logout() {
+  void _openAuth({required bool login}) {
     setState(() {
       isGuest = false;
+      _authStartsInLogin = login;
       stage = AppStage.auth;
     });
+  }
+
+  void _logout() {
+    _openAuth(login: true);
   }
 
   void _changeDarkMode(bool value) {
@@ -64,12 +71,17 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
         return SplashScreen(onFinished: _finishSplash);
 
       case AppStage.auth:
-        return AuthScreen(onAuthenticated: _enterApp);
+        return AuthScreen(
+          initialLogin: _authStartsInLogin,
+          onAuthenticated: _enterApp,
+        );
 
       case AppStage.main:
         return MainShellScreen(
           isGuest: isGuest,
           onLogout: _logout,
+          onGuestLoginRequested: () => _openAuth(login: true),
+          onGuestRegisterRequested: () => _openAuth(login: false),
           isDarkMode: isDarkMode,
           onDarkModeChanged: _changeDarkMode,
         );

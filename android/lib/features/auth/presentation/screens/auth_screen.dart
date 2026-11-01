@@ -8,9 +8,11 @@ class AuthScreen extends StatefulWidget {
   const AuthScreen({
     super.key,
     required this.onAuthenticated,
+    this.initialLogin = true,
   });
 
   final ValueChanged<bool> onAuthenticated;
+  final bool initialLogin;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -25,6 +27,7 @@ class _AuthScreenState extends State<AuthScreen> {
   bool isGenderMenuOpen = false;
   bool isLoggingIn = false;
   bool isRegistering = false;
+  bool isGuestLoading = false;
   int loginDots = 1;
 
   final loginEmailController = TextEditingController();
@@ -61,6 +64,12 @@ class _AuthScreenState extends State<AuthScreen> {
       _passwordHasLowercase &&
       _passwordHasNumber &&
       _passwordHasSpecial;
+
+  @override
+  void initState() {
+    super.initState();
+    isLogin = widget.initialLogin;
+  }
 
   @override
   void dispose() {
@@ -1390,12 +1399,26 @@ class _AuthScreenState extends State<AuthScreen> {
     return SizedBox(
       height: 44,
       child: OutlinedButton(
-        onPressed: () {
-          widget.onAuthenticated(true);
-        },
+        onPressed: isGuestLoading
+            ? null
+            : () async {
+                setState(() {
+                  isGuestLoading = true;
+                });
+
+                await Future<void>.delayed(
+                  const Duration(milliseconds: 2500),
+                );
+
+                if (!mounted) return;
+
+                widget.onAuthenticated(true);
+              },
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.textSecondary,
+          disabledForegroundColor: AppColors.textSecondary,
           backgroundColor: AppColors.surface,
+          disabledBackgroundColor: AppColors.surface,
           side: BorderSide(
             color: AppColors.gold.withValues(alpha: 0.42),
           ),
@@ -1403,12 +1426,31 @@ class _AuthScreenState extends State<AuthScreen> {
             borderRadius: BorderRadius.circular(11),
           ),
         ),
-        child: Text(
-          'Iniciar como invitado',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w500,
-            fontSize: 12,
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isGuestLoading) ...[
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.8,
+                  color: AppColors.gold,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              isGuestLoading
+                  ? 'Iniciando como invitado...'
+                  : 'Iniciar como invitado',
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w500,
+                fontSize: 12,
+              ),
+            ),
+          ],
         ),
       ),
     );

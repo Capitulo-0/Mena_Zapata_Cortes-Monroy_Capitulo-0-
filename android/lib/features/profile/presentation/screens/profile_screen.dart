@@ -4052,6 +4052,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             builder: (_) => HomeBookDetailScreen(
               book: bookData,
               currentUsername: widget.username,
+              isGuest: false,
+              onGuestRestrictedAction: () {},
               initialReview: widget.reviews[book.id],
               onReviewSaved: widget.onReviewSaved,
               initiallyFavorite: widget.favorites.contains(book.id),
