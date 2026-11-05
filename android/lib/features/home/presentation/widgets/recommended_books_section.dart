@@ -257,7 +257,9 @@ class _RecommendedBookCard extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        'GRATIS',
+                        book['availability'] == 'GRATIS'
+                            ? 'Gratis'
+                            : 'Lectura externa',
                         style: GoogleFonts.inter(
                           color: const Color(0xFF2E793E),
                           fontSize: 5.6,

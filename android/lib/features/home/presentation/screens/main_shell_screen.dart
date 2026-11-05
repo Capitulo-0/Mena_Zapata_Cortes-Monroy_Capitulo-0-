@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -7,6 +8,9 @@ import '../../../library/presentation/screens/library_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../profile/presentation/screens/settings_screen.dart';
 import 'home_screen.dart';
+import '../../../library/models/reading_record.dart';
+import '../../../library/presentation/screens/simulated_reader_screen.dart';
+import '../../../library/presentation/dialogs/reading_record_dialog.dart';
 import '../widgets/main_header.dart';
 import '../../../writer/models/writer_story.dart';
 import '../../../writer/services/writer_local_service.dart';
@@ -121,7 +125,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   // Estado compartido de Biblioteca. En el siguiente paso Perfil consumirá
   // exactamente estas mismas colecciones para mantener contadores, reto y estante
   // sincronizados con los cambios realizados en Mi Biblioteca.
-  final List<LibraryBook> _libraryBooks = const [
+  final List<LibraryBook> _libraryBooks = [
     LibraryBook(
       id: 1,
       title: 'Orgullo y Prejuicio',
@@ -146,6 +150,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
     ),
     LibraryBook(
       id: 3,
+      isFree: false,
+      publisher: 'Editorial demo',
+      totalPages: 300,
       title: 'Jane Eyre',
       author: 'Charlotte Brontë',
       authorHandle: '@CharlotteBronte',
@@ -168,6 +175,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
     ),
     LibraryBook(
       id: 5,
+      isFree: false,
+      publisher: 'Editorial demo',
+      totalPages: 200,
       title: 'Emma',
       author: 'Jane Austen',
       authorHandle: '@JaneAusten1',
@@ -424,32 +434,194 @@ class _MainShellScreenState extends State<MainShellScreen> {
   final Map<String, WriterStory> _favoriteCommunityStories =
       <String, WriterStory>{};
 
-  void _changeBookStatus(int bookId, BookStatus status) {
+  Timer? _finishReadingTimer;
+  int? _finishingBookId;
+  final Map<int, int> _lastIncompleteProgresses = {};
+  final Map<int, ReadingRecord> _lastIncompleteRecords = {};
+
+  @override
+  void dispose() {
+    _finishReadingTimer?.cancel();
+    super.dispose();
+  }
+
+  void _rememberIncompleteReading(int bookId) {
+    final progress = _bookProgresses[bookId] ?? 0;
+    if (_bookStatuses[bookId] != BookStatus.leyendo || progress <= 0 || progress >= 100) return;
+    _lastIncompleteProgresses[bookId] = progress;
+    final record = _readingRecords[bookId];
+    if (record != null) _lastIncompleteRecords[bookId] = record;
+  }
+
+  void _afterReadingChange(int bookId, BookStatus status, bool wasCurrent) {
+    if (status == BookStatus.leido && wasCurrent) {
+      _finishReadingTimer?.cancel();
+      setState(() => _finishingBookId = bookId);
+      _finishReadingTimer = Timer(const Duration(milliseconds: 2500), () {
+        if (mounted) setState(() => _finishingBookId = null);
+      });
+    } else if (status == BookStatus.leyendo || (status == BookStatus.porLeer && _finishingBookId == bookId)) {
+      _finishReadingTimer?.cancel();
+      if (_finishingBookId != null) setState(() => _finishingBookId = null);
+    }
+  }
+
+  String? get _finishedReadingTitle {
+    for (final book in _libraryBooks) {
+      if (book.id == _finishingBookId) return book.title;
+    }
+    return null;
+  }
+
+  final Map<int, ReadingRecord> _readingRecords = {
+    5: const ReadingRecord(
+      format: 'Físico',
+      currentPage: 60,
+      totalPages: 200,
+      publisher: 'Editorial demo',
+      status: BookStatus.leyendo,
+    ),
+  };
+
+  void _addToLibrary(Map<String, dynamic> data) {
+    final id = data['id'] as int;
     setState(() {
-      _bookStatuses[bookId] = status;
-      if (status == BookStatus.leido) {
-        _bookProgresses[bookId] = 100;
-      } else if (status == BookStatus.porLeer) {
-        _bookProgresses[bookId] = 0;
-      } else if ((_bookProgresses[bookId] ?? 0) >= 100) {
-        _bookProgresses[bookId] = 0;
+      if (!_libraryBooks.any((book) => book.id == id)) {
+        _libraryBooks.add(
+          LibraryBook(
+            id: id,
+            title: data['title'] as String,
+            author: data['authorReal'] as String? ?? '',
+            authorHandle: data['author'] as String?,
+            year: data['year'] as int? ?? 0,
+            genre: data['genre'] as String? ?? '',
+            isbn: data['isbn'] as String? ?? '',
+            cover: data['cover'] as String? ?? '',
+            synopsis: data['synopsis'] as String? ?? '',
+            isFree: data['availability'] == 'GRATIS',
+            publisher: data['publisher'] as String? ?? '',
+            totalPages: data['totalPages'] as int? ?? 0,
+          ),
+        );
       }
+      _bookStatuses.putIfAbsent(id, () => BookStatus.porLeer);
+      _bookProgresses.putIfAbsent(id, () => 0);
     });
   }
 
-  void _changeBookProgress(int bookId, int progress) {
-    final safeProgress = progress.clamp(0, 100).toInt();
+  Future<int?> _openReading(BuildContext sourceContext, int bookId) async {
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return null;
+    }
+    final matches = _libraryBooks.where((book) => book.id == bookId);
+    if (matches.isEmpty) return null;
+    final book = matches.first;
+    if (book.isFree && (_bookStatuses[bookId] ?? BookStatus.porLeer) == BookStatus.porLeer) {
+      _changeBookStatus(bookId, BookStatus.leyendo);
+    }
+    void save(ReadingRecord record) {
+      if (!mounted) return;
+      final wasCurrent = _lastAdvancedBook?.id == bookId;
+      setState(() {
+        _rememberIncompleteReading(bookId);
+        _readingRecords[bookId] = record;
+        _bookStatuses[bookId] = record.status;
+        _bookProgresses[bookId] = record.progress;
+        _lastAdvancedBookId = bookId;
+        _rememberIncompleteReading(bookId);
+      });
+      _afterReadingChange(bookId, record.status, wasCurrent);
+    }
 
+    if (book.isFree) {
+      await Navigator.of(sourceContext).push<void>(MaterialPageRoute(builder: (_) =>
+        SimulatedReaderScreen(book: book, initialProgress: _bookProgresses[bookId] ?? 0,
+          initialStatus: _bookStatuses[bookId] ?? BookStatus.porLeer, onChanged: save)));
+    } else {
+      final record = await showReadingRecordDialog(
+        context: sourceContext,
+        book: book,
+        initial: _readingRecords[bookId],
+        status: _bookStatuses[bookId] ?? BookStatus.porLeer,
+        progress: _bookProgresses[bookId] ?? 0,
+      );
+      if (record != null) save(record);
+    }
+    return _bookProgresses[bookId];
+  }
+
+  Future<bool> _removeFromLibrary(BuildContext sourceContext, int bookId) async {
+    if (widget.isGuest) { _showGuestAccessDialog(); return false; }
+    if (!_bookStatuses.containsKey(bookId)) return false;
+    final book = _libraryBooks.firstWhere((book) => book.id == bookId);
+    final confirmed = await showDialog<bool>(context: sourceContext, builder: (dialogContext) =>
+      AlertDialog(backgroundColor: AppColors.surfaceOf(dialogContext),
+        title: const Text('¿Eliminar de Mi Biblioteca?'),
+        content: Text('Se quitará «${book.title}» de tu Biblioteca y se borrará su seguimiento de lectura. '
+          'Tus favoritos y reseñas se conservarán. El libro seguirá en el catálogo.'),
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Eliminar'))]));
+    if (confirmed != true || !mounted) return false;
     setState(() {
-      _bookProgresses[bookId] = safeProgress;
-      _lastAdvancedBookId = bookId;
-
-      if (safeProgress >= 100) {
-        _bookStatuses[bookId] = BookStatus.leido;
-      } else {
-        _bookStatuses[bookId] = BookStatus.leyendo;
+      _bookStatuses.remove(bookId);
+      _bookProgresses.remove(bookId);
+      _readingRecords.remove(bookId);
+      _lastIncompleteProgresses.remove(bookId);
+      _lastIncompleteRecords.remove(bookId);
+      if (_finishingBookId == bookId) {
+        _finishReadingTimer?.cancel();
+        _finishingBookId = null;
       }
+      if (_lastAdvancedBookId == bookId) _lastAdvancedBookId = null;
     });
+    return true;
+  }
+
+  void _changeBookStatus(int bookId, BookStatus status) {
+    if (widget.isGuest) { _showGuestAccessDialog(); return; }
+    final wasCurrent = _lastAdvancedBook?.id == bookId;
+    final previousStatus = _bookStatuses[bookId];
+    setState(() {
+      _rememberIncompleteReading(bookId);
+      final current = _bookProgresses[bookId] ?? 0;
+      var progress = status == BookStatus.porLeer ? 0 : status == BookStatus.leido ? 100
+        : current >= 100 ? (_lastIncompleteProgresses[bookId] ?? 99) : current;
+      final record = _readingRecords[bookId];
+      if (record != null) {
+        final updated = record.withStatus(status, resume: _lastIncompleteRecords[bookId]);
+        _readingRecords[bookId] = updated;
+        progress = updated.progress;
+      }
+      _bookStatuses[bookId] = status;
+      _bookProgresses[bookId] = progress;
+      if (status == BookStatus.leyendo) _lastAdvancedBookId = bookId;
+      _rememberIncompleteReading(bookId);
+    });
+    if (status != previousStatus) _afterReadingChange(bookId, status, wasCurrent);
+  }
+
+  void _changeBookProgress(int bookId, int progress) {
+    if (widget.isGuest) { _showGuestAccessDialog(); return; }
+    final safeProgress = progress.clamp(0, 100).toInt();
+    var status = safeProgress == 100 ? BookStatus.leido : BookStatus.leyendo;
+    final wasCurrent = _lastAdvancedBook?.id == bookId;
+    setState(() {
+      _rememberIncompleteReading(bookId);
+      final record = _readingRecords[bookId];
+      if (record != null) {
+        final updated = record.withProgress(safeProgress, status);
+        status = updated.status;
+        _readingRecords[bookId] = updated;
+        _bookProgresses[bookId] = updated.progress;
+      } else {
+        _bookProgresses[bookId] = safeProgress;
+      }
+      _bookStatuses[bookId] = status;
+      _lastAdvancedBookId = bookId;
+      _rememberIncompleteReading(bookId);
+    });
+    _afterReadingChange(bookId, status, wasCurrent);
   }
 
   void _saveBookReview(int bookId, BookReview review) {
@@ -724,34 +896,26 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   LibraryBook? get _lastAdvancedBook {
-    final id = _lastAdvancedBookId;
-
-    if (id == null) {
-      return null;
-    }
-
+    LibraryBook? fallback;
     for (final book in _libraryBooks) {
-      if (book.id == id) {
-        return book;
-      }
+      if (_bookStatuses[book.id] != BookStatus.leyendo) continue;
+      if (book.id == _lastAdvancedBookId) return book;
+      fallback ??= book;
     }
-
-    return null;
+    return fallback;
   }
 
-  int get _lastAdvancedBookProgress {
-    final id = _lastAdvancedBookId;
-
-    if (id == null) {
-      return 0;
-    }
-
-    return _bookProgresses[id] ?? 0;
-  }
+  int get _lastAdvancedBookProgress => _bookProgresses[_lastAdvancedBook?.id] ?? 0;
 
   List<Widget> _mainScreens() {
     return [
       HomeScreen(
+        onReadBook: _openReading,
+        onAddBook: _addToLibrary,
+        onBookStatusChanged: _changeBookStatus,
+        finishedReadingTitle: widget.isGuest ? null : _finishedReadingTitle,
+        statuses: widget.isGuest ? const <int, BookStatus>{} : _bookStatuses,
+        progresses: widget.isGuest ? const <int, int>{} : _bookProgresses,
         key: _homeKey,
         isGuest: widget.isGuest,
         currentName: _profileName,
@@ -790,8 +954,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
           }
           _toggleClub(clubId);
         },
-        continueReadingBook: _lastAdvancedBook,
-        continueReadingProgress: _lastAdvancedBookProgress,
+        continueReadingBook: widget.isGuest ? null : _lastAdvancedBook,
+        continueReadingProgress: widget.isGuest ? 0 : _lastAdvancedBookProgress,
         onContinueReadingProgressChanged: (bookId, progress) {
           if (widget.isGuest) {
             _showGuestAccessDialog();
@@ -806,6 +970,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onOpenProfile: () => _selectTab(4),
       ),
       LibraryScreen(
+        onRemoveBook: _removeFromLibrary,
+        onReadBook: _openReading,
         isGuest: widget.isGuest,
         onGuestRestrictedAction: _showGuestAccessDialog,
         books: widget.isGuest ? const <LibraryBook>[] : _libraryBooks,
@@ -835,6 +1001,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         currentName: _profileName,
       ),
       ProfileScreen(
+        onReadBook: _openReading,
         onOpenSettings: () {
           setState(() {
             showSettings = true;
@@ -849,8 +1016,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         joinedClubIds: _joinedClubIds,
         onToggleClub: _toggleClub,
         books: _libraryBooks,
-        statuses: _bookStatuses,
-        progresses: _bookProgresses,
+        statuses: widget.isGuest ? const <int, BookStatus>{} : _bookStatuses,
+        progresses: widget.isGuest ? const <int, int>{} : _bookProgresses,
         reviews: _bookReviews,
         favorites: _favoriteBookIds,
         favoriteCommunityStories:
@@ -1089,7 +1256,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         child: Center(
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 350),
-            curve: Curves.easeOutBack,
+            curve: Curves.easeOutCubic,
             width: active ? 68 : 42,
             height: active ? 58 : 42,
             decoration: BoxDecoration(
@@ -1110,7 +1277,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             ),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              switchInCurve: Curves.easeOutBack,
+              switchInCurve: Curves.easeOutCubic,
               switchOutCurve: Curves.easeInCubic,
               transitionBuilder: (child, animation) {
                 return FadeTransition(

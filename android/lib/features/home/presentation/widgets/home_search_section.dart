@@ -117,7 +117,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     );
   }
 
-  Widget _availabilityBadge() {
+  Widget _availabilityBadge(Map<String, dynamic> book) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
@@ -126,7 +126,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
         border: Border.all(color: Colors.white.withValues(alpha: 0.65)),
       ),
       child: Text(
-        'GRATIS',
+        book['availability'] == 'GRATIS' ? 'Gratis' : 'Lectura externa',
         style: GoogleFonts.inter(
           color: Colors.white,
           fontSize: 6,
@@ -904,7 +904,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                                     ),
                                   ),
                                   const SizedBox(width: 6),
-                                  _availabilityBadge(),
+                                  _availabilityBadge(previewResults.first),
                                 ],
                               ),
                             ],
@@ -1190,7 +1190,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                         ),
                       ),
                       const SizedBox(width: 7),
-                      _availabilityBadge(),
+                      _availabilityBadge(book),
                     ],
                   ),
                   const SizedBox(height: 7),

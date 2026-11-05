@@ -6,10 +6,15 @@ import '../../models/book_review.dart';
 import '../../models/book_status.dart';
 import '../../models/library_book.dart';
 import '../widgets/book_interaction_store.dart';
+import '../widgets/reading_status_field.dart';
 
 class LibraryBookDetailScreen extends StatefulWidget {
   const LibraryBookDetailScreen({
     super.key,
+    this.onRead,
+    this.onRemove,
+    this.readStatus,
+    this.readProgress,
     required this.book,
     required this.currentUsername,
     required this.initialReview,
@@ -22,6 +27,11 @@ class LibraryBookDetailScreen extends StatefulWidget {
     required this.onStatusChanged,
     required this.onProgressChanged,
   });
+
+  final Future<int?> Function()? onRead;
+  final Future<bool> Function()? onRemove;
+  final BookStatus? Function()? readStatus;
+  final int Function()? readProgress;
 
   final LibraryBook book;
   final String currentUsername;
@@ -542,7 +552,7 @@ class _LibraryBookDetailScreenState extends State<LibraryBookDetailScreen> {
                 _infoRow('ISBN', _isbn),
                 _infoRow(
                   'Disponibilidad',
-                  _isFree ? 'GRATIS' : 'CATÁLOGO',
+                  _isFree ? 'Gratis' : 'Lectura externa',
                   valueColor: _isFree
                       ? const Color(0xFF2F7C39)
                       : _textPrimary,
@@ -614,68 +624,44 @@ class _LibraryBookDetailScreenState extends State<LibraryBookDetailScreen> {
     );
   }
 
+  Future<void> _openReading() async {
+    final progress = await widget.onRead?.call();
+    if (!mounted || progress == null) return;
+    setState(() {
+      _progress = progress;
+      _status = widget.readStatus?.call() ?? widget.status;
+    });
+  }
+
   Widget _buildLibraryStatusAction() {
     final isRead = _status == BookStatus.leido;
-    final isReading = _status == BookStatus.leyendo;
-
-    final label = isRead
-        ? '✓ Libro finalizado'
-        : isReading
-            ? 'Continuar lectura · $_progress%'
-            : 'Comenzar lectura';
-
-    return SizedBox(
-      width: double.infinity,
-      height: 42,
-      child: FilledButton(
-        onPressed: isRead
-            ? null
-            : () {
-                if (_status == BookStatus.porLeer || _status == null) {
-                  setState(() {
-                    _status = BookStatus.leyendo;
-                    if (_progress <= 0) {
-                      _progress = 1;
-                    }
-                  });
-                  widget.onStatusChanged(BookStatus.leyendo);
-                  widget.onProgressChanged(_progress);
-                  return;
-                }
-
-                final nextProgress = (_progress + 10).clamp(0, 100).toInt();
-
-                setState(() {
-                  _progress = nextProgress;
-                  if (_progress >= 100) {
-                    _status = BookStatus.leido;
-                  }
-                });
-
-                widget.onProgressChanged(nextProgress);
-
-                if (nextProgress >= 100) {
-                  widget.onStatusChanged(BookStatus.leido);
-                }
-              },
-        style: FilledButton.styleFrom(
-          backgroundColor: isRead ? _gold : _accent,
-          disabledBackgroundColor: _gold,
-          foregroundColor: isRead ? _deep : AppColors.background,
-          disabledForegroundColor: _deep,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(9),
-          ),
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
-    );
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(_isFree ? 'Disponible para leer en Capítulo 0'
+        : 'No disponible para lectura en Capítulo 0. Registra tu progreso si lees en físico, ebook u otra plataforma.'),
+      const Text('Disponibilidad simulada · Demo', style: TextStyle(fontSize: 11)),
+      const SizedBox(height: 8),
+      Text('Estado: ${isRead ? 'Leído' : _status == BookStatus.porLeer ? 'Por leer' : 'Leyendo'} · Progreso: $_progress%',
+        style: TextStyle(color: _textPrimary, fontWeight: isRead ? FontWeight.w700 : FontWeight.w400)),
+      LinearProgressIndicator(value: _progress / 100),
+      ReadingStatusField(status: _status ?? BookStatus.porLeer, onChanged: (status) {
+        widget.onStatusChanged(status);
+        setState(() {
+          _status = widget.readStatus?.call() ?? status;
+          _progress = widget.readProgress?.call() ?? (status == BookStatus.porLeer ? 0
+            : status == BookStatus.leido ? 100 : _progress.clamp(0, 99));
+        });
+      }),
+      const SizedBox(height: 8),
+      SizedBox(width: double.infinity, child: isRead
+        ? OutlinedButton(onPressed: widget.onRead == null ? null : _openReading,
+          child: Text(_isFree ? 'Abrir libro' : 'Registrar lectura'))
+        : FilledButton(onPressed: widget.onRead == null ? null : _openReading,
+          child: Text(_isFree ? (_status ?? BookStatus.porLeer).readingActionLabel : 'Registrar lectura'))),
+      if (widget.onRemove != null) TextButton.icon(onPressed: () async {
+        final removed = await widget.onRemove!();
+        if (removed && mounted) Navigator.of(context).pop();
+      }, icon: const Icon(Icons.remove_circle_outline, size: 16), label: const Text('Eliminar de Mi Biblioteca')),
+    ]);
   }
 
   Widget _sectionTitle(String text) {
