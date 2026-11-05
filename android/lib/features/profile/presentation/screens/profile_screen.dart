@@ -26,6 +26,7 @@ class ProfileScreen extends StatefulWidget {
 
   const ProfileScreen({
     super.key,
+    this.onReadBook,
     required this.onOpenSettings,
     required this.name,
     required this.username,
@@ -48,6 +49,8 @@ class ProfileScreen extends StatefulWidget {
     required this.onToggleFavorite,
     required this.publishedStories,
   });
+
+  final Future<int?> Function(BuildContext context, int bookId)? onReadBook;
 
   final VoidCallback onOpenSettings;
 

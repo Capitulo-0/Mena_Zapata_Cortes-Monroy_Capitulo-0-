@@ -500,7 +500,7 @@ extension _ProfileWorksBadgesSection on _ProfileScreenState {
       'rating': 4.8,
       'year': book.year,
       'genre': book.genre,
-      'availability': 'GRATIS',
+      'availability': book.isFree ? 'GRATIS' : 'EXTERNA',
       'isbn': book.isbn,
       'cover': book.cover,
       'synopsis': book.synopsis,
@@ -511,6 +511,13 @@ extension _ProfileWorksBadgesSection on _ProfileScreenState {
           MaterialPageRoute<void>(
             builder: (_) => HomeBookDetailScreen(
               book: bookData,
+              initialProgress: widget.progresses[book.id] ?? 0,
+              readStatus: () => widget.statuses[book.id],
+              readProgress: () => widget.progresses[book.id] ?? 0,
+              onStatusChanged: (status) => widget.onStatusChanged(book.id, status),
+              onRead: () =>
+                  widget.onReadBook?.call(context, book.id) ??
+                  Future<int?>.value(),
               currentUsername: widget.username,
               isGuest: false,
               onGuestRestrictedAction: () {},

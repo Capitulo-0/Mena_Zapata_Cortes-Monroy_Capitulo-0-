@@ -4,10 +4,16 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../library/presentation/screens/library_screen.dart';
 import '../../../library/presentation/widgets/book_interaction_store.dart';
+import '../../../library/presentation/widgets/reading_status_field.dart';
 
 class HomeBookDetailScreen extends StatefulWidget {
   const HomeBookDetailScreen({
     super.key,
+    this.onRead,
+    this.readStatus,
+    this.readProgress,
+    this.onStatusChanged,
+    this.initialProgress = 0,
     required this.book,
     required this.currentUsername,
     required this.initialReview,
@@ -19,6 +25,12 @@ class HomeBookDetailScreen extends StatefulWidget {
     required this.isGuest,
     required this.onGuestRestrictedAction,
   });
+
+  final Future<int?> Function()? onRead;
+  final BookStatus? Function()? readStatus;
+  final int Function()? readProgress;
+  final ValueChanged<BookStatus>? onStatusChanged;
+  final int initialProgress;
 
   final Map<String, dynamic> book;
   final String currentUsername;
@@ -42,6 +54,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
 
   bool _compactHeader = false;
   bool _favorite = false;
+  int? _readingProgress;
 
   bool _hasReview = false;
   bool _reviewEditorOpen = false;
@@ -95,6 +108,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   String get _isbn => widget.book['isbn']?.toString() ?? '';
   int get _year => widget.book['year'] as int? ?? 0;
   double get _bookRating => widget.book['rating'] as double? ?? 0;
+  bool get _isInLibrary => widget.readStatus?.call() != null;
+  bool get _isRead => widget.readStatus?.call() == BookStatus.leido;
   bool get _isFree => widget.book['availability']?.toString() == 'GRATIS';
 
   @override
@@ -109,10 +124,12 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     final bookId = widget.book['id'] as int;
     for (var index = 0; index < _comments.length; index++) {
       _comments[index]['replies'] =
-          BookInteractionStore.repliesFor(bookId, index);
+          BookInteractionStore.repliesFor(bookId, index,
+      );
     }
 
     _favorite = widget.initiallyFavorite;
+    _readingProgress = widget.initialProgress;
 
     final initialReview = widget.initialReview;
     if (initialReview != null) {
@@ -184,6 +201,14 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _openReading() async {
+    if (_guardGuestAction()) return;
+    final progress = await widget.onRead?.call();
+    if (mounted && progress != null) {
+      setState(() => _readingProgress = progress);
+    }
   }
 
   Widget _buildHero() {
@@ -529,7 +554,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                 _infoRow('ISBN', _isbn),
                 _infoRow(
                   'Disponibilidad',
-                  _isFree ? 'GRATIS' : 'CATÁLOGO',
+                  _isFree ? 'Gratis' : 'Lectura externa',
                   valueColor: _isFree
                       ? const Color(0xFF2F7C39)
                       : _textPrimary,
@@ -538,6 +563,30 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             ),
           ),
           const SizedBox(height: 18),
+          Text(
+            _isFree ? 'Disponible para leer en Capítulo 0' : 'No disponible para lectura en Capítulo 0. Puedes registrar tu progreso si lees en físico, ebook u otra plataforma.',
+          ),
+          const Text(
+            'Disponibilidad simulada · Demo',
+            style: TextStyle(fontSize: 11),
+          ),
+          if (!widget.isGuest && _readingProgress != null) ...[
+            Text('Progreso: $_readingProgress%'),
+            LinearProgressIndicator(value: _readingProgress! / 100),
+          ],
+          if (_isInLibrary && widget.onStatusChanged != null) ReadingStatusField(
+            status: widget.readStatus!()!, onChanged: (status) {
+              if (_guardGuestAction()) return;
+              widget.onStatusChanged!(status);
+              setState(() => _readingProgress = widget.readProgress?.call() ?? _readingProgress);
+            }),
+          if (_isRead) ...[
+            Text('Leído', style: TextStyle(color: _textPrimary, fontWeight: FontWeight.w700)),
+            OutlinedButton(onPressed: widget.onRead == null ? null : _openReading,
+              child: Text(_isFree ? 'Abrir libro' : 'Registrar lectura')),
+          ] else FilledButton(onPressed: widget.onRead == null ? null : _openReading,
+            child: Text(_isFree ? (widget.readStatus?.call() ?? BookStatus.porLeer).readingActionLabel : 'Registrar lectura')),
+          const SizedBox(height: 15),
           _sectionTitle('COMENTARIOS DE LA COMUNIDAD'),
           const SizedBox(height: 10),
           ..._comments.asMap().entries.map(
@@ -551,7 +600,11 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             width: double.infinity,
             height: 42,
             child: FilledButton(
-              onPressed: widget.onAddToLibrary,
+              onPressed: _isInLibrary ? null : () {
+                if (_guardGuestAction()) return;
+                widget.onAddToLibrary();
+                if (mounted) setState(() {});
+              },
               style: FilledButton.styleFrom(
                 backgroundColor: _accent,
                 foregroundColor: AppColors.background,
@@ -560,7 +613,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                 ),
               ),
               child: Text(
-                'Añadir a mi biblioteca',
+                _isInLibrary ? 'Ya está en tu biblioteca' : 'Añadir a mi biblioteca',
                 style: GoogleFonts.inter(
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
