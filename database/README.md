@@ -1,0 +1,1 @@
+## Documentar la configuración de PostgreSQL, las migraciones y el modelo de datos.
