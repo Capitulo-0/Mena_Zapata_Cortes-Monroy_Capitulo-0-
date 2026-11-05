@@ -13,230 +13,230 @@ class ContinueReadingSection extends StatelessWidget {
     required this.progress,
     required this.isGuest,
     required this.onContinue,
-    required this.onAdvance,
+    required this.onFinish,
     required this.onGuestRestricted,
+    this.finishedReadingTitle,
+    this.onOpenLibrary,
   });
-
-  final LibraryBook book;
+  final LibraryBook? book;
   final int progress;
   final bool isGuest;
   final VoidCallback onContinue;
-  final VoidCallback onAdvance;
+  final VoidCallback onFinish;
   final VoidCallback onGuestRestricted;
+  final VoidCallback? onOpenLibrary;
+  final String? finishedReadingTitle;
+
+  void _guard(VoidCallback action) {
+    if (isGuest) {
+      onGuestRestricted();
+    } else {
+      action();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final surface = AppColors.surfaceOf(context);
-    final surfaceSoft = AppColors.surfaceSoftOf(context);
-    final textPrimary = AppColors.textPrimaryOf(context);
-    final textSecondary = AppColors.textSecondaryOf(context);
-    final gold = AppColors.goldOf(context);
+    final current = book;
+    final secondary = AppColors.textSecondaryOf(context);
     final accent = AppColors.accentOf(context);
-    final onAccent = AppColors.isDark(context)
-        ? AppColors.darkTextPrimary
-        : AppColors.background;
-
-    final safeProgress = progress.clamp(0, 100).toInt();
-
+    final safeProgress = progress.clamp(0, 100);
+    final Widget content;
+    if (finishedReadingTitle != null) {
+      content = Row(
+        key: const ValueKey('reading-finished'),
+        children: [
+          Icon(
+            Icons.check_circle_outline,
+            color: AppColors.goldOf(context),
+            size: 28,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Lectura finalizada',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimaryOf(context),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  '«$finishedReadingTitle» · Leído',
+                  style: GoogleFonts.inter(fontSize: 10, color: secondary),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else if (current == null) {
+      content = Column(
+        key: const ValueKey('reading-empty'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Comienza una nueva lectura',
+            style: GoogleFonts.merriweather(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimaryOf(context),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Elige un libro de tu Biblioteca y márcalo como Leyendo.',
+            style: GoogleFonts.inter(
+              fontSize: 10,
+              height: 1.5,
+              color: secondary,
+            ),
+          ),
+          if (onOpenLibrary != null)
+            TextButton(
+              onPressed: () => _guard(onOpenLibrary!),
+              child: const Text(
+                'Ir a Biblioteca',
+                style: TextStyle(fontSize: 10),
+              ),
+            ),
+        ],
+      );
+    } else {
+      content = Row(
+        key: ValueKey('reading-${current.id}'),
+        children: [
+          HomeNetworkCover(url: current.cover, width: 64, height: 88),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  current.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.merriweather(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimaryOf(context),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  current.author,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(fontSize: 8, color: secondary),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Progreso',
+                        style: GoogleFonts.inter(fontSize: 8, color: secondary),
+                      ),
+                    ),
+                    Text(
+                      '$safeProgress%',
+                      style: GoogleFonts.inter(
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        color: accent,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(5),
+                  child: LinearProgressIndicator(
+                    value: safeProgress / 100,
+                    minHeight: 5,
+                    color: accent,
+                    backgroundColor: AppColors.surfaceSoftOf(context),
+                  ),
+                ),
+                const SizedBox(height: 9),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    FilledButton(
+                      onPressed: () => _guard(onContinue),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: accent,
+                        foregroundColor: Theme.of(context)
+                            .colorScheme
+                            .onPrimary,
+                        minimumSize: const Size(0, 31),
+                        padding: const EdgeInsets.symmetric(horizontal: 11),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                      ),
+                      child: Text(
+                        current.isFree
+                            ? BookStatus.leyendo.readingActionLabel
+                            : 'Registrar lectura',
+                        style: GoogleFonts.inter(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    OutlinedButton(
+                      onPressed: () => _guard(onFinish),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textPrimaryOf(context),
+                        minimumSize: const Size(0, 31),
+                        side: BorderSide(color: AppColors.goldOf(context)),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                      ),
+                      child: Text(
+                        'Finalizar',
+                        style: GoogleFonts.inter(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 15),
       child: Column(
         children: [
-          const HomeSectionTitle('Continuar Leyendo'),
+          const HomeSectionTitle('Tu lectura'),
           const SizedBox(height: 8),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 260),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeInCubic,
-            child: Container(
-              key: ValueKey('${book.id}-$safeProgress'),
-              padding: const EdgeInsets.all(11),
-              decoration: BoxDecoration(
-                color: surface,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(
-                  color: gold.withValues(alpha: 0.6),
-                  width: 1.2,
-                ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(11),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceOf(context),
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(
+                color: AppColors.goldOf(context).withValues(alpha: .6),
+                width: 1.2,
               ),
-              child: Row(
-                children: [
-                  HomeNetworkCover(
-                    url: book.cover,
-                    width: 64,
-                    height: 88,
-                  ),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          book.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.merriweather(
-                            color: textPrimary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          book.author,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.inter(
-                            color: textSecondary,
-                            fontSize: 8,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Progreso',
-                                style: GoogleFonts.inter(
-                                  color: textSecondary,
-                                  fontSize: 8,
-                                ),
-                              ),
-                            ),
-                            Text(
-                              '$safeProgress%',
-                              style: GoogleFonts.inter(
-                                color: accent,
-                                fontSize: 8,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(5),
-                          child: LinearProgressIndicator(
-                            value: safeProgress / 100,
-                            minHeight: 5,
-                            backgroundColor: surfaceSoft,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(accent),
-                          ),
-                        ),
-                        const SizedBox(height: 9),
-                        if (safeProgress < 100)
-                          Row(
-                            children: [
-                              FilledButton(
-                                onPressed: () {
-                                  if (isGuest) {
-                                    onGuestRestricted();
-                                    return;
-                                  }
-                                  onContinue();
-                                },
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: accent,
-                                  foregroundColor: onAccent,
-                                  minimumSize: const Size(0, 31),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 11,
-                                  ),
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(7),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Continuar →',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              OutlinedButton(
-                                onPressed: onAdvance,
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: textPrimary,
-                                  minimumSize: const Size(0, 31),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                  ),
-                                  tapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  side: BorderSide(color: gold),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(7),
-                                  ),
-                                ),
-                                child: Text(
-                                  '+ Avanzar',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 8,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        else
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF4F7EE),
-                              borderRadius: BorderRadius.circular(11),
-                              border: Border.all(
-                                color: const Color(0xFF78935F)
-                                    .withValues(alpha: 0.68),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 26,
-                                  height: 26,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFF708A56),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(
-                                    Icons.check_rounded,
-                                    color: Colors.white,
-                                    size: 16,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    'Libro finalizado correctamente',
-                                    style: GoogleFonts.merriweather(
-                                      color: const Color(0xFF3F4F33),
-                                      fontSize: 8,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                Icon(
-                                  Icons.auto_stories_rounded,
-                                  color: gold.withValues(alpha: 0.78),
-                                  size: 16,
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            ),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              child: content,
             ),
           ),
         ],

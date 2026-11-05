@@ -25,6 +25,8 @@ export '../../models/library_book.dart';
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({
     super.key,
+    this.onReadBook,
+    this.onRemoveBook,
     required this.books,
     required this.statuses,
     required this.progresses,
@@ -54,6 +56,8 @@ class LibraryScreen extends StatefulWidget {
   final void Function(int bookId, int progress) onProgressChanged;
   final void Function(int bookId, BookReview review) onReviewSaved;
   final void Function(int bookId) onToggleFavorite;
+  final Future<int?> Function(BuildContext context, int bookId)? onReadBook;
+  final Future<bool> Function(BuildContext context, int bookId)? onRemoveBook;
   final bool isGuest;
   final VoidCallback? onGuestRestrictedAction;
 
@@ -231,23 +235,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
       progress: progress,
       review: review,
       onOpen: () => _openBookDetail(book),
-      onStartReading: () {
-        widget.onStatusChanged(book.id, BookStatus.leyendo);
-        widget.onProgressChanged(book.id, 0);
-        setState(() {});
+      onRemove: widget.onRemoveBook == null ? null : () => _removeBook(book),
+      onStartReading: () async {
+        await widget.onReadBook?.call(context, book.id);
+        if (mounted) setState(() {});
       },
-      onAdvance: () {
-        final next = (progress + 10).clamp(0, 100).toInt();
-        widget.onProgressChanged(book.id, next);
+      onAdvance: () async {
+        await widget.onReadBook?.call(context, book.id);
 
-        if (next >= 100) {
-          widget.onStatusChanged(book.id, BookStatus.leido);
-        }
-
-        setState(() {});
+        if (mounted) setState(() {});
       },
       onFinish: () {
-        widget.onProgressChanged(book.id, 100);
         widget.onStatusChanged(book.id, BookStatus.leido);
 
         setState(() {
@@ -713,11 +711,30 @@ class _LibraryScreenState extends State<LibraryScreen> {
     });
   }
 
+  Future<bool> _removeBook(LibraryBook book) async {
+    if (_blockGuestAction()) return false;
+    final removed = await widget.onRemoveBook?.call(context, book.id) ?? false;
+    if (removed && mounted) {
+      setState(() {
+        for (var i = 0; i < _personalLists.length; i++) {
+          final list = _personalLists[i];
+          _personalLists[i] = list.copyWith(bookIds: list.bookIds.where((id) => id != book.id).toList());
+        }
+      });
+    }
+    return removed;
+  }
+
   void _openBookDetail(LibraryBook book) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => LibraryBookDetailScreen(
           book: book,
+          readStatus: () => widget.statuses[book.id],
+          readProgress: () => widget.progresses[book.id] ?? 0,
+          onRemove: widget.onRemoveBook == null ? null : () => _removeBook(book),
+          onRead: () =>
+              widget.onReadBook?.call(context, book.id) ?? Future<int?>.value(),
           currentUsername: widget.currentUsername,
           initialReview: widget.reviews[book.id],
           initiallyFavorite: widget.favorites.contains(book.id),
@@ -734,9 +751,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
           onOpenOwnProfile: widget.onOpenProfile,
           onStatusChanged: (status) {
             widget.onStatusChanged(book.id, status);
-            if (status == BookStatus.leido) {
-              widget.onProgressChanged(book.id, 100);
-            }
             setState(() {});
           },
           onProgressChanged: (progress) {

@@ -25,6 +25,12 @@ import '../../../writer/presentation/screens/published_story_screen.dart';
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
+    this.onReadBook,
+    this.progresses = const {},
+    this.statuses = const {},
+    this.onBookStatusChanged,
+    this.finishedReadingTitle,
+    this.onAddBook,
     required this.isGuest,
     required this.onGuestRestrictedAction,
     required this.onOpenLibrary,
@@ -46,6 +52,13 @@ class HomeScreen extends StatefulWidget {
     required this.continueReadingProgress,
     required this.onContinueReadingProgressChanged,
   });
+
+  final Future<int?> Function(BuildContext context, int bookId)? onReadBook;
+  final Map<int, int> progresses;
+  final Map<int, BookStatus> statuses;
+  final void Function(int bookId, BookStatus status)? onBookStatusChanged;
+  final String? finishedReadingTitle;
+  final ValueChanged<Map<String, dynamic>>? onAddBook;
 
   final bool isGuest;
   final VoidCallback onGuestRestrictedAction;
@@ -170,41 +183,19 @@ class HomeScreenState extends State<HomeScreen> {
 
   Widget _buildContinueReading() {
     final book = widget.continueReadingBook;
-
-    if (book == null) {
-      return const SizedBox.shrink();
-    }
-
     return ContinueReadingSection(
       book: book,
       progress: widget.continueReadingProgress,
+      finishedReadingTitle: widget.finishedReadingTitle,
       isGuest: widget.isGuest,
-      onContinue: widget.onOpenLibrary,
-      onAdvance: () => _advanceSharedReading(
-        book,
-        widget.continueReadingProgress.clamp(0, 100).toInt(),
-      ),
+      onContinue: () { if (book != null) widget.onReadBook?.call(context, book.id); },
+      onFinish: () {
+        if (widget.isGuest) { _guestMessage('progreso de lectura'); return; }
+        if (book != null) widget.onContinueReadingProgressChanged(book.id, 100);
+      },
+      onOpenLibrary: widget.onOpenLibrary,
       onGuestRestricted: () => _guestMessage('biblioteca'),
     );
-  }
-
-  void _advanceSharedReading(
-    LibraryBook book,
-    int currentProgress,
-  ) {
-    if (widget.isGuest) {
-      _guestMessage('progreso de lectura');
-      return;
-    }
-
-    final nextProgress =
-        (currentProgress + 10).clamp(0, 100).toInt();
-
-    widget.onContinueReadingProgressChanged(
-      book.id,
-      nextProgress,
-    );
-
   }
 
   Widget _buildRecommendedBooks() {
@@ -269,6 +260,20 @@ class HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute<void>(
         builder: (_) => HomeBookDetailScreen(
           book: book,
+          initialProgress: widget.progresses[book['id']] ?? 0,
+          readStatus: () => widget.statuses[book['id']],
+          readProgress: () => widget.progresses[book['id']] ?? 0,
+          onStatusChanged: widget.onBookStatusChanged == null ? null
+            : (status) => widget.onBookStatusChanged!(book['id'] as int, status),
+          onRead: () {
+            if (widget.isGuest) {
+              widget.onGuestRestrictedAction();
+              return Future<int?>.value();
+            }
+            widget.onAddBook?.call(book);
+            return widget.onReadBook?.call(context, book['id'] as int) ??
+                Future<int?>.value();
+          },
           currentUsername: widget.currentUsername,
           initialReview: widget.reviews[book['id'] as int],
           onReviewSaved: widget.onReviewSaved,
@@ -287,6 +292,7 @@ class HomeScreenState extends State<HomeScreen> {
               return;
             }
 
+            widget.onAddBook?.call(book);
             Navigator.of(context).pop();
             widget.onOpenLibrary();
           },
