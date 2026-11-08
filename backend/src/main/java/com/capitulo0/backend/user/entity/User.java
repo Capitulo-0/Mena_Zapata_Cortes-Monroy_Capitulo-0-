@@ -1,0 +1,33 @@
+package com.capitulo0.backend.user.entity;
+import jakarta.persistence.*;
+import java.time.Instant;
+
+@Entity
+@Table(name = "users")
+public class User {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Column(name = "firebase_uid", unique = true, length = 128)
+    private String firebaseUid;
+    @Column(nullable = false, unique = true, length = 320)
+    private String email;
+    @Column(name = "display_name", length = 120)
+    private String displayName;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private Instant createdAt;
+    @Column(name = "updated_at", nullable = false)
+    private Instant updatedAt;
+    protected User() {}
+    public static User create() { return new User(); }
+    @PrePersist void onCreate() { createdAt = updatedAt = Instant.now(); }
+    @PreUpdate void onUpdate() { updatedAt = Instant.now(); }
+    public Long getId() { return id; }
+    public String getFirebaseUid() { return firebaseUid; }
+    public void setFirebaseUid(String value) { this.firebaseUid = value; }
+    public Instant getCreatedAt() { return createdAt; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public String getEmail() { return email; }
+    public void setEmail(String value) { this.email = value; }
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String value) { this.displayName = value; }
+}
