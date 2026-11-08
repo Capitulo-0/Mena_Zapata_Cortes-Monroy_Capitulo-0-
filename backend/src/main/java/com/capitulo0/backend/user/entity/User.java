@@ -7,6 +7,8 @@ import java.time.Instant;
 public class User {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(name = "firebase_uid", unique = true, length = 128)
+    private String firebaseUid;
     @Column(nullable = false, unique = true, length = 320)
     private String email;
     @Column(name = "display_name", length = 120)
@@ -20,6 +22,8 @@ public class User {
     @PrePersist void onCreate() { createdAt = updatedAt = Instant.now(); }
     @PreUpdate void onUpdate() { updatedAt = Instant.now(); }
     public Long getId() { return id; }
+    public String getFirebaseUid() { return firebaseUid; }
+    public void setFirebaseUid(String value) { this.firebaseUid = value; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public String getEmail() { return email; }

@@ -15,6 +15,11 @@ public class UserService {
     private final UserRepository users;
     public UserService(UserRepository users) { this.users = users; }
     public User require(Long id) { return users.findById(id).orElseThrow(() -> ApiException.notFound("Usuario")); }
+    // Internal lookup only: callers must supply a UID from a verified token in the future.
+    public User requireByFirebaseUid(String firebaseUid) {
+        if (firebaseUid == null || firebaseUid.isBlank()) throw ApiException.invalid("Firebase UID requerido");
+        return users.findByFirebaseUid(firebaseUid).orElseThrow(() -> ApiException.notFound("Usuario"));
+    }
     public List<UserResponse> list() { return users.findAll(Sort.by("id")).stream().map(UserMapper::toResponse).toList(); }
     @Transactional
     public UserResponse create(CreateUserRequest request) {

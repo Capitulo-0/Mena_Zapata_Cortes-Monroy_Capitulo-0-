@@ -13,6 +13,15 @@ public class ApiExceptionHandler {
     private ResponseEntity<ApiError> response(HttpStatus status, String message, List<String> details) {
         return ResponseEntity.status(status).body(new ApiError(status.value(), message, details, Instant.now()));
     }
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiError> forbidden(org.springframework.security.access.AccessDeniedException ex) {
+        return response(HttpStatus.FORBIDDEN, "Acceso denegado", List.of());
+    }
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ApiError> unauthenticated(org.springframework.security.core.AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).header("WWW-Authenticate", "Bearer")
+            .body(new ApiError(401, "Autenticacion requerida", List.of(), Instant.now()));
+    }
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiError> domain(ApiException ex) {
         return response(ex.getStatus(), ex.getMessage(), List.of());

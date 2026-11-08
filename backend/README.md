@@ -1,3 +1,8 @@
+> Authentication update: Firebase Admin + Spring Security now protect personal APIs.
+> GET/POST /api/users are disabled (401/403); use GET /api/me for a linked identity.
+> Read [AUTHENTICATION.md](AUTHENTICATION.md) for ADC, endpoint policy and changed contracts.
+> Earlier MVP examples below describe the historical unauthenticated step.
+
 # Backend MVP — Pasos 1 y 2
 
 Implementado: configuración PostgreSQL por entorno, Flyway y `GET /api/health`.

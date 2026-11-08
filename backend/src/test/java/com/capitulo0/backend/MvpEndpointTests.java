@@ -4,6 +4,19 @@ import java.net.URI;
 import java.net.http.*;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import com.capitulo0.backend.auth.model.AuthenticatedFirebaseUser;
+import com.capitulo0.backend.auth.service.FirebaseTokenVerifier;
+import com.capitulo0.backend.user.service.UserService;
+import com.capitulo0.backend.user.repository.UserRepository;
+import com.capitulo0.backend.user.dto.CreateUserRequest;
+import com.capitulo0.backend.common.exception.ApiException;
+import jakarta.validation.Validator;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyString;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
@@ -15,11 +28,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ActiveProfiles("test")
 class MvpEndpointTests {
     @Value("${local.server.port}") int port;
+    @MockitoBean FirebaseTokenVerifier verifier;
+    @Autowired UserService users;
+    @Autowired UserRepository userRepository;
+    @Autowired Validator validator;
+    private final java.util.Map<Long,String> identities = new java.util.HashMap<>();
+    @BeforeEach void verifiedTokens() {
+        when(verifier.verify(anyString())).thenAnswer(call ->
+            new AuthenticatedFirebaseUser(call.getArgument(0), null, null));
+    }
     private final HttpClient client = HttpClient.newHttpClient();
     private final JsonMapper json = JsonMapper.builder().build();
     private HttpResponse<String> call(String method, String path, String body) throws Exception {
+        var owner = java.util.regex.Pattern.compile("^/api/users/([0-9]+)/library").matcher(path);
+        String uid = owner.find() ? identities.getOrDefault(Long.parseLong(owner.group(1)), "unlinked-test") : "catalog-test";
         return client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
             .header("Content-Type", "application/json")
+            .header("Authorization", "Bearer " + uid)
             .method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body))
             .build(), HttpResponse.BodyHandlers.ofString());
     }
@@ -28,7 +53,13 @@ class MvpEndpointTests {
         return json.readTree(response.body());
     }
     private long user() throws Exception {
-        return data(call("POST", "/api/users", "{\"email\":\"" + UUID.randomUUID() + "@example.test\",\"displayName\":\"Demo\"}"), 201).get("id").asLong();
+        var created = users.create(new CreateUserRequest(UUID.randomUUID() + "@example.test", "Demo"));
+        var entity = users.require(created.id());
+        String uid = "mvp-" + UUID.randomUUID();
+        entity.setFirebaseUid(uid);
+        userRepository.saveAndFlush(entity);
+        identities.put(created.id(), uid);
+        return created.id();
     }
     private long book() throws Exception {
         return data(call("POST", "/api/books", "{\"title\":\"Libro demo\",\"author\":\"Autor\",\"totalPages\":300,\"publisher\":\"Editorial\"}"),201).get("id").asLong();
@@ -39,9 +70,12 @@ class MvpEndpointTests {
     }
     @Test void rejectsDuplicateEmailIgnoringCase() throws Exception {
         String email = UUID.randomUUID() + "@example.test";
-        data(call("POST", "/api/users", "{\"email\":\"" + email + "\"}"),201);
-        data(call("POST", "/api/users", "{\"email\":\"" + email.toUpperCase() + "\"}"),409);
-        assertThat(data(call("GET", "/api/users", null),200).toString()).contains(email);
+        var created = users.create(new CreateUserRequest(email, "Demo"));
+        assertThatThrownBy(() -> users.create(new CreateUserRequest(email.toUpperCase(), "Demo")))
+            .isInstanceOfSatisfying(ApiException.class,
+                error -> assertThat(error.getStatus().value()).isEqualTo(409));
+        assertThat(users.list()).extracting(response -> response.email()).contains(email);
+        assertThat(created.id()).isPositive();
     }
     @Test void createsListsAndGetsBooks() throws Exception {
         long id = book();
@@ -133,8 +167,8 @@ class MvpEndpointTests {
         data(call("GET","/api/users/9223372036854775807/library",null),404);
         long user=user();
         data(call("POST",library(user),"{\"bookId\":9223372036854775807}"),404);
-        for (String body : new String[]{"{}","{\"email\":\"bad\"}","{\"email\":\" \"}"})
-            data(call("POST","/api/users",body),400);
+        for (String email : new String[]{null, "bad", " "})
+            assertThat(validator.validate(new CreateUserRequest(email, null))).isNotEmpty();
         for (String body : new String[]{"{}","{\"title\":\" \"}","{\"title\":\"Demo\",\"totalPages\":0}"})
             data(call("POST","/api/books",body),400);
         long book=book(); add(user,book);

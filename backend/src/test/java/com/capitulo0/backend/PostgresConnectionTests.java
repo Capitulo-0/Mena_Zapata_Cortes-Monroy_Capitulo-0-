@@ -33,7 +33,7 @@ class PostgresConnectionTests {
             assertThat(connection.getMetaData().getDatabaseProductName()).isEqualTo("PostgreSQL");
             assertThat(connection.isValid(2)).isTrue();
         }
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("2");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
         assertThat(jdbc.queryForObject(
                 "SELECT service_name FROM backend_bootstrap WHERE id = 1", String.class))
                 .isEqualTo("capitulo-0-backend");
