@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -43,8 +44,8 @@ class LibraryBookDetailScreen extends StatefulWidget {
   final ValueChanged<BookReview> onReviewSaved;
   final VoidCallback onToggleFavorite;
   final VoidCallback onOpenOwnProfile;
-  final ValueChanged<BookStatus> onStatusChanged;
-  final ValueChanged<int> onProgressChanged;
+  final FutureOr<void> Function(BookStatus) onStatusChanged;
+  final FutureOr<void> Function(int) onProgressChanged;
 
   @override
   State<LibraryBookDetailScreen> createState() =>
@@ -638,13 +639,14 @@ class _LibraryBookDetailScreenState extends State<LibraryBookDetailScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(_isFree ? 'Disponible para leer en Capítulo 0'
         : 'No disponible para lectura en Capítulo 0. Registra tu progreso si lees en físico, ebook u otra plataforma.'),
-      const Text('Disponibilidad simulada · Demo', style: TextStyle(fontSize: 11)),
+      Text(widget.book.isBackendBook ? 'Seguimiento privado guardado en tu cuenta' : 'Disponibilidad simulada · Demo', style: const TextStyle(fontSize: 11)),
       const SizedBox(height: 8),
       Text('Estado: ${isRead ? 'Leído' : _status == BookStatus.porLeer ? 'Por leer' : 'Leyendo'} · Progreso: $_progress%',
         style: TextStyle(color: _textPrimary, fontWeight: isRead ? FontWeight.w700 : FontWeight.w400)),
       LinearProgressIndicator(value: _progress / 100),
-      ReadingStatusField(status: _status ?? BookStatus.porLeer, onChanged: (status) {
-        widget.onStatusChanged(status);
+      ReadingStatusField(status: _status ?? BookStatus.porLeer, onChanged: (status) async {
+        await widget.onStatusChanged(status);
+        if (!mounted) return;
         setState(() {
           _status = widget.readStatus?.call() ?? status;
           _progress = widget.readProgress?.call() ?? (status == BookStatus.porLeer ? 0

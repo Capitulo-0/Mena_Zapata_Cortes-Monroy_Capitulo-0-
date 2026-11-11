@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -29,7 +30,7 @@ class HomeBookDetailScreen extends StatefulWidget {
   final Future<int?> Function()? onRead;
   final BookStatus? Function()? readStatus;
   final int Function()? readProgress;
-  final ValueChanged<BookStatus>? onStatusChanged;
+  final FutureOr<void> Function(BookStatus)? onStatusChanged;
   final int initialProgress;
 
   final Map<String, dynamic> book;
@@ -39,7 +40,7 @@ class HomeBookDetailScreen extends StatefulWidget {
   final bool initiallyFavorite;
   final VoidCallback onToggleFavorite;
   final VoidCallback onOpenOwnProfile;
-  final VoidCallback onAddToLibrary;
+  final FutureOr<void> Function() onAddToLibrary;
   final bool isGuest;
   final VoidCallback onGuestRestrictedAction;
 
@@ -566,18 +567,19 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
           Text(
             _isFree ? 'Disponible para leer en Capítulo 0' : 'No disponible para lectura en Capítulo 0. Puedes registrar tu progreso si lees en físico, ebook u otra plataforma.',
           ),
-          const Text(
-            'Disponibilidad simulada · Demo',
-            style: TextStyle(fontSize: 11),
+          Text(
+            widget.book['isBackendBook'] == true ? 'Seguimiento privado guardado en tu cuenta' : 'Disponibilidad simulada · Demo',
+            style: const TextStyle(fontSize: 11),
           ),
           if (!widget.isGuest && _readingProgress != null) ...[
             Text('Progreso: $_readingProgress%'),
             LinearProgressIndicator(value: _readingProgress! / 100),
           ],
           if (_isInLibrary && widget.onStatusChanged != null) ReadingStatusField(
-            status: widget.readStatus!()!, onChanged: (status) {
+            status: widget.readStatus!()!, onChanged: (status) async {
               if (_guardGuestAction()) return;
-              widget.onStatusChanged!(status);
+              await widget.onStatusChanged!(status);
+              if (!mounted) return;
               setState(() => _readingProgress = widget.readProgress?.call() ?? _readingProgress);
             }),
           if (_isRead) ...[

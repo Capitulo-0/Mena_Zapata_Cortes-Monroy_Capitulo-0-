@@ -263,12 +263,12 @@ extension _ProfileMarkReadSheet on _ProfileScreenState {
                                   color: Colors.transparent,
                                   child: InkWell(
                                     borderRadius: BorderRadius.circular(15),
-                                    onTap: () {
-                                      widget.onStatusChanged(
+                                    onTap: () async {
+                                      await widget.onStatusChanged(
                                         book.id,
                                         BookStatus.leido,
                                       );
-                                      widget.onProgressChanged(book.id, 100);
+                                      if (!sheetContext.mounted || widget.statuses[book.id] != BookStatus.leido) return;
 
                                       setSheetState(() {
                                         readingBooks.removeWhere(

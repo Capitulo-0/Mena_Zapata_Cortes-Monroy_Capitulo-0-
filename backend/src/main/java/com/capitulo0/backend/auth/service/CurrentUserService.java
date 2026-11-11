@@ -13,14 +13,15 @@ import org.springframework.stereotype.Service;
 public class CurrentUserService {
     private final UserService users;
     public CurrentUserService(UserService users) { this.users = users; }
-    public User require() {
+    public AuthenticatedFirebaseUser requireIdentity() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()
                 || !(authentication.getPrincipal() instanceof AuthenticatedFirebaseUser principal)) {
             throw new AuthenticationCredentialsNotFoundException("Verified identity required");
         }
-        return users.requireByFirebaseUid(principal.uid());
+        return principal;
     }
+    public User require() { return users.requireByFirebaseUid(requireIdentity().uid()); }
     public Long requireOwner(Long requestedUserId) {
         Long owner = require().getId();
         if (!owner.equals(requestedUserId)) throw new ApiException(HttpStatus.FORBIDDEN, "Acceso denegado");

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -26,6 +27,7 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     this.onReadBook,
+    this.catalogBooks,
     this.progresses = const {},
     this.statuses = const {},
     this.onBookStatusChanged,
@@ -53,12 +55,13 @@ class HomeScreen extends StatefulWidget {
     required this.onContinueReadingProgressChanged,
   });
 
+  final List<Map<String, dynamic>>? catalogBooks;
   final Future<int?> Function(BuildContext context, int bookId)? onReadBook;
   final Map<int, int> progresses;
   final Map<int, BookStatus> statuses;
-  final void Function(int bookId, BookStatus status)? onBookStatusChanged;
+  final FutureOr<void> Function(int bookId, BookStatus status)? onBookStatusChanged;
   final String? finishedReadingTitle;
-  final ValueChanged<Map<String, dynamic>>? onAddBook;
+  final FutureOr<void> Function(Map<String, dynamic>)? onAddBook;
 
   final bool isGuest;
   final VoidCallback onGuestRestrictedAction;
@@ -83,7 +86,7 @@ class HomeScreen extends StatefulWidget {
 
   final LibraryBook? continueReadingBook;
   final int continueReadingProgress;
-  final void Function(int bookId, int progress)
+  final FutureOr<void> Function(int bookId, int progress)
       onContinueReadingProgressChanged;
 
   @override
@@ -120,8 +123,7 @@ class HomeScreenState extends State<HomeScreen> {
   final List<Map<String, String>> quotes =
       HomeDemoData.quotes.map(Map<String, String>.from).toList();
 
-  final List<Map<String, dynamic>> books =
-      HomeDemoData.books.map(Map<String, dynamic>.from).toList();
+  List<Map<String, dynamic>> get books => widget.catalogBooks ?? HomeDemoData.books.map(Map<String, dynamic>.from).toList();
 
   final List<Map<String, String>> stories =
       HomeDemoData.stories.map(Map<String, String>.from).toList();
@@ -265,12 +267,13 @@ class HomeScreenState extends State<HomeScreen> {
           readProgress: () => widget.progresses[book['id']] ?? 0,
           onStatusChanged: widget.onBookStatusChanged == null ? null
             : (status) => widget.onBookStatusChanged!(book['id'] as int, status),
-          onRead: () {
+          onRead: () async {
             if (widget.isGuest) {
               widget.onGuestRestrictedAction();
               return Future<int?>.value();
             }
-            widget.onAddBook?.call(book);
+            await widget.onAddBook?.call(book);
+            if (!mounted || (widget.onAddBook != null && !widget.statuses.containsKey(book['id']))) return null;
             return widget.onReadBook?.call(context, book['id'] as int) ??
                 Future<int?>.value();
           },
@@ -286,13 +289,14 @@ class HomeScreenState extends State<HomeScreen> {
             Navigator.of(context).pop();
             widget.onOpenProfile();
           },
-          onAddToLibrary: () {
+          onAddToLibrary: () async {
             if (widget.isGuest) {
               _guestMessage('biblioteca');
               return;
             }
 
-            widget.onAddBook?.call(book);
+            await widget.onAddBook?.call(book);
+            if (!mounted || !widget.statuses.containsKey(book['id'])) return;
             Navigator.of(context).pop();
             widget.onOpenLibrary();
           },

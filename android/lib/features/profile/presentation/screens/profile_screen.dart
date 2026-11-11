@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -73,8 +74,8 @@ class ProfileScreen extends StatefulWidget {
   final List<WriterStory> favoriteCommunityStories;
   final ValueChanged<WriterStory> onToggleCommunityStoryFavorite;
 
-  final void Function(int bookId, BookStatus status) onStatusChanged;
-  final void Function(int bookId, int progress) onProgressChanged;
+  final FutureOr<void> Function(int bookId, BookStatus status) onStatusChanged;
+  final FutureOr<void> Function(int bookId, int progress) onProgressChanged;
   final void Function(int bookId, BookReview review) onReviewSaved;
   final void Function(int bookId) onToggleFavorite;
 
@@ -275,8 +276,8 @@ class _ProfileBookDetailScreen extends StatefulWidget {
   final int initialProgress;
   final BookReview? initialReview;
   final bool initiallyFavorite;
-  final void Function(int bookId, BookStatus status) onStatusChanged;
-  final void Function(int bookId, int progress) onProgressChanged;
+  final FutureOr<void> Function(int bookId, BookStatus status) onStatusChanged;
+  final FutureOr<void> Function(int bookId, int progress) onProgressChanged;
   final void Function(int bookId, BookReview review) onReviewSaved;
   final void Function(int bookId) onToggleFavorite;
 

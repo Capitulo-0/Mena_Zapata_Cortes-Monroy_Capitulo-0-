@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -101,7 +100,7 @@ class RecoveryStepIndicator extends StatelessWidget {
       children: [
         Row(
           children: [
-            for (int index = 1; index <= 4; index++) ...[
+            for (int index = 1; index <= 2; index++) ...[
               AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
                 curve: Curves.easeOutCubic,
@@ -125,7 +124,7 @@ class RecoveryStepIndicator extends StatelessWidget {
                   ),
                 ),
               ),
-              if (index < 4)
+              if (index < 2)
                 Expanded(
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 220),
@@ -140,7 +139,7 @@ class RecoveryStepIndicator extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          'Paso $stepNumber de 4',
+          'Paso $stepNumber de 2',
           style: GoogleFonts.inter(
             color: AppColors.textSecondary,
             fontSize: 11.5,
@@ -210,7 +209,7 @@ class RecoveryPrimaryButton extends StatelessWidget {
   });
 
   final String text;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -244,28 +243,18 @@ class RecoveryStepContent extends StatelessWidget {
     super.key,
     required this.controller,
     required this.onEmailContinue,
-    required this.onCodeContinue,
-    required this.onPasswordContinue,
     required this.onBackToLogin,
-    required this.onResendCode,
   });
 
   final ForgotPasswordController controller;
   final VoidCallback onEmailContinue;
-  final VoidCallback onCodeContinue;
-  final VoidCallback onPasswordContinue;
   final VoidCallback onBackToLogin;
-  final VoidCallback onResendCode;
 
   @override
   Widget build(BuildContext context) {
     switch (controller.currentStep) {
       case RecoveryStep.email:
         return _emailStep();
-      case RecoveryStep.code:
-        return _codeStep();
-      case RecoveryStep.newPassword:
-        return _passwordStep();
       case RecoveryStep.success:
         return _successStep();
     }
@@ -295,7 +284,7 @@ class RecoveryStepContent extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          'Ingresa el correo asociado a tu cuenta y te enviaremos un código de recuperación.',
+          'Ingresa el correo asociado a tu cuenta y te enviaremos un enlace de recuperación.',
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             color: AppColors.textSecondary,
@@ -316,8 +305,8 @@ class RecoveryStepContent extends StatelessWidget {
         ),
         const SizedBox(height: 22),
         RecoveryPrimaryButton(
-          text: 'Enviar código',
-          onPressed: onEmailContinue,
+          text: controller.busy ? 'Enviando...' : 'Enviar enlace',
+          onPressed: controller.busy ? null : onEmailContinue,
         ),
         const SizedBox(height: 12),
         TextButton(
@@ -330,157 +319,6 @@ class RecoveryStepContent extends StatelessWidget {
               fontSize: 11.5,
             ),
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _codeStep() {
-    return Column(
-      key: const ValueKey('code-step'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        RecoveryStepIndicator(stepNumber: controller.stepNumber),
-        const SizedBox(height: 28),
-        const Icon(
-          Icons.password_rounded,
-          size: 48,
-          color: AppColors.gold,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'VERIFICA TU CORREO',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.cinzel(
-            color: AppColors.deep,
-            fontSize: 21,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Enviamos un código de 6 dígitos a ${controller.emailController.text.trim()}.',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-            height: 1.5,
-          ),
-        ),
-        const SizedBox(height: 24),
-        const RecoveryLabel('Código de verificación'),
-        const SizedBox(height: 7),
-        TextField(
-          controller: controller.codeController,
-          keyboardType: TextInputType.number,
-          textAlign: TextAlign.center,
-          maxLength: 6,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          style: GoogleFonts.inter(
-            color: AppColors.deep,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 8,
-          ),
-          decoration: recoveryInputDecoration(
-            hintText: '0 0 0 0 0 0',
-          ).copyWith(counterText: ''),
-        ),
-        const SizedBox(height: 22),
-        RecoveryPrimaryButton(
-          text: 'Verificar código',
-          onPressed: onCodeContinue,
-        ),
-        const SizedBox(height: 10),
-        TextButton(
-          onPressed: onResendCode,
-          child: Text(
-            'Reenviar código',
-            style: GoogleFonts.inter(
-              color: AppColors.accent,
-              fontWeight: FontWeight.w600,
-              fontSize: 11.5,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _passwordStep() {
-    return Column(
-      key: const ValueKey('password-step'),
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        RecoveryStepIndicator(stepNumber: controller.stepNumber),
-        const SizedBox(height: 28),
-        const Icon(
-          Icons.lock_reset_rounded,
-          size: 50,
-          color: AppColors.gold,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'CREA UNA NUEVA CONTRASEÑA',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.cinzel(
-            color: AppColors.deep,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Tu nueva contraseña debe tener al menos 6 caracteres.',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
-            color: AppColors.textSecondary,
-            fontSize: 12,
-            height: 1.5,
-          ),
-        ),
-        const SizedBox(height: 24),
-        const RecoveryLabel('Nueva contraseña'),
-        const SizedBox(height: 7),
-        TextField(
-          controller: controller.newPasswordController,
-          obscureText: controller.obscurePassword,
-          decoration: recoveryInputDecoration(
-            hintText: 'Ingresa tu nueva contraseña',
-            prefixIcon: Icons.lock_outline,
-            suffix: IconButton(
-              onPressed: controller.togglePasswordVisibility,
-              icon: Icon(
-                controller.obscurePassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        const RecoveryLabel('Confirmar contraseña'),
-        const SizedBox(height: 7),
-        TextField(
-          controller: controller.confirmPasswordController,
-          obscureText: controller.obscureConfirmPassword,
-          decoration: recoveryInputDecoration(
-            hintText: 'Repite tu nueva contraseña',
-            prefixIcon: Icons.lock_outline,
-            suffix: IconButton(
-              onPressed: controller.toggleConfirmPasswordVisibility,
-              icon: Icon(
-                controller.obscureConfirmPassword
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 22),
-        RecoveryPrimaryButton(
-          text: 'Cambiar contraseña',
-          onPressed: onPasswordContinue,
         ),
       ],
     );
@@ -512,7 +350,7 @@ class RecoveryStepContent extends StatelessWidget {
         ),
         const SizedBox(height: 22),
         Text(
-          'CONTRASEÑA ACTUALIZADA',
+          'ENLACE ENVIADO',
           textAlign: TextAlign.center,
           style: GoogleFonts.cinzel(
             color: AppColors.deep,
@@ -522,7 +360,7 @@ class RecoveryStepContent extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         Text(
-          'Tu contraseña fue modificada correctamente. Ya puedes iniciar sesión con tus nuevas credenciales.',
+          'Si existe una cuenta con ese correo, recibirás un enlace de Firebase para cambiar tu contraseña. Abre el enlace y luego vuelve para iniciar sesión.',
           textAlign: TextAlign.center,
           style: GoogleFonts.inter(
             color: AppColors.textSecondary,

@@ -11,6 +11,7 @@ Future<ReadingRecord?> showReadingRecordDialog({
   required ReadingRecord? initial,
   required BookStatus status,
   required int progress,
+  bool allowUnknownTotal = false,
 }) => showDialog<ReadingRecord>(
   context: context,
   builder: (_) => _ReadingRecordDialog(
@@ -18,6 +19,7 @@ Future<ReadingRecord?> showReadingRecordDialog({
     initial: initial,
     status: status,
     progress: progress,
+    allowUnknownTotal: allowUnknownTotal,
   ),
 );
 
@@ -27,11 +29,13 @@ class _ReadingRecordDialog extends StatefulWidget {
     required this.initial,
     required this.status,
     required this.progress,
+    required this.allowUnknownTotal,
   });
   final LibraryBook book;
   final ReadingRecord? initial;
   final BookStatus status;
   final int progress;
+  final bool allowUnknownTotal;
   @override
   State<_ReadingRecordDialog> createState() => _ReadingRecordDialogState();
 }
@@ -108,7 +112,7 @@ class _ReadingRecordDialogState extends State<_ReadingRecordDialog> {
       ReadingRecord(
         format: _format,
         currentPage: int.parse(_page.text),
-        totalPages: int.parse(_total.text),
+        totalPages: int.tryParse(_total.text) ?? 0,
         publisher: _publisher.text.trim(),
         status: _status,
       ),
@@ -188,7 +192,7 @@ class _ReadingRecordDialogState extends State<_ReadingRecordDialog> {
                             keyboardType: TextInputType.number,
                             decoration: _decoration('Total de páginas'),
                             onChanged: (_) => setState(() {}),
-                            validator: (v) => (int.tryParse(v ?? '') ?? 0) <= 0
+                            validator: (v) => widget.allowUnknownTotal && (v ?? '').trim().isEmpty ? null : (int.tryParse(v ?? '') ?? 0) <= 0
                                 ? 'Ingresa un total mayor que cero.'
                                 : null,
                           ),
@@ -203,7 +207,7 @@ class _ReadingRecordDialogState extends State<_ReadingRecordDialog> {
                             validator: (v) {
                               final n = int.tryParse(v ?? '');
                               final t = int.tryParse(_total.text) ?? 0;
-                              if (n == null || n < 0 || n > t) {
+                              if (n == null || n < 0 || (n > t && (t > 0 || !widget.allowUnknownTotal))) {
                                 return 'Ingresa una página entre 0 y el total.';
                               }
                               if (_status == BookStatus.porLeer && n != 0) {

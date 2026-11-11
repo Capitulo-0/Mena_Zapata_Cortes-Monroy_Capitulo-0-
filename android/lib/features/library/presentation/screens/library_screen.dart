@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -26,6 +27,7 @@ class LibraryScreen extends StatefulWidget {
   const LibraryScreen({
     super.key,
     this.onReadBook,
+    this.dataAvailable = true,
     this.onRemoveBook,
     required this.books,
     required this.statuses,
@@ -52,13 +54,14 @@ class LibraryScreen extends StatefulWidget {
   final String currentUsername;
   final VoidCallback onOpenProfile;
 
-  final void Function(int bookId, BookStatus status) onStatusChanged;
-  final void Function(int bookId, int progress) onProgressChanged;
+  final FutureOr<void> Function(int bookId, BookStatus status) onStatusChanged;
+  final FutureOr<void> Function(int bookId, int progress) onProgressChanged;
   final void Function(int bookId, BookReview review) onReviewSaved;
   final void Function(int bookId) onToggleFavorite;
   final Future<int?> Function(BuildContext context, int bookId)? onReadBook;
   final Future<bool> Function(BuildContext context, int bookId)? onRemoveBook;
   final bool isGuest;
+  final bool dataAvailable;
   final VoidCallback? onGuestRestrictedAction;
 
   @override
@@ -122,6 +125,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.dataAvailable) {
+      return ColoredBox(
+      color: AppColors.backgroundOf(context),
+      child: Padding(padding: const EdgeInsets.all(16), child: _buildHeader()),
+    );
+    }
     return ColoredBox(
       color: AppColors.backgroundOf(context),
       child: SafeArea(
@@ -245,8 +254,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
         if (mounted) setState(() {});
       },
-      onFinish: () {
-        widget.onStatusChanged(book.id, BookStatus.leido);
+      onFinish: () async {
+        await widget.onStatusChanged(book.id, BookStatus.leido);
+        if (!mounted || widget.statuses[book.id] != BookStatus.leido) return;
 
         setState(() {
           _showFinishSuccess = true;
@@ -749,16 +759,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
             setState(() {});
           },
           onOpenOwnProfile: widget.onOpenProfile,
-          onStatusChanged: (status) {
-            widget.onStatusChanged(book.id, status);
-            setState(() {});
+          onStatusChanged: (status) async {
+            await widget.onStatusChanged(book.id, status);
+            if (mounted) setState(() {});
           },
-          onProgressChanged: (progress) {
-            widget.onProgressChanged(book.id, progress);
-            if (progress >= 100) {
-              widget.onStatusChanged(book.id, BookStatus.leido);
-            }
-            setState(() {});
+          onProgressChanged: (progress) async {
+            await widget.onProgressChanged(book.id, progress);
+            if (mounted) setState(() {});
           },
         ),
       ),

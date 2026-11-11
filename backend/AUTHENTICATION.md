@@ -53,6 +53,7 @@ Invalid/revoked/expired tokens produce 401. Initialization/unavailable/internal 
 | GET /api/books/{id} | Public |
 | POST /api/books | Verified Firebase identity required |
 | GET/POST /api/users | Disabled: 401 without identity, 403 with identity |
+| POST /api/me/provision | Verified identity; idempotent provisioning from verified claims only |
 | GET /api/me | Verified identity and linked internal user required |
 | GET/POST /api/me/library | Verified identity and linked internal user required |
 | PATCH/DELETE /api/me/library/{bookId} | Same, always own user |
@@ -64,7 +65,7 @@ Public GET paths intentionally ignore Authorization headers, even invalid ones; 
 Public catalog data is the current minimal bibliographic DTO. If publication/private works are introduced,
 revisit these read permissions rather than exposing drafts under the same rule.
 
-Legacy user management is denied for all identities: no admin role or provisioning API exists yet.
+Legacy user management is denied for all identities: no admin role exists. First-login provisioning uses only POST /api/me/provision.
 The old create/list methods remain internal domain operations; no public client can assign a UID.
 Catalog POST is authenticated but does not yet have an editorial/admin role requirement.
 Existing library path requests with another userId return 403 before LibraryService accesses that user's data.
@@ -75,7 +76,7 @@ A valid token does not automatically create/link a PostgreSQL user.
 GET /api/me returns the existing UserResponse without Firebase UID.
 If the token UID has no linked user, return controlled HTTP 404 (Usuario no encontrado).
 Email equality NEVER links a legacy account. Email/name returned by /me are the domain record,
-not overwrites from token claims. A safe explicit provisioning/link process is a future block.
+not overwrites from token claims. POST /api/me/provision now safely provisions new identities; migration/linking of legacy accounts remains a future explicit process.
 No new migration was required; V1/V2/V3 remain intact.
 
 ## REST errors and stateless behavior
@@ -109,3 +110,29 @@ A real Firebase project/ADC and a legitimately linked user are required for a la
 - https://firebase.google.com/support/release-notes/admin/java
 - https://docs.spring.io/spring-security/reference/servlet/architecture.html
 - https://docs.spring.io/spring-security/reference/servlet/authentication/session-management.html
+
+## First-login provisioning (Block 1)
+
+POST /api/me/provision requires a verified Firebase Bearer token and accepts no identity DTO.
+A request body/query never selects UID, email, name or internal ID. The principal now carries
+email_verified copied from the Firebase Admin verified token.
+
+- Existing UID: return existing UserResponse (200), without overwriting domain attributes.
+- New UID: require a syntactically valid verified email, normalize it and create the internal user.
+- Missing/invalid/unverified email: controlled 400, without an invented email.
+- Email owned by a legacy or different-UID account: 409; never auto-link or reassign.
+- Concurrent same-UID inserts: unique constraints decide; after rollback a separate transaction
+  reads the winning UID and returns its existing ID. Different UID/email collision remains 409.
+
+GET /api/me remains read-only and selects exclusively by the authenticated UID.
+Both responses omit firebase_uid. /api/users stays denied. V1/V2/V3 remain unchanged.
+Firebase password accounts must verify email before initial provisioning.
+No real Firebase/Neon credentials are used in provisioning tests.
+
+Ordinary local validation must explicitly exclude the PostgreSQL migration test:
+mvn -o -B "-Dtest=*,!PostgresConnectionTests" test
+mvn -o -B -DskipTests package
+
+See ../BLOQUE_1_AUTENTICACION.md for Flutter configuration, local-data isolation,
+validation results and the live E2E checklist. Do not start the normal backend against
+a shared Neon database without separate authorization; startup invokes Flyway.

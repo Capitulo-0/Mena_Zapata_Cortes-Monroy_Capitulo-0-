@@ -11,6 +11,7 @@ class AuthRegisterForm extends StatelessWidget {
   const AuthRegisterForm({
     super.key,
     required this.controller,
+    required this.onGoogle,
     required this.onBirthDateRequested,
     required this.onCustomGenderRequested,
     required this.onRegister,
@@ -18,6 +19,7 @@ class AuthRegisterForm extends StatelessWidget {
   });
 
   final AuthController controller;
+  final Future<void> Function() onGoogle;
   final Future<void> Function() onBirthDateRequested;
   final Future<void> Function({String? initialValue}) onCustomGenderRequested;
   final Future<void> Function() onRegister;
@@ -158,12 +160,12 @@ class AuthRegisterForm extends StatelessWidget {
           text:
               controller.isRegistering ? 'Creando cuenta...' : 'Crear cuenta',
           loading: controller.isRegistering,
-          onPressed: controller.isRegistering ? null : onRegister,
+          onPressed: controller.isBusy ? null : onRegister,
         ),
         const SizedBox(height: 18),
         const AuthDivider('o continúa con'),
         const SizedBox(height: 16),
-        const AuthGoogleButton(),
+        AuthGoogleButton(onPressed: controller.isBusy ? null : onGoogle),
         const SizedBox(height: 16),
         AuthBottomSwitch(
           text: '¿Ya tienes cuenta?',

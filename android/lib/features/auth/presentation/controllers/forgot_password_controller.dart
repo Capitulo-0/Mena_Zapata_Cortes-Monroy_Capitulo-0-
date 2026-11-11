@@ -1,123 +1,46 @@
 import 'package:flutter/material.dart';
 
-enum RecoveryStep { email, code, newPassword, success }
+import '../../domain/auth_repository.dart';
+
+enum RecoveryStep { email, success }
 
 class ForgotPasswordController extends ChangeNotifier {
+  ForgotPasswordController(this.auth);
+  final AuthRepository auth;
   RecoveryStep currentStep = RecoveryStep.email;
-
   final emailController = TextEditingController();
-  final codeController = TextEditingController();
-  final newPasswordController = TextEditingController();
-  final confirmPasswordController = TextEditingController();
+  bool busy = false;
+  bool _disposed = false;
+  int get stepNumber => currentStep == RecoveryStep.email ? 1 : 2;
 
-  bool obscurePassword = true;
-  bool obscureConfirmPassword = true;
-
-  int get stepNumber {
-    switch (currentStep) {
-      case RecoveryStep.email:
-        return 1;
-      case RecoveryStep.code:
-        return 2;
-      case RecoveryStep.newPassword:
-        return 3;
-      case RecoveryStep.success:
-        return 4;
-    }
-  }
-
-  String? validateEmailStep() {
+  Future<String?> sendResetEmail() async {
+    if (busy) return null;
     final email = emailController.text.trim();
-
-    if (email.isEmpty) {
-      return 'Ingresa tu correo electrónico.';
-    }
-
-    if (!email.contains('@')) {
+    if (email.isEmpty || !email.contains('@')) {
       return 'Ingresa un correo electrónico válido.';
     }
-
-    currentStep = RecoveryStep.code;
+    busy = true;
     notifyListeners();
-    return null;
-  }
-
-  String? validateCodeStep() {
-    final code = codeController.text.trim();
-
-    if (code.isEmpty) {
-      return 'Ingresa el código de verificación.';
+    try {
+      await auth.sendPasswordResetEmail(email);
+      if (!_disposed) currentStep = RecoveryStep.success;
+      return null;
+    } on AuthFailure catch (failure) {
+      return failure.message;
+    } catch (_) {
+      return 'No pudimos enviar el enlace. Inténtalo nuevamente.';
+    } finally {
+      if (!_disposed) {
+        busy = false;
+        notifyListeners();
+      }
     }
-
-    if (code.length != 6) {
-      return 'El código debe tener 6 dígitos.';
-    }
-
-    currentStep = RecoveryStep.newPassword;
-    notifyListeners();
-    return null;
-  }
-
-  String? validatePasswordStep() {
-    final password = newPasswordController.text;
-    final confirmPassword = confirmPasswordController.text;
-
-    if (password.isEmpty || confirmPassword.isEmpty) {
-      return 'Completa ambas contraseñas.';
-    }
-
-    if (password.length < 6) {
-      return 'La contraseña debe tener al menos 6 caracteres.';
-    }
-
-    if (password != confirmPassword) {
-      return 'Las contraseñas no coinciden.';
-    }
-
-    currentStep = RecoveryStep.success;
-    notifyListeners();
-    return null;
-  }
-
-  bool moveBack() {
-    if (currentStep == RecoveryStep.email) {
-      return false;
-    }
-
-    switch (currentStep) {
-      case RecoveryStep.email:
-        break;
-      case RecoveryStep.code:
-        currentStep = RecoveryStep.email;
-        break;
-      case RecoveryStep.newPassword:
-        currentStep = RecoveryStep.code;
-        break;
-      case RecoveryStep.success:
-        currentStep = RecoveryStep.newPassword;
-        break;
-    }
-
-    notifyListeners();
-    return true;
-  }
-
-  void togglePasswordVisibility() {
-    obscurePassword = !obscurePassword;
-    notifyListeners();
-  }
-
-  void toggleConfirmPasswordVisibility() {
-    obscureConfirmPassword = !obscureConfirmPassword;
-    notifyListeners();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     emailController.dispose();
-    codeController.dispose();
-    newPasswordController.dispose();
-    confirmPasswordController.dispose();
     super.dispose();
   }
 }

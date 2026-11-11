@@ -29,6 +29,18 @@ class FirebaseAdminTokenVerifierTests {
             .isEqualTo(new AuthenticatedFirebaseUser("verified-uid", null, "Verified name"));
         verify(sdk).verifyIdToken("raw", true);
     }
+    @Test void emailVerificationIsTakenOnlyFromVerifiedSdkToken() throws Exception {
+        var provider = provider(); var sdk = mock(FirebaseAuth.class); var token = mock(FirebaseToken.class);
+        when(provider.getObject()).thenReturn(sdk);
+        when(sdk.verifyIdToken("fixture", true)).thenReturn(token);
+        when(token.getUid()).thenReturn("verified-fixture-uid");
+        when(token.getEmail()).thenReturn("reader@example.test");
+        when(token.isEmailVerified()).thenReturn(true);
+        var identity = new FirebaseAdminTokenVerifier(provider, true).verify("fixture");
+        assertThat(identity.emailVerified()).isTrue();
+        when(token.isEmailVerified()).thenReturn(false);
+        assertThat(new FirebaseAdminTokenVerifier(provider, true).verify("fixture").emailVerified()).isFalse();
+    }
     @Test void sdkRejectsTokenWithoutExposingItsDetails() throws Exception {
         var provider = provider(); var sdk = mock(FirebaseAuth.class); var error = mock(FirebaseAuthException.class);
         when(provider.getObject()).thenReturn(sdk); when(error.getErrorCode()).thenReturn(ErrorCode.INVALID_ARGUMENT);

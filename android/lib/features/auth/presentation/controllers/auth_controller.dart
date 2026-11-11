@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'session_controller.dart';
+
 enum RegisterValidationResult {
   valid,
   missingFields,
@@ -8,7 +10,13 @@ enum RegisterValidationResult {
 }
 
 class AuthController extends ChangeNotifier {
-  AuthController({bool initialLogin = true}) : isLogin = initialLogin;
+  AuthController({required this.session, bool initialLogin = true})
+    : isLogin = initialLogin;
+  final SessionController session;
+  bool _disposed = false;
+  bool isGoogleSigningIn = false;
+  bool get isBusy =>
+      session.busy || isLoggingIn || isRegistering || isGoogleSigningIn;
 
   final ScrollController scrollController = ScrollController();
 
@@ -16,10 +24,13 @@ class AuthController extends ChangeNotifier {
   final TextEditingController loginPasswordController = TextEditingController();
 
   final TextEditingController registerNameController = TextEditingController();
-  final TextEditingController registerBirthDateController = TextEditingController();
+  final TextEditingController registerBirthDateController =
+      TextEditingController();
   final TextEditingController registerEmailController = TextEditingController();
-  final TextEditingController registerPasswordController = TextEditingController();
-  final TextEditingController registerConfirmPasswordController = TextEditingController();
+  final TextEditingController registerPasswordController =
+      TextEditingController();
+  final TextEditingController registerConfirmPasswordController =
+      TextEditingController();
 
   bool isLogin;
   bool obscurePassword = true;
@@ -33,8 +44,7 @@ class AuthController extends ChangeNotifier {
   String? selectedGender;
   String? customGender;
 
-  bool get passwordHasMinLength =>
-      registerPasswordController.text.length >= 8;
+  bool get passwordHasMinLength => registerPasswordController.text.length >= 8;
 
   bool get passwordHasUppercase =>
       RegExp(r'[A-Z]').hasMatch(registerPasswordController.text);
@@ -58,8 +68,7 @@ class AuthController extends ChangeNotifier {
 
   bool get passwordsMatch =>
       registerPasswordController.text.isNotEmpty &&
-      registerConfirmPasswordController.text ==
-          registerPasswordController.text;
+      registerConfirmPasswordController.text == registerPasswordController.text;
 
   void setLoginTab(bool login) {
     if (isLogin == login) {
@@ -123,23 +132,34 @@ class AuthController extends ChangeNotifier {
       loginEmailController.text.trim().isNotEmpty &&
       loginPasswordController.text.isNotEmpty;
 
-  Future<void> simulateLogin() async {
+  Future<void> login() async {
     isLoggingIn = true;
-    loginDots = 1;
     notifyListeners();
-
-    for (var step = 0; step < 4; step++) {
-      await Future<void>.delayed(const Duration(milliseconds: 250));
-      loginDots = (loginDots % 3) + 1;
-      notifyListeners();
+    try {
+      await session.login(
+        loginEmailController.text.trim(),
+        loginPasswordController.text,
+      );
+    } finally {
+      if (!_disposed) {
+        isLoggingIn = false;
+        loginPasswordController.clear();
+        notifyListeners();
+      }
     }
   }
 
-  Future<void> simulateGuestLogin() async {
-    isGuestLoading = true;
+  Future<void> google() async {
+    isGoogleSigningIn = true;
     notifyListeners();
-
-    await Future<void>.delayed(const Duration(milliseconds: 2500));
+    try {
+      await session.google();
+    } finally {
+      if (!_disposed) {
+        isGoogleSigningIn = false;
+        notifyListeners();
+      }
+    }
   }
 
   RegisterValidationResult validateRegister() {
@@ -163,14 +183,23 @@ class AuthController extends ChangeNotifier {
     return RegisterValidationResult.valid;
   }
 
-  Future<void> simulateRegister() async {
+  Future<void> register() async {
     isRegistering = true;
     notifyListeners();
-
-    await Future<void>.delayed(const Duration(milliseconds: 2500));
-
-    isRegistering = false;
-    notifyListeners();
+    try {
+      await session.register(
+        registerNameController.text.trim(),
+        registerEmailController.text.trim(),
+        registerPasswordController.text,
+      );
+    } finally {
+      if (!_disposed) {
+        isRegistering = false;
+        registerPasswordController.clear();
+        registerConfirmPasswordController.clear();
+        notifyListeners();
+      }
+    }
   }
 
   void resetRegisterForm() {
@@ -201,6 +230,7 @@ class AuthController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     scrollController.dispose();
     loginEmailController.dispose();
     loginPasswordController.dispose();

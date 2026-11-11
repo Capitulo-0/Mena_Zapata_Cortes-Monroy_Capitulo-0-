@@ -1,3 +1,4 @@
+import '../../../../core/session/local_account_scope.dart';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -84,8 +85,10 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
   late bool _isFavorite;
   final Map<String, TextEditingController> _replyControllers = {};
 
-  String get _repliesStorageKey =>
-      'published_story_replies_${widget.story.id}';
+  late final String? _localScope = LocalAccountScope.read(context);
+  String get _repliesStorageKey => _localScope == null
+      ? 'published_story_replies_${widget.story.id}'
+      : 'published_story_replies_${_localScope}_${widget.story.id}';
 
   bool _isDarkMode(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;
