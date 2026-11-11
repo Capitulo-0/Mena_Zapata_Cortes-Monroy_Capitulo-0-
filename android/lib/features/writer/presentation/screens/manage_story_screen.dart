@@ -1,3 +1,4 @@
+import '../../../../core/session/local_account_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -31,7 +32,7 @@ class ManageStoryScreen extends StatefulWidget {
 }
 
 class _ManageStoryScreenState extends State<ManageStoryScreen> {
-  final WriterLocalService _writerService = WriterLocalService();
+  late final WriterLocalService _writerService = WriterLocalService(scope: LocalAccountScope.read(context));
 
   late WriterStory _story;
   bool _isLoading = false;

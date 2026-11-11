@@ -1,6 +1,7 @@
 package com.capitulo0.backend.config.security;
 
 import jakarta.servlet.DispatcherType;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import com.capitulo0.backend.auth.service.FirebaseTokenVerifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,8 +21,9 @@ public class SecurityConfiguration {
         return authentication -> { throw new ProviderNotFoundException("Only verified Firebase identity is supported"); };
     }
     @Bean public SecurityFilterChain securityFilterChain(HttpSecurity http, FirebaseTokenVerifier verifier,
-            RestSecurityErrors errors) throws Exception {
+            RestSecurityErrors errors, UrlBasedCorsConfigurationSource apiCorsConfigurationSource) throws Exception {
         return http
+            .cors(cors -> cors.configurationSource(apiCorsConfigurationSource))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .csrf(AbstractHttpConfigurer::disable)
             .formLogin(AbstractHttpConfigurer::disable)

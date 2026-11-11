@@ -1,3 +1,4 @@
+import '../../../../core/session/local_account_scope.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -45,7 +46,7 @@ class _WriterScreenState extends State<WriterScreen> {
     return true;
   }
 
-  final WriterLocalService _writerService = WriterLocalService();
+  late final WriterLocalService _writerService = WriterLocalService(scope: LocalAccountScope.read(context));
 
   List<WriterStory> _stories = [];
   _StoryFilter _selectedFilter = _StoryFilter.all;

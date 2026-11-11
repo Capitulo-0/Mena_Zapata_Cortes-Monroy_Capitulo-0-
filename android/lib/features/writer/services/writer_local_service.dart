@@ -5,7 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/writer_story.dart';
 
 class WriterLocalService {
-  static const String _storiesKey = 'writer_stories';
+  WriterLocalService({String? scope}) : _storiesKey = scope == null ? 'writer_stories' : 'writer_stories_$scope';
+  final String _storiesKey;
 
   Future<List<WriterStory>> getStories() async {
     final preferences = await SharedPreferences.getInstance();

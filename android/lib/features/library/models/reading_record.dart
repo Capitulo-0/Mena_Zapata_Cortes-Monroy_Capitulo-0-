@@ -1,6 +1,6 @@
 import 'book_status.dart';
 
-/// Seguimiento local de demostración; no se envía a ningún servidor.
+/// Modelo de edición. El repositorio adapta páginas y formato al contrato REST.
 class ReadingRecord {
   const ReadingRecord({
     required this.format,
@@ -18,7 +18,9 @@ class ReadingRecord {
   final int? readerProgress;
   int get progress =>
       readerProgress ??
-      (totalPages <= 0 ? 0 : (currentPage * 100 ~/ totalPages).clamp(0, 100));
+      (totalPages <= 0
+          ? (status == BookStatus.leido ? 100 : 0)
+          : (currentPage * 100 ~/ totalPages).clamp(0, 100));
   ReadingRecord withProgress(int progress, BookStatus nextStatus) {
     final bounded = progress.clamp(0, 100);
     if (bounded == this.progress && nextStatus == status) return this;

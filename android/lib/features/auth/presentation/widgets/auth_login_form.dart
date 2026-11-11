@@ -10,12 +10,14 @@ class AuthLoginForm extends StatelessWidget {
   const AuthLoginForm({
     super.key,
     required this.controller,
+    required this.onGoogle,
     required this.onLogin,
     required this.onGuestLogin,
     required this.onRegisterRequested,
   });
 
   final AuthController controller;
+  final Future<void> Function() onGoogle;
   final Future<void> Function() onLogin;
   final Future<void> Function() onGuestLogin;
   final VoidCallback onRegisterRequested;
@@ -84,7 +86,7 @@ class AuthLoginForm extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => const ForgotPasswordScreen(),
+                  builder: (_) => ForgotPasswordScreen(auth: controller.session.auth),
                 ),
               );
             },
@@ -107,17 +109,17 @@ class AuthLoginForm extends StatelessWidget {
               ? 'Entrando${'.' * controller.loginDots}'
               : 'Iniciar sesión',
           loading: controller.isLoggingIn,
-          onPressed: controller.isLoggingIn ? null : onLogin,
+          onPressed: controller.isBusy ? null : onLogin,
         ),
         const SizedBox(height: 12),
         _GuestButton(
           loading: controller.isGuestLoading,
-          onPressed: controller.isGuestLoading ? null : onGuestLogin,
+          onPressed: controller.isBusy ? null : onGuestLogin,
         ),
         const SizedBox(height: 18),
         const AuthDivider('o continúa con'),
         const SizedBox(height: 16),
-        const AuthGoogleButton(),
+        AuthGoogleButton(onPressed: controller.isBusy ? null : onGoogle),
         const SizedBox(height: 16),
         AuthBottomSwitch(
           text: '¿Aún no tienes cuenta?',

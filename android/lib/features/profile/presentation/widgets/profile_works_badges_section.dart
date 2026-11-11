@@ -497,7 +497,8 @@ extension _ProfileWorksBadgesSection on _ProfileScreenState {
       'title': book.title,
       'author': book.authorHandle ?? book.author,
       'authorReal': book.author,
-      'rating': 4.8,
+      'rating': book.isBackendBook ? 0.0 : 4.8,
+      'isBackendBook': book.isBackendBook,
       'year': book.year,
       'genre': book.genre,
       'availability': book.isFree ? 'GRATIS' : 'EXTERNA',
@@ -530,12 +531,12 @@ extension _ProfileWorksBadgesSection on _ProfileScreenState {
               onOpenOwnProfile: () {
                 Navigator.of(context).pop();
               },
-              onAddToLibrary: () {
-                widget.onStatusChanged(
+              onAddToLibrary: () async {
+                await widget.onStatusChanged(
                   book.id,
                   widget.statuses[book.id] ?? BookStatus.porLeer,
                 );
-                _showMessage('${book.title} está en tu biblioteca.');
+                if (mounted && widget.statuses.containsKey(book.id)) _showMessage('${book.title} está en tu biblioteca.');
               },
             ),
           ),

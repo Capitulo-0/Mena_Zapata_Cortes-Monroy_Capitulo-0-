@@ -122,14 +122,15 @@ class AuthPrimaryButton extends StatelessWidget {
 }
 
 class AuthGoogleButton extends StatelessWidget {
-  const AuthGoogleButton({super.key});
+  const AuthGoogleButton({super.key, this.onPressed});
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 46,
       child: OutlinedButton.icon(
-        onPressed: null,
+        onPressed: onPressed,
         icon: const Icon(Icons.g_mobiledata_rounded, size: 22),
         label: Text(
           'Continuar con Google',

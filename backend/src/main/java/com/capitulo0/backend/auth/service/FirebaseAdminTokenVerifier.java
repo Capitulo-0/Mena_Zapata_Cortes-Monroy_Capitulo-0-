@@ -33,7 +33,7 @@ public class FirebaseAdminTokenVerifier implements FirebaseTokenVerifier {
         }
         try {
             var token = firebaseAuth.verifyIdToken(idToken, checkRevoked);
-            return new AuthenticatedFirebaseUser(token.getUid(), token.getEmail(), token.getName());
+            return new AuthenticatedFirebaseUser(token.getUid(), token.getEmail(), token.getName(), token.isEmailVerified());
         } catch (FirebaseAuthException ex) {
             if (ex.getErrorCode() == ErrorCode.UNAVAILABLE || ex.getErrorCode() == ErrorCode.INTERNAL) {
                 throw new AuthenticationServiceException("Identity service unavailable");

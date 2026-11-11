@@ -1,0 +1,432 @@
+CAPÍTULO 0 — AUDITORÍA DE CONTINUIDAD Y PROPUESTA BLOQUES 3 Y 4
+Fecha: 11/11/2026
+Rama revisada: feature/backend-core-completion
+
+1. ALCANCE Y RESULTADO
+
+La auditoría previa fue exclusivamente de lectura. Se revisaron Git, informes de los Bloques 1 y 2, búsqueda, fichas, lector, progreso, reseñas, catálogo SQL e integración por cuenta.
+
+Los componentes de los Bloques 1 y 2 siguen presentes. No se implementó Google Books ni Gutendex. La prioridad inmediata es aceptar manualmente el Bloque 2 contra servicios reales.
+
+Este TXT documenta el diagnóstico y la propuesta. Su creación fue solicitada posteriormente por la responsable. No modifica código, configuración, dependencias, migraciones ni datos.
+
+2. ESTADO GIT Y CONFIGURACIONES
+
+Rama confirmada: feature/backend-core-completion.
+Working tree no limpio: contiene cambios y archivos nuevos acumulados de los Bloques 1 y 2. Se conservaron.
+Último commit visible durante la revisión: fb35c53, integración del backend MVP, seguridad Firebase y Google Services Android.
+git diff --check: correcto.
+Diff de migraciones existentes: sin diferencias.
+Las rutas config/firebase_web.local.json y android/app/google-services.json siguen ignoradas por Git. No se leyeron sus valores.
+No se realizaron commit, push, merge, rebase, reset, limpieza, cambio de rama ni operaciones que descarten trabajo.
+
+No se inspeccionaron valores de variables privadas. Las variables activas de una terminal no deben suponerse presentes en otra.
+
+3. INFORMES REVISADOS Y ESTADO VALIDADO
+
+BLOQUE_1_AUTENTICACION.md
+BLOQUE_1_WEB_FIREBASE_CORS.md
+BLOQUE_2_BIBLIOTECA_PROGRESO.md
+
+Bloque 1:
+Implementado Firebase Auth, Google Sign-In, sesión, cliente HTTP Bearer, Firebase Admin, provisionamiento seguro y /api/me.
+La responsable informó validación real satisfactoria en Chrome el 11/11/2026: autenticación, provision200, me200, usuarios vinculados en Neon, restauración, logout, reingreso sin duplicados y dos identidades independientes.
+Android real y escenarios adicionales de seguridad siguen pendientes.
+Los informes iniciales describen limitaciones de su fecha; la validación posterior informada supera algunos pendientes históricos.
+No rehacer este bloque.
+
+Bloque 2:
+Implementadas biblioteca privada, alta, estados, páginas/formato, recuperación, eliminación de pertenencia, aislamiento y manejo de carga/error/vacío/reintento.
+El informe documenta 75 tests backend aprobados, 90 Flutter aprobados y uno omitido, análisis sin incidencias y builds Web/Android correctos.
+Son resultados de la intervención anterior: NO se ejecutaron nuevamente durante esta auditoría.
+La aceptación E2E del Bloque 2 contra Neon sigue pendiente.
+
+4. INVENTARIO FUNCIONAL REVISADO
+
+AUTENTICACIÓN:
+Capas Firebase, SessionController, repositorio Auth, ApiClient, preparación y provisionamiento conservadas.
+
+BIBLIOTECA:
+lib/features/library/models/library_entry.dart
+lib/features/library/data/library_repository.dart
+lib/features/library/presentation/controllers/library_controller.dart
+lib/features/library/presentation/dialogs/add_library_book_dialog.dart
+lib/features/library/presentation/widgets/library_sync_bar.dart
+Integración en app.dart y main_shell_screen.dart.
+Tests library_controller_test.dart, library_repository_test.dart, library_remote_widgets_test.dart y MyLibraryPersistenceTests.java presentes.
+
+BÚSQUEDA:
+lib/features/home/presentation/widgets/home_search_section.dart.
+Filtra la lista recibida por título/autor y géneros, y ordena por opciones como año/calificación.
+No consulta Google Books ni realiza búsqueda ISBN externa real.
+
+HOME:
+lib/features/home/presentation/screens/home_screen.dart.
+Recibe catalogBooks; usa HomeDemoData cuando no se aporta esa lista en la ruta demo.
+La ruta autenticada recibe catálogo SQL desde MainShell.
+Componentes de recomendaciones y Continuar leyendo conservados.
+No hay motor externo de descubrimiento implementado.
+
+FICHAS:
+lib/features/home/presentation/screens/home_book_detail_screen.dart
+lib/features/library/presentation/screens/library_book_detail_screen.dart
+Conservan metadatos, ISBN, sinopsis y acciones de biblioteca/seguimiento, reseñas e interacción.
+Existen dos pantallas con lógica semejante. No se propone fusionarlas ni sustituirlas en estos bloques.
+
+SEGUIMIENTO MANUAL:
+ReadingRecord, reading_record_dialog.dart y PATCH backend.
+Persiste estado, páginas, formato y editorial.
+No equivale a una posición digital de contenido.
+
+LECTOR:
+lib/features/library/presentation/screens/simulated_reader_screen.dart.
+Conserva cabecera, tipografía, estructura, scroll, indicador y callbacks.
+Hoy presenta párrafos de demostración y lo declara en la pantalla.
+Restaura un porcentaje de scroll; no consume libros remotos ni guarda un localizador digital estable.
+La ruta SQL abre actualmente el diálogo manual, no este contenido simulado.
+
+RESEÑAS:
+BookReview incluye rating, texto e isPublic.
+Las fichas contienen editores y callbacks.
+No hay persistencia backend de reseñas en el bloque auditado.
+BookInteractionStore conserva respuestas en memoria y se limpia al cambiar sesión.
+Las fichas contienen comentarios demo.
+
+HALLAZGO DE CALIFICACIONES:
+LibraryBookDetailScreen._bookRating devuelve valores hardcodeados según ID y un valor por defecto. Eso puede aplicarse a IDs SQL.
+No constituye una calificación real. Debe diferenciarse demo, sin valoración y valoración real, manteniendo la sección visual.
+No se corrigió durante esta auditoría.
+
+WRITER:
+WriterLocalService utiliza SharedPreferences con namespace por cuenta.
+La integración anterior propaga LocalAccountScope.
+No se modificaron ni migraron sus datos. No se implementó Writer backend.
+
+5. CATÁLOGO SQL Y BLOQUE 2
+
+LibraryController carga GET /api/me/library y GET /api/books.
+El catálogo representa metadatos compartidos. La biblioteca representa pertenencia y seguimiento privados.
+MainShell copia el catálogo a Home mediante catalogBooks.
+Agregar exige bookId SQL confirmado.
+No se convierten IDs demo a IDs SQL.
+POST /api/me/library agrega; PATCH /api/me/library/{bookId} modifica; DELETE quita pertenencia.
+El backend resuelve propietario desde CurrentUserService y token autenticado.
+DELETE no elimina el libro del catálogo.
+
+Si el catálogo SQL está vacío, Home autenticado no tiene libros para descubrimiento. Esto explica el vacío sin implicar eliminación de pantallas.
+En Bloque 3 se debe separar descubrimiento externo y biblioteca privada.
+
+El registro manual existente permite comenzar con catálogo vacío; cuando exista Google Books quedará como mecanismo secundario.
+
+6. OBSERVACIONES VISUALES
+
+MainShell inserta LibrarySyncBar en Inicio, Biblioteca y Perfil.
+El componente Continuar leyendo permanece.
+No se comparó directamente con un archivo Figma, por lo que no se afirma equivalencia visual exacta.
+
+Se debe estudiar cómo integrar refresco/estado/alta sin desplazar secciones principales. No eliminar las funciones para ajustar el diseño.
+Cualquier cambio visual se someterá a aprobación.
+No reemplazar fichas por formularios ni eliminar módulos demo antes de tener alternativa real probada.
+
+7. PROPUESTA BLOQUE 3 — GOOGLE BOOKS
+
+Estado: propuesta, NO implementada ni autorizada como etapa de implementación.
+
+Secuencia:
+3A. Adaptador backend y DTO externo para Google Books.
+3B. Conectar el buscador existente, conservando filtros y estructura, añadiendo carga/error/vacío.
+3C. Adaptar metadatos a ambas fichas existentes sin sustituirlas.
+3D. Resolver volumen externo a libro interno cuando el usuario decide guardarlo.
+3E. Alimentar recomendaciones reales independientemente de la biblioteca privada.
+3F. Regresión visual, navegación, Auth y progreso.
+
+Endpoints PROPUESTOS, todavía inexistentes:
+GET /api/catalog/search
+GET /api/catalog/google-books/{volumeId}
+POST /api/books/import/google-books
+
+La importación sería autenticada, recibiría identificador externo y obtendría metadatos desde backend. Retornaría el ID SQL reutilizado/creado. Después se utilizaría POST /api/me/library actual.
+No enviar IDs externos como IDs SQL ni confiar ciegamente en metadatos enviados por Flutter.
+No sincronizar la biblioteca de Google ni pedir acceso OAuth a datos privados de Google para esta función.
+
+Búsqueda:
+Título, autor e ISBN.
+Paginación y límites.
+Priorizar español y ampliar controladamente a otros idiomas cuando corresponda.
+No presentar listas editoriales basadas en búsquedas como recomendaciones personalizadas si no lo son.
+
+Campos:
+Título/subtítulo, autores múltiples, descripción, editorial, fecha con precisión original, páginas, idioma, categorías, portada, identificadores y procedencia.
+Campos ausentes se muestran como no disponibles u omitidos, sin inventar año, rating, género o autor.
+Descripción externa debe tratarse como contenido no confiable para su presentación.
+
+Cambios mínimos:
+Nuevas capas de integración backend.
+Ampliaciones compatibles de Book/DTO/Mapper.
+Repositorio/controlador externo Flutter y adaptación puntual de buscador/Home/fichas.
+Mantener el cliente Bearer y semántica privada del Bloque 2.
+No refactorizar módulos completos.
+
+Migración futura necesaria:
+Referencia externa única por proveedor/ID y metadatos que faltan.
+Book actual solo tiene un autor, un ISBN y un año; no guarda ID Google, idioma, categorías o autores múltiples.
+Elegir número de migración disponible al implementar; no asumirlo ni modificar V1-V3.
+Deduplicación por proveedor/ID. ISBN aporta evidencia pero no autoriza fusión automática de ediciones.
+La aplicación de cualquier migración a Neon requiere autorización explícita.
+
+Criterios verificables:
+- Buscar por título, autor e ISBN devuelve resultados reales paginados.
+- Biblioteca vacía no impide descubrir.
+- Fichas existentes conservan apartados y acciones.
+- Datos ausentes no generan valores ficticios.
+- Guardar repetidamente reutiliza registro interno.
+- Dos usuarios comparten metadatos pero no progreso.
+- Caída Google no impide ver registros ya guardados.
+- Auth, Writer, navegación y progreso manual sin regresión.
+- Tests con fixtures/dobles y H2; aceptación real posterior autorizada.
+
+Condiciones:
+Revisar almacenamiento/caché, cuotas, portadas, atribuciones y retirada conforme a términos oficiales antes de concretar persistencia.
+La API bibliográfica y Firebase Auth son integraciones distintas.
+
+8. PROPUESTA BLOQUE 4 — GUTENDEX Y LECTOR
+
+Estado: propuesta, NO implementada.
+
+4A. Consulta de candidatos Gutendex.
+4B. Correspondencia confirmada de obra/edición.
+4C. Prueba de formato compatible en Web y Android usando la estructura del lector existente.
+4D. Persistencia privada de posición digital.
+4E. Integración con biblioteca, Continuar leyendo y estadísticas.
+
+Gutendex expone autores, traductores, idioma, formatos, copyright e ID Gutenberg.
+No garantiza identidad de edición con Google Books.
+Título parecido no es evidencia suficiente.
+Distinguir correspondencia de obra frente a equivalencia de edición.
+Evaluar autor, título, traducción, idioma, edición y otros identificadores disponibles.
+Si la evidencia es ambigua, no asociar automáticamente ni habilitar lectura como si fuera esa edición.
+Una edición alternativa debe identificarse claramente.
+
+Lector:
+Conservar layout, cabecera, tipografía, navegación e indicador.
+Incorporar fuente de contenido y localizador; no reemplazar pantalla por un lector diferente sin justificación/autorización.
+Primera prueba técnica propuesta: texto UTF-8 con bloques estables y desplazamiento dentro del bloque.
+No se afirma todavía compatibilidad final de todos los formatos.
+
+Posición:
+Usuario + edición/recurso + versión/hash de contenido normalizado + bloque/desplazamiento + porcentaje + última lectura.
+Cambiar pantalla o tamaño de fuente no debe invalidar la posición.
+Cambio de archivo/edición exige detectar incompatibilidad, sin aplicar ciegamente localizador antiguo.
+No utilizar currentPage manual como posición digital.
+No fabricar páginas para un archivo digital.
+
+Backend futuro:
+Contratos específicos de disponibilidad/contenido y posición privada.
+Migración aditiva para ediciones y progreso digital.
+Mantener PATCH de progreso manual compatible.
+Serializar/debatir concurrencia de guardados digitales y cambios de cuenta; no permitir que una respuesta tardía cambie otra sesión.
+No copiar archivos completos a PostgreSQL.
+
+Acceso:
+Mostrar Leer gratis solo con edición confirmada, formato compatible y acceso autorizado.
+Si no se cumplen condiciones: Lectura no disponible en la app.
+Conservar ficha, biblioteca, seguimiento, reseñas y calificaciones según los bloques correspondientes.
+No interpretar falta de lectura interna como libro de pago.
+
+Riesgos previos a implementar:
+copyright=false en Gutendex se refiere a dominio público en Estados Unidos; no resuelve por sí solo derechos en otros territorios.
+Project Gutenberg publica restricciones de enlaces/acceso automatizado.
+No asumir que URLs de formatos pueden consumirse directamente desde Chrome, ni que un proxy elimina restricciones.
+Resolver fuente/canal permitido, CORS y compatibilidad antes de habilitar lectura.
+El servicio público Gutendex recomienda servidor propio para uso prolongado; planificar disponibilidad sin montar infraestructura ni importar catálogo ahora.
+
+Criterios:
+- Homónimos, traducciones y ediciones ambiguas no se emparejan.
+- Texto real abre dentro de la experiencia existente.
+- Progreso automático preciso y restauración entre sesiones.
+- Posición estable ante cambio de pantalla.
+- Cambio de contenido detectado.
+- Datos privados aislados A/B.
+- Fallo de descarga/guardado visible, sin éxito falso.
+- Progreso manual del Bloque 2 intacto.
+- Validación real Web/Android autorizada.
+
+9. RESPONSABILIDAD DE NEON Y FUENTES EXTERNAS
+
+Guardar en Neon:
+- IDs internos y referencias externas de registros seleccionados.
+- Metadatos necesarios y permitidos para visualizar libros guardados.
+- Procedencia, identificadores y referencias a portada.
+- Biblioteca, estado, formato y páginas privadas.
+- Posición digital vinculada a edición y versión.
+- Última lectura e historial en sus contratos futuros.
+- Favoritos/listas/reseñas/interacción en los bloques correspondientes.
+
+Consultar externamente:
+- Resultados de búsqueda no guardados.
+- Detalles y actualizaciones bajo demanda.
+- Ediciones/formato/disponibilidad externa.
+- Contenido desde canal permitido y caché selectiva autorizada.
+
+No importar catálogo universal.
+No descargar masivamente.
+No almacenar contenido completo en PostgreSQL.
+No dejar registros guardados totalmente dependientes de la disponibilidad externa.
+Definir política de retención/caché conforme a términos, no asumir permiso ilimitado para copiar metadatos o imágenes.
+
+10. RIESGOS DE REGRESIÓN
+
+Firebase:
+Preservar inicialización Android/Web, configuración privada, Google Sign-In, Admin, provisionamiento y CORS.
+No introducir flujo especial de identidad para los proveedores bibliográficos.
+
+Cuentas:
+Mantener expectedUid, descarte de respuestas tardías, disposición de controlador y cambio de árbol de navegación.
+No reutilizar caché privada entre cuentas.
+
+IDs:
+Fichas actuales esperan enteros. Separar identidad externa y SQL; no usar hashes o IDs ficticios.
+
+Progreso:
+Mantener páginas manuales separadas de localizador digital.
+No recalcular páginas exactas desde porcentajes redondeados.
+Respetar normalización existente y contratos PATCH.
+
+Demo:
+Ratings hardcodeados y comentarios demo no deben presentarse como datos reales de resultados externos.
+Conservar interfaces y datos demo identificados hasta tener reemplazo funcional.
+
+Writer:
+Preservar claves por cuenta y datos heredados.
+No migrar, borrar ni reasignar automáticamente.
+
+Visual:
+Conservar secciones, fichas, Continuar leyendo, mapas, clubes, perfil y navegación.
+Ajustes de controles de sincronización solo tras revisión/aprobación.
+
+Disponibilidad:
+Distinguir catálogo vacío, biblioteca vacía y servicio externo caído.
+No convertir errores en listas vacías exitosas.
+
+11. ACEPTACIÓN MANUAL PENDIENTE DEL BLOQUE 2
+
+Solo la responsable ejecuta estas operaciones con conocimiento de su efecto.
+Agregar/editar/eliminar pertenencias produce escrituras reales. No se ejecutaron aquí.
+
+Preparación:
+Utilizar las terminales y configuración local ya validadas.
+No regenerar Firebase ni sobrescribir variables.
+Conservar API_BASE_URL y origen CORS compatibles.
+No asumir que nuevas terminales heredan variables del proceso anterior.
+No copiar tokens, cabeceras Authorization ni archivos privados en evidencias.
+
+Paso 1:
+Entrar con A sin entradas y abrir Biblioteca.
+Esperado: GET /api/me/library200, biblioteca vacía real, sin libros privados demo.
+
+Paso 2:
+Añadir libro del catálogo.
+Si catálogo vacío, registrar metadatos manualmente como excepción.
+Esperado: alta confirmada, ID SQL. Registrar el ID bibliográfico sin cabeceras privadas.
+
+Paso 3:
+Actualizar Chrome.
+Esperado: pertenencia recuperada desde backend.
+
+Paso 4:
+Cambiar a Leyendo y guardar 73/300 páginas, formato y editorial.
+Esperado: PATCH200 y GET con páginas/formato exactos.
+
+Paso 5:
+Actualizar, cerrar sesión y reingresar.
+Esperado: mismos datos y usuario interno, sin duplicaciones.
+
+Paso 6:
+Entrar con B.
+Esperado: biblioteca privada independiente. Catálogo compartido puede mostrar el mismo libro.
+
+Paso 7:
+Agregar el mismo libro con B y registrar otro progreso.
+Volver a A.
+Esperado: A conserva73/300, B conserva su propio progreso.
+
+Paso 8:
+Quitar pertenencia de A.
+Esperado: DELETE204, desaparece de biblioteca A, permanece catálogo y biblioteca B.
+No usar DELETE sobre catálogo ni SQL destructivo.
+
+Paso 9:
+Entrar como invitado.
+Esperado: sin operaciones privadas ni peticiones de biblioteca.
+
+Paso 10:
+Simular offline/fallo backend al guardar.
+Esperado: error visible, sin éxito falso ni alteración del valor confirmado.
+Reconectar y reintentar/recargar.
+
+Paso 11:
+Comprobar Writer y navegación al cambiar cuentas sin borrar datos.
+Android real sigue pendiente; URL del emulador usa10.0.2.2 para el host, si corresponde al entorno configurado.
+
+Registrar cada paso como aprobado/fallido, con resultado observado.
+No declarar E2E aprobado por tests H2/dobles.
+Pruebas adicionales de ownership mediante peticiones manuales requieren autorización específica para cualquier escritura real; existen pruebas H2 locales de aislamiento.
+
+12. PRUEBAS Y CAMBIOS DE ESTA AUDITORÍA
+
+Ejecutado:
+Lectura de Git, archivos e informes.
+git diff --check correcto.
+Revisión de diff de migraciones sin diferencias.
+Consulta de documentación pública oficial.
+
+No ejecutado:
+Tests backend/Flutter nuevamente.
+Builds nuevamente.
+Login real.
+Peticiones contra aplicación/Neon.
+Migraciones.
+Escrituras de prueba o cambios Firebase.
+
+Archivos de código/configuración modificados: ninguno.
+Dependencias modificadas: ninguna.
+Migraciones modificadas: ninguna.
+Operaciones Neon/Firebase: ninguna.
+El único archivo nuevo de esta entrega es este TXT solicitado posteriormente.
+No sobrescribe informes anteriores.
+
+13. CONTINUIDAD Y AUTORIZACIÓN
+
+Orden:
+1. Completar aceptación real Bloque 2.
+2. Revisar resultados y corregir solo defectos demostrados con autorización y regresión.
+3. Aprobar plan técnico Bloque 3 antes de implementar.
+4. Implementar incrementalmente, con pruebas aisladas y regresión Web/Android.
+5. Cerrar Bloque 3 con aceptación real autorizada.
+6. Aprobar/implementar Bloque 4 de forma equivalente.
+
+Ninguna propuesta de este informe autoriza por sí sola migraciones contra Neon ni cambios visuales o destructivos.
+
+14. FUENTES OFICIALES CONSULTADAS
+
+Google Books: uso, búsqueda y parámetros:
+https://developers.google.com/books/docs/v1/using
+
+Google Books: esquema de volumen:
+https://developers.google.com/books/docs/v1/reference/volumes
+
+Google Books: términos:
+https://developers.google.com/books/terms
+
+Gutendex: API y formatos:
+https://gutendex.com/
+
+Project Gutenberg: permisos y ámbito territorial:
+https://www.gutenberg.org/policy/permission.html
+
+Project Gutenberg: acceso automatizado:
+https://www.gutenberg.org/policy/robot_access.html
+
+Estas fuentes fundamentan la propuesta, no acreditan que las integraciones ya estén implementadas.
+
+FIN DEL INFORME.

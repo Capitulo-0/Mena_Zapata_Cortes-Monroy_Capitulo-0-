@@ -1,5 +1,6 @@
 class BookInteractionStore {
   BookInteractionStore._();
+  static void clear() => _bookReplies.clear();
 
   static final Map<String, List<Map<String, dynamic>>> _bookReplies =
       <String, List<Map<String, dynamic>>>{};

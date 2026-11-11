@@ -1,3 +1,9 @@
+import '../../../library/data/library_repository.dart';
+import '../../../library/models/library_entry.dart';
+import '../../../library/presentation/controllers/library_controller.dart';
+import '../../../library/presentation/dialogs/add_library_book_dialog.dart';
+import '../../../library/presentation/widgets/library_sync_bar.dart';
+import '../../../../core/session/local_account_scope.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -26,10 +32,14 @@ class MainShellScreen extends StatefulWidget {
     required this.onGuestLoginRequested,
     required this.onGuestRegisterRequested,
     required this.isDarkMode,
+    this.profileDisplayName,
+    this.libraryRepository,
     required this.onDarkModeChanged,
   });
 
   final bool isGuest;
+  final LibraryRepository? libraryRepository;
+  final String? profileDisplayName;
   final VoidCallback onLogout;
   final VoidCallback onGuestLoginRequested;
   final VoidCallback onGuestRegisterRequested;
@@ -46,12 +56,48 @@ class _MainShellScreenState extends State<MainShellScreen> {
   final GlobalKey<HomeScreenState> _homeKey = GlobalKey<HomeScreenState>();
   bool _headerCompact = false;
 
-  final WriterLocalService _writerService = WriterLocalService();
+  late final WriterLocalService _writerService = WriterLocalService(scope: LocalAccountScope.read(context));
   List<WriterStory> _writerStories = <WriterStory>[];
 
   bool showSettings = false;
+  LibraryController? _remoteLibrary;
+  String? _shownLibraryError;
 
-  String _profileName = 'Constanza Mena';
+  void _syncRemoteLibrary() {
+    final remote = _remoteLibrary;
+    if (!mounted || remote == null) return;
+    setState(() {
+      _libraryBooks..clear()..addAll(remote.catalog);
+      _bookStatuses..clear()..addAll({for (final entry in remote.entries.values) entry.book.id: entry.status});
+      _bookProgresses..clear()..addAll({for (final entry in remote.entries.values) entry.book.id: entry.progressPercentage.floor()});
+      _readingRecords..clear()..addAll({for (final entry in remote.entries.values) entry.book.id: entry.record});
+      final reading = remote.entries.values.where((entry) => entry.status == BookStatus.leyendo).toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      _lastAdvancedBookId = reading.isEmpty ? null : reading.first.book.id;
+    });
+    if (remote.error != null && _shownLibraryError != remote.error) {
+      _shownLibraryError = remote.error;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(remote.error ?? 'No se pudo sincronizar la biblioteca.')));
+      });
+    } else if (remote.error == null) { _shownLibraryError = null; }
+  }
+
+  void _addRealBook() {
+    final remote = _remoteLibrary;
+    if (remote != null && remote.canWrite) showAddLibraryBookDialog(context, remote);
+  }
+
+  Widget _libraryBody(Widget child) {
+    final remote = _remoteLibrary;
+    if (remote == null) return child;
+    return Column(children: [
+      if ([0, 1, 4].contains(selectedIndex)) LibrarySyncBar(controller: remote, onAdd: _addRealBook),
+      Expanded(key: const ValueKey('library-main-stack'), child: child),
+    ]);
+  }
+
+  late String _profileName = widget.profileDisplayName ?? 'Constanza Mena';
   String _profileUsername = '@constanza.lectora';
   String _profileBiography =
       'Entre libros, café y lugares tranquilos para leer.';
@@ -63,6 +109,17 @@ class _MainShellScreenState extends State<MainShellScreen> {
   void initState() {
     super.initState();
     _loadWriterStories();
+    if (!widget.isGuest && widget.libraryRepository != null) {
+      _libraryBooks.clear();
+      _bookStatuses.clear();
+      _bookProgresses.clear();
+      _readingRecords.clear();
+      _bookReviews.clear();
+      _favoriteBookIds.clear();
+      _lastAdvancedBookId = null;
+      _remoteLibrary = LibraryController(widget.libraryRepository!)..addListener(_syncRemoteLibrary);
+      unawaited(_remoteLibrary!.load());
+    }
   }
 
   Future<void> _loadWriterStories() async {
@@ -442,6 +499,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   @override
   void dispose() {
     _finishReadingTimer?.cancel();
+    _remoteLibrary?..removeListener(_syncRemoteLibrary)..dispose();
     super.dispose();
   }
 
@@ -483,7 +541,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
     ),
   };
 
-  void _addToLibrary(Map<String, dynamic> data) {
+  Future<void> _addToLibrary(Map<String, dynamic> data) async {
+    if (widget.isGuest) { _showGuestAccessDialog(); return; }
+    if (_remoteLibrary != null) {
+      if (data['isBackendBook'] != true) return;
+      await _remoteLibrary!.add(data['id'] as int);
+      return;
+    }
     final id = data['id'] as int;
     setState(() {
       if (!_libraryBooks.any((book) => book.id == id)) {
@@ -517,6 +581,14 @@ class _MainShellScreenState extends State<MainShellScreen> {
     final matches = _libraryBooks.where((book) => book.id == bookId);
     if (matches.isEmpty) return null;
     final book = matches.first;
+    if (_remoteLibrary != null) {
+      if (!_remoteLibrary!.canWrite || !_bookStatuses.containsKey(bookId)) return null;
+      final record = await showReadingRecordDialog(context: sourceContext, book: book,
+        initial: _readingRecords[bookId], status: _bookStatuses[bookId]!, progress: _bookProgresses[bookId] ?? 0,
+        allowUnknownTotal: true);
+      if (record != null) await _remoteLibrary!.saveRecord(bookId, record);
+      return mounted ? _bookProgresses[bookId] : null;
+    }
     if (book.isFree && (_bookStatuses[bookId] ?? BookStatus.porLeer) == BookStatus.porLeer) {
       _changeBookStatus(bookId, BookStatus.leyendo);
     }
@@ -563,6 +635,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
           FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Eliminar'))]));
     if (confirmed != true || !mounted) return false;
+    if (_remoteLibrary != null && !await _remoteLibrary!.remove(bookId)) return false;
+    if (!mounted) return false;
     setState(() {
       _bookStatuses.remove(bookId);
       _bookProgresses.remove(bookId);
@@ -578,7 +652,17 @@ class _MainShellScreenState extends State<MainShellScreen> {
     return true;
   }
 
-  void _changeBookStatus(int bookId, BookStatus status) {
+  Future<void> _changeBookStatus(int bookId, BookStatus status) async {
+    if (_remoteLibrary != null) {
+      final wasCurrent = _lastAdvancedBook?.id == bookId;
+      if (!_remoteLibrary!.entries.containsKey(bookId)) {
+        if (!await _remoteLibrary!.add(bookId)) return;
+      }
+      if (await _remoteLibrary!.setStatus(bookId, status) && mounted) {
+        _afterReadingChange(bookId, status, wasCurrent);
+      }
+      return;
+    }
     if (widget.isGuest) { _showGuestAccessDialog(); return; }
     final wasCurrent = _lastAdvancedBook?.id == bookId;
     final previousStatus = _bookStatuses[bookId];
@@ -601,7 +685,14 @@ class _MainShellScreenState extends State<MainShellScreen> {
     if (status != previousStatus) _afterReadingChange(bookId, status, wasCurrent);
   }
 
-  void _changeBookProgress(int bookId, int progress) {
+  Future<void> _changeBookProgress(int bookId, int progress) async {
+    if (_remoteLibrary != null) {
+      final wasCurrent = _lastAdvancedBook?.id == bookId;
+      if (await _remoteLibrary!.setProgress(bookId, progress) && mounted) {
+        _afterReadingChange(bookId, _bookStatuses[bookId]!, wasCurrent);
+      }
+      return;
+    }
     if (widget.isGuest) { _showGuestAccessDialog(); return; }
     final safeProgress = progress.clamp(0, 100).toInt();
     var status = safeProgress == 100 ? BookStatus.leido : BookStatus.leyendo;
@@ -910,6 +1001,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   List<Widget> _mainScreens() {
     return [
       HomeScreen(
+        catalogBooks: _remoteLibrary == null ? null : _libraryBooks.map(LibraryEntry.homeData).toList(),
         onReadBook: _openReading,
         onAddBook: _addToLibrary,
         onBookStatusChanged: _changeBookStatus,
@@ -956,12 +1048,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
         },
         continueReadingBook: widget.isGuest ? null : _lastAdvancedBook,
         continueReadingProgress: widget.isGuest ? 0 : _lastAdvancedBookProgress,
-        onContinueReadingProgressChanged: (bookId, progress) {
+        onContinueReadingProgressChanged: (bookId, progress) async {
           if (widget.isGuest) {
             _showGuestAccessDialog();
             return;
           }
-          _changeBookProgress(bookId, progress);
+          await _changeBookProgress(bookId, progress);
         },
         onGuestRestrictedAction: _showGuestAccessDialog,
         onOpenLibrary: () => _selectTab(1),
@@ -970,6 +1062,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onOpenProfile: () => _selectTab(4),
       ),
       LibraryScreen(
+        dataAvailable: _remoteLibrary?.loaded ?? true,
         onRemoveBook: _removeFromLibrary,
         onReadBook: _openReading,
         isGuest: widget.isGuest,
@@ -1043,7 +1136,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
           });
         },
         onLogout: widget.onLogout,
-        onDeleteAccount: widget.onLogout,
+        onDeleteAccount: () {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('La eliminación de cuenta aún no está disponible. No se eliminó ningún dato.'),
+          ));
+        },
 
         isDarkMode: widget.isDarkMode,
         onDarkModeChanged: widget.onDarkModeChanged,
@@ -1088,10 +1185,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
               child: MediaQuery.removePadding(
                 context: context,
                 removeTop: true,
-                child: IndexedStack(
+                child: _libraryBody(IndexedStack(
                   index: selectedIndex,
                   children: _mainScreens(),
-                ),
+                )),
               ),
             ),
           ),

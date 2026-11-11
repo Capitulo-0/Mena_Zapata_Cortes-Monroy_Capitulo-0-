@@ -10,6 +10,7 @@ class LibraryBook {
     required this.synopsis,
     this.authorHandle,
     this.isFree = true,
+    this.isBackendBook = false,
     this.publisher = '',
     this.totalPages = 0,
   });
@@ -24,6 +25,7 @@ class LibraryBook {
   final String cover;
   final String synopsis;
   final bool isFree;
+  final bool isBackendBook;
   final String publisher;
   final int totalPages;
 }
