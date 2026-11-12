@@ -122,10 +122,10 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       (_) => TextEditingController(),
     );
 
-    final bookId = widget.book['id'] as int;
+    final bookId = widget.book['id'] as int?;
     for (var index = 0; index < _comments.length; index++) {
       _comments[index]['replies'] =
-          BookInteractionStore.repliesFor(bookId, index,
+          bookId == null ? <Map<String,dynamic>>[] : BookInteractionStore.repliesFor(bookId, index,
       );
     }
 
@@ -169,7 +169,12 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     }
   }
 
-  bool _guardGuestAction() {
+  bool _adding = false;
+  bool _guardGuestAction({bool requireSaved = true}) {
+    if (!widget.isGuest && requireSaved && widget.book['id'] == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('Añade el libro a tu biblioteca para registrar esta acción.')));
+      return true;
+    }
     if (!widget.isGuest) return false;
 
     widget.onGuestRestrictedAction();
@@ -205,7 +210,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   }
 
   Future<void> _openReading() async {
-    if (_guardGuestAction()) return;
+    if (_guardGuestAction(requireSaved:false)) return;
     final progress = await widget.onRead?.call();
     if (mounted && progress != null) {
       setState(() => _readingProgress = progress);
@@ -220,6 +225,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
         children: [
           Image.network(
             _cover,
+            webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
             fit: BoxFit.cover,
             errorBuilder: (_, _, _) => Container(
               color: _deep,
@@ -362,7 +368,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             right: 16,
             top: 64,
             child: Text(
-              'PUBLICADO · $_year',
+              _year > 0 ? 'PUBLICADO · $_year' : 'FECHA NO DISPONIBLE',
               style: GoogleFonts.inter(
                 color: const Color(0xFFF3E6D1),
                 fontSize: 6.5,
@@ -474,7 +480,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
               ),
             ),
             child: Text(
-              _synopsis,
+              _synopsis.trim().isEmpty ? 'Sin sinopsis disponible' : _synopsis,
               style: GoogleFonts.merriweather(
                 color: _textPrimary,
                 fontSize: 10.5,
@@ -498,7 +504,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
               ),
               const SizedBox(width: 3),
               Text(
-                _bookRating.toStringAsFixed(1),
+                widget.book['googleVolumeId'] != null ? 'Sin valorar' : _bookRating.toStringAsFixed(1),
                 style: GoogleFonts.inter(
                   color: _textPrimary,
                   fontSize: 8,
@@ -515,7 +521,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
               ),
               const SizedBox(width: 10),
               Text(
-                '136 reseñas',
+                widget.book['googleVolumeId'] != null ? 'Sin reseñas sincronizadas' : '136 reseñas · Demo',
                 style: GoogleFonts.inter(
                   color: _textSecondary,
                   fontSize: 8,
@@ -551,11 +557,22 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             child: Column(
               children: [
                 _infoRow('Autor', _author),
-                _infoRow('Publicación', '$_year'),
+                _infoRow('Publicación', _year > 0 ? '$_year' : 'No disponible'),
                 _infoRow('ISBN', _isbn),
+                if (widget.book['googleBooks'] is Map) ...[
+                  _infoRow('Subtítulo', (widget.book['googleBooks']['subtitle'] ?? 'No disponible').toString()),
+                  _infoRow('Editorial', (widget.book['googleBooks']['publisher'] ?? 'No disponible').toString()),
+                  _infoRow('Fecha', (widget.book['googleBooks']['publishedDate'] ?? 'No disponible').toString()),
+                  _infoRow('Páginas', (widget.book['googleBooks']['pageCount'] ?? 'No disponible').toString()),
+                  _infoRow('Categorías', (widget.book['googleBooks']['categories'] as List? ?? []).join(', ')),
+                  _infoRow('Idioma', (widget.book['googleBooks']['language'] ?? 'No disponible').toString()),
+                  _infoRow('Identificadores', (widget.book['googleBooks']['identifiers'] as Map? ?? {}).entries.map((e) => '${e.key}: ${e.value}').join(' · ')),
+                  _infoRow('Fuente', 'Google Books'),
+                  _infoRow('Enlace oficial', (widget.book['googleBooks']['infoUrl'] ?? 'No disponible').toString()),
+                ],
                 _infoRow(
                   'Disponibilidad',
-                  _isFree ? 'Gratis' : 'Lectura externa',
+                  _isFree ? 'Gratis' : 'Lectura no disponible en la app',
                   valueColor: _isFree
                       ? const Color(0xFF2F7C39)
                       : _textPrimary,
@@ -568,7 +585,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             _isFree ? 'Disponible para leer en Capítulo 0' : 'No disponible para lectura en Capítulo 0. Puedes registrar tu progreso si lees en físico, ebook u otra plataforma.',
           ),
           Text(
-            widget.book['isBackendBook'] == true ? 'Seguimiento privado guardado en tu cuenta' : 'Disponibilidad simulada · Demo',
+            widget.book['googleVolumeId'] != null ? 'Google Books · Lectura no disponible en la app' : widget.book['isBackendBook'] == true ? 'Seguimiento privado guardado en tu cuenta' : 'Disponibilidad simulada · Demo',
             style: const TextStyle(fontSize: 11),
           ),
           if (!widget.isGuest && _readingProgress != null) ...[
@@ -589,7 +606,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
           ] else FilledButton(onPressed: widget.onRead == null ? null : _openReading,
             child: Text(_isFree ? (widget.readStatus?.call() ?? BookStatus.porLeer).readingActionLabel : 'Registrar lectura')),
           const SizedBox(height: 15),
-          _sectionTitle('COMENTARIOS DE LA COMUNIDAD'),
+          _sectionTitle(widget.book['googleVolumeId'] != null ? 'COMENTARIOS DE LA COMUNIDAD · DEMO' : 'COMENTARIOS DE LA COMUNIDAD'),
           const SizedBox(height: 10),
           ..._comments.asMap().entries.map(
             (entry) => Padding(
@@ -602,10 +619,11 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             width: double.infinity,
             height: 42,
             child: FilledButton(
-              onPressed: _isInLibrary ? null : () {
-                if (_guardGuestAction()) return;
-                widget.onAddToLibrary();
-                if (mounted) setState(() {});
+              onPressed: _isInLibrary || _adding ? null : () async {
+                if (_guardGuestAction(requireSaved:false)) return;
+                setState(() => _adding = true);
+                try { await widget.onAddToLibrary(); }
+                finally { if (mounted) setState(() => _adding = false); }
               },
               style: FilledButton.styleFrom(
                 backgroundColor: _accent,
@@ -830,7 +848,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
           ),
           Expanded(
             child: Text(
-              value,
+              value.trim().isEmpty ? 'No disponible' : value,
               style: GoogleFonts.inter(
                 color: valueColor ?? _textPrimary,
                 fontSize: 7.5,

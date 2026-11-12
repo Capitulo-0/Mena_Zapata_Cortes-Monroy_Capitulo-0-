@@ -288,7 +288,7 @@ class _RecommendedBookCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 3),
                           Text(
-                            '${book['rating']}',
+                            book['googleVolumeId'] != null ? 'Sin valorar' : '${book['rating']}',
                             style: GoogleFonts.inter(
                               color: textPrimary,
                               fontSize: 6.7,

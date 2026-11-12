@@ -1,0 +1,122 @@
+CAPÍTULO 0 — GUÍA BREVE PARA EL EQUIPO
+Estado al 11 de noviembre de 2026
+
+OBJETIVO
+Continuar el desarrollo de la aplicación Flutter de Capítulo 0 sin perder funcionalidades,
+datos ni documentación. Chrome se usa para pruebas locales; el proyecto también apunta
+a una entrega instalable en Android y una posible demostración web.
+
+1. BLOQUES DE TRABAJO
+
+BLOQUE 1 — AUTENTICACIÓN E IDENTIDAD | IMPLEMENTADO Y PROBADO
+Firebase Authentication, acceso de usuarios y comunicación de identidad con Spring Boot.
+Las credenciales de Firebase Admin pertenecen al BACKEND, no al repositorio público.
+
+BLOQUE 2 — BIBLIOTECA PERSONAL | IMPLEMENTADO Y PROBADO
+PostgreSQL, usuarios, libros, registros de biblioteca, estado y progreso lector,
+con integración de datos de perfil. Los datos se aíslan por identidad de usuario.
+
+BLOQUE 3 — GOOGLE BOOKS | DESARROLLO Y PRUEBAS REALIZADAS; CIERRE EN GIT PENDIENTE
+Búsqueda por título, autor e ISBN; filtros, fichas, portadas e importación a
+biblioteca. Migración Flyway V4 registrada con éxito en Neon. En la prueba local
+con Neon, Spring Boot y Firebase iniciaron y la búsqueda Google Books respondió
+HTTP 200. Las operaciones de biblioteca se revisaron en la aplicación y en SQL.
+Falta finalizar documentación, revisión de Git, commit, push y Pull Request a develop.
+
+BLOQUE 4 — GUTENDEX | SIGUIENTE
+Integración del catálogo de obras de dominio público; búsqueda, fichas y enlaces
+legítimos de lectura/descarga. Debe preservar Google Books y evitar duplicados.
+
+MÓDULOS POSTERIORES | SUJETOS A REVISIÓN DEL REPOSITORIO
+Clubes y comunidad, escritura/autopublicación, mapas/lectores cercanos y otros
+servicios. El informe ESTADO_FUNCIONAL_CAPITULO0_2026-11-11.txt, generado por
+Codex a partir del código, distinguirá implementación real, parcial y demo.
+
+2. CONEXIÓN A NEON — DESARROLLO Y PRUEBAS
+
+Neon almacena los datos persistentes; GitHub guarda el código, NO los registros.
+Las ramas 'production' y 'bloque3-v4-pruebas' son independientes: cambios
+posteriores en una NO aparecen automáticamente en la otra.
+
+Para desarrollo actual, usar la rama 'bloque3-v4-pruebas'. Abrir Neon > Branches
+> seleccionar la rama > Connect, y copiar la conexión DIRECTA (sin pooling).
+Cada integrante debe obtener acceso autorizado y configurar en su propia sesión
+PowerShell del backend (sin poner datos reales en documentos o commits):
+
+  $env:DB_URL = 'jdbc:postgresql://HOST-DE-LA-RAMA/BASE?sslmode=require'
+  $env:DB_USERNAME = 'USUARIO_AUTORIZADO'
+  $secretoDb = Read-Host 'Password de Neon' -AsSecureString
+  $env:DB_PASSWORD = [System.Net.NetworkCredential]::new('', $secretoDb).Password
+  Remove-Variable secretoDb
+  $env:SPRING_FLYWAY_ENABLED = 'false'
+  $env:SPRING_JPA_HIBERNATE_DDL_AUTO = 'validate'
+
+Los textos HOST, BASE y USUARIO son MARCADORES: reemplazarlos localmente,
+no pegarlos literalmente. Confirmar que el servidor corresponde a la rama de
+pruebas antes de arrancar Spring Boot. No ejecutar migraciones sobre production.
+Flyway desactivado y Hibernate validate protegen el esquema de cambios automáticos,
+pero NO impiden todas las escrituras de la aplicación.
+
+3. FIREBASE Y GOOGLE BOOKS — CONFIGURACIÓN LOCAL
+
+Firebase Authentication: cada integrante debe estar autorizado en el proyecto
+Firebase correspondiente. Compartir una cuenta de Gmail NO configura
+por sí solo las credenciales, las sesiones o los permisos en cada computador.
+Cada cuenta Firebase tiene identidad propia; los libros privados se asocian a
+esa identidad, no al computador.
+
+Backend (en la misma sesión PowerShell donde se configura Neon):
+
+  $env:FIREBASE_PROJECT_ID = 'ID_DEL_PROYECTO_FIREBASE'
+  $env:GOOGLE_APPLICATION_CREDENTIALS = 'RUTA_LOCAL_AL_JSON_FIREBASE_ADMIN'
+  $env:APP_CORS_ALLOWED_ORIGINS = 'http://localhost:7357'
+  # Configurar también GOOGLE_BOOKS_API_KEY con su valor autorizado,
+  # sin escribirlo en Git ni compartirlo por chat.
+
+GOOGLE_APPLICATION_CREDENTIALS debe apuntar a un archivo real de cuenta de
+servicio, guardado FUERA del repositorio, con permisos restringidos. No copiar
+archivos privados de un compañero al repo ni publicar esa clave.
+
+Flutter Web usa su configuración local válida en:
+  android/config/firebase_web.local.json
+No mezclar comandos PowerShell con el JSON. Cada integrante necesita preparar
+su configuración Web para el mismo proyecto Firebase autorizado.
+
+4. EJECUCIÓN LOCAL
+
+Terminal A: dentro de backend/, con TODAS las variables del backend definidas
+en esa MISMA terminal:
+  mvn spring-boot:run "-Dspring-boot.run.arguments=--server.port=8086"
+Dejarla abierta cuando aparezca 'Started BackendApplication'.
+
+Terminal B: dentro de android/:
+  flutter run -d chrome --web-hostname localhost --web-port 7357 --dart-define=API_BASE_URL=http://localhost:8086 --dart-define-from-file=config/firebase_web.local.json
+
+Las variables $env: no se comparten automáticamente entre terminales y no
+persisten al cerrar la sesión. Cambiar de carpeta con cd tampoco las transfiere.
+Para un despliegue público se configurarán secretos en el hosting del backend;
+los evaluadores NO tendrán que ejecutar PowerShell.
+
+5. SEGURIDAD, GIT Y DOCUMENTACIÓN
+
+- No usar 'git add .' sin revisar archivos nuevos y modificados.
+- NO subir: JSON de Firebase Admin, passwords, .env privados, cadenas de conexión,
+  claves API privadas, respaldos con datos o firebase_web.local.json.bak.
+- Revisar application.properties y cada TXT antes del commit: sin secretos ni datos
+  personales innecesarios.
+- Conservar los informes TXT como evidencia del proyecto. Pendiente: ordenar en
+  una carpeta como docs/informes-desarrollo/ sin perder versiones o referencias.
+- Validar archivos y pruebas, hacer commit en feature/google-books, push y PR a develop.
+- Neon debe tener respaldo recuperable; crear una rama de pruebas NO reemplaza
+  por sí sola un respaldo independiente de production.
+
+6. OBSERVACIONES ABIERTAS PARA EL PR
+
+- Perfil > Géneros más leídos: mostrar solo los 4 principales y acotar textos
+  extensos. NO corregido todavía.
+- Perfil > Mis reseñas / estantes: revisar por qué algunas portadas no se ven
+  cuando sí aparecen en otras vistas. NO corregido todavía.
+- Publicación para evaluación: considerar APK Android y demostración Flutter Web
+  por enlace HTTPS, sin rehacer la aplicación como HTML separado. Por planificar.
+
+FIN — Este archivo describe el proceso compartido, no contiene credenciales.

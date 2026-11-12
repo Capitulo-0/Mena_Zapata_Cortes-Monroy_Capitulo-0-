@@ -28,11 +28,15 @@ class LibraryEntry {
       throw const FormatException('Invalid book response');
     }
     return LibraryBook(
+      googleVolumeId: json['googleVolumeId'] as String?,
+      googleBooks: json['googleBooks'] == null ? null : Map<String,dynamic>.from(json['googleBooks'] as Map),
       id: id,
       title: json['title'] as String,
-      author: json['author'] as String? ?? '',
+      author: (json['googleBooks'] as Map?)?['authors'] is List
+        ? ((json['googleBooks'] as Map)['authors'] as List).join(', ')
+        : json['author'] as String? ?? '',
       year: json['publicationYear'] as int? ?? 0,
-      genre: '',
+      genre: ((json['googleBooks'] as Map?)?['categories'] as List? ?? []).join(', '),
       isbn: json['isbn'] as String? ?? '',
       cover: json['coverUrl'] as String? ?? '',
       synopsis: json['synopsis'] as String? ?? '',
@@ -101,6 +105,8 @@ class LibraryEntry {
   };
   static Map<String, dynamic> homeData(LibraryBook book) => {
     'id': book.id,
+    'googleVolumeId': book.googleVolumeId,
+    'googleBooks': book.googleBooks,
     'title': book.title,
     'authorReal': book.author,
     'author': book.author,

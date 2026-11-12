@@ -1,0 +1,195 @@
+AUDITORIA DE SEGURIDAD Y REGRESION DE LA ULTIMA CORRECCION DEL BUSCADOR
+CAPITULO 0 - BLOQUE 3
+Fecha: 2026-11-11
+Rama revisada: feature/google-books
+
+ALCANCE Y METODO
+Auditoria exclusivamente de lectura: inspeccion de codigo, estado y diferencias
+Git, historial de informes y operaciones registradas en esta conversacion.
+No se ejecutaron pruebas, aplicacion ni servicios durante la auditoria.
+No hubo conexiones a Neon ni modificaciones de credenciales, migraciones o codigo.
+Este TXT se genera posteriormente por solicitud expresa del usuario.
+
+CONCLUSION
+Se identifico una regresion de interfaz atribuible a la ultima intervencion:
+al editar o borrar una busqueda enviada, el buscador cambia su estado local
+sin notificar a Inicio. Pueden permanecer ocultas secciones de Inicio.
+Hay otros riesgos de accesibilidad y coherencia que requieren validacion.
+No se encontro evidencia de eliminacion de codigo de autenticacion, biblioteca,
+progreso o backend durante esa intervencion. Esto NO confirma su funcionamiento
+real ni demuestra que no existan otras regresiones.
+No se realizaron correcciones tras esta revision.
+
+ARCHIVOS DE LA ULTIMA INTERVENCION
+1. android/lib/features/home/presentation/widgets/home_search_section.dart
+   Integracion de modos en Filtrar; eliminacion del Dropdown redundante;
+   controlador separado de sugerencias; debounce; carga/error/vacio;
+   encabezado por autor; cambios de estado y formato del archivo.
+2. android/test/catalog_widgets_test.dart
+   Se agregaron pruebas conservando las anteriores.
+3. INFORME_BLOQUE_3_GOOGLE_BOOKS.txt, en la raiz del repositorio.
+   Se creo el informe actual y se agrego el resultado final de widgets.
+
+La atribucion se apoya en las operaciones registradas en la conversacion.
+No existe un commit o copia Git del estado inmediatamente anterior que permita
+reconstruir mediante Git todas las diferencias de esa intervencion por separado.
+
+TABLA DE REVISION
+Columnas: funcionalidad | estado | evidencia concreta | accion recomendada
+
+Inicio al editar/borrar una busqueda enviada | POSIBLEMENTE AFECTADA:
+defecto identificado en codigo | home_search_section.dart:261-284 cambia
+searchSubmitted a false sin onSearchModeChanged(false). HomeScreen mantiene
+su estado y oculta bienvenida, citas, Continuar leyendo, recomendaciones,
+clubes, historias y punto cercano mientras sea true | Corregir sincronizacion
+con autorizacion y probar buscar, editar/borrar y volver a Inicio.
+
+Boton Volver | CONSERVADA en codigo | Limpia busqueda y llama
+onSearchModeChanged(false) | Validar en ejecucion junto con el caso anterior.
+
+Mecanismo unico de filtros | MODIFICADA | Se retiro Dropdown inferior;
+Texto libre, Titulo, Autor e ISBN estan en el panel original. Generos y Orden
+siguen conectados | Mantener la integracion revisando los riesgos siguientes.
+
+Accesibilidad del panel | POSIBLEMENTE AFECTADA | Cuatro filas nuevas de al
+menos 52 px dentro de Column sin desplazamiento. isScrollControlled no agrega
+scroll | Probar pantalla pequena, horizontal y teclado; posible desbordamiento
+y opciones inaccesibles. No comprobado visualmente.
+
+Cambiar modo sin Aplicar | POSIBLEMENTE AFECTADA | Se modifica _mode sin
+actualizar resultados enviados. Cerrar el panel puede dejar encabezado LIBROS
+DEL AUTOR sobre resultados de otro modo | Separar seleccion pendiente y
+consulta aplicada o asegurar actualizacion coherente.
+
+Aplicar filtros sin texto | MODIFICADA | Antes activaba resultados aun sin
+texto; ahora exige texto no vacio (lineas 562-566). Se pierde ese acceso al
+listado filtrado sin consulta; con Google Books tampoco se enviaba antes una
+consulta vacia | Definir si debe conservarse explorar por genero sin escribir.
+
+Generos y Orden | CONSERVADA con limitaciones previas | filteredBooks aplica
+filtros y orden sobre paginas cargadas. Categorias externas pueden diferir de
+nombres espanoles del menu y una pagina puede quedar vacia | Validar con datos
+reales. No atribuir esta limitacion a la ultima correccion.
+
+Sugerencias | MODIFICADA | Antes contains sobre recomendaciones cargadas;
+ahora Google Books tras 400 ms, controlador independiente y una obra devuelta |
+Validar pertinencia real; no asumir autocompletado arbitrario de prefijos.
+
+Debounce y respuestas antiguas | CONSERVADA en el flujo revisado | Editar
+cancela temporizador e invalida generacion; CatalogController verifica cierre
+y generacion antes de aceptar respuestas. Enviar cancela sugerencias |
+Ampliar pruebas de interaccion. Descartar no cancela HTTP ya enviado.
+
+Sugerencias con genero | NO VERIFICADA como experiencia coherente | Se toma
+_suggestions.items.take(1), sin selectedGenres. La vista previa original
+tampoco los aplicaba | Definir comportamiento y comunicarlo.
+
+Titulo, autor, ISBN y envio manual | CONSERVADA en codigo; servicio real NO
+VERIFICADO | Modos, Buscar, teclado e intitle:/inauthor:/isbn: permanecen |
+Validar consultas reales. No se cambio la construccion parcial por autor.
+
+Consulta Gabriel | NO VERIFICADA | Pruebas con respuestas controladas no
+prueban respuesta real ni explican definitivamente ceros | Comparar proveedor,
+backend y presentacion en ejecucion autorizada.
+
+Carga, error y vacio | MODIFICADA | Sugerencias agregan carga/reintento;
+listado aun muestra contador 0 obras encontradas durante carga/error aunque
+oculte tarjeta de vacio | Evitar contador que parezca resultado definitivo.
+
+Paginacion | CONSERVADA en codigo | Controladores separados y Mas resultados
+conectado a _catalog.more(); editar limpia listado anterior | Validar filtros
+y paginacion combinados en ejecucion.
+
+Fichas | CONSERVADA en conexiones; ejecucion NO VERIFICADA | Sugerencias y
+resultados mantienen onBookTap; Inicio consulta detail antes de abrir
+HomeBookDetailScreen | Validar ficha completa, fallo de red y retorno.
+
+Biblioteca privada y progreso | CONSERVADA respecto de esta intervencion;
+servicio real NO VERIFICADO | No se editaron sus archivos en esta intervencion;
+permanecen importacion autenticada, ownerUid y controles de identidad |
+Validar importacion, pertenencia y progreso en entorno autorizado.
+
+Perfil | CONSERVADA respecto de esta intervencion | El cambio que agrega
+googleVolumeId y googleBooks ya figuraba antes de intervenir | Validar
+navegacion y metadatos. No atribuir ese cambio al buscador.
+
+Firebase, Google Sign-In y aprovisionamiento | CONSERVADA en codigo;
+integracion real NO VERIFICADA | Archivos correspondientes sin cambios en el
+diff revisado; permanecen Firebase, Google Sign-In y /api/me/provision |
+Validar realmente; los dobles de pruebas no sustituyen integracion real.
+
+Spring Boot y seguridad | CONSERVADA respecto de esta intervencion | Cambios
+previos habilitan GET de catalogo; resto sigue autenticado. No se edito backend
+en la ultima correccion | Revisar integracion separadamente.
+
+PostgreSQL, Neon y migraciones | NO VERIFICADA en ejecucion; sin cambios
+atribuibles a esta intervencion | V1-V4 presentes; V1-V3 sin cambios registrados;
+V4 ya sin seguimiento antes de intervenir; sin conexiones a Neon | Mantener
+base compartida fuera de esta auditoria.
+
+Writer, mapas, clubes y lector | CONSERVADA en codigo; acceso desde Inicio
+POSIBLEMENTE AFECTADO | No se editaron sus archivos en esta intervencion;
+clubes y otros bloques de Inicio pueden quedar ocultos por estado incoherente |
+Validar accesos y retorno; priorizar sincronizacion de Inicio.
+
+Diseno Figma | POSIBLEMENTE AFECTADA | Reutiliza tarjeta, colores y tipografias,
+pero panel crecio y hay estados nuevos; sin comparacion visual con Figma |
+Revisar capturas y tamanos reales. La afirmacion previa de conservacion visual
+fue demasiado amplia.
+
+CAMBIOS PREVIOS Y PRESENCIA DEL BLOQUE 3
+Git muestra 20 archivos rastreados modificados. Todos ya aparecian modificados
+antes de la ultima intervencion. Solo home_search_section.dart de ese conjunto
+fue vuelto a modificar por esa intervencion.
+Los cambios previos abarcan app.dart, api_client.dart, pantallas Inicio/ficha/
+main_shell, recomendaciones, modelos/controlador/ficha de biblioteca, widget de
+Perfil, DTO/entidad/mapper/repositorio Book, seguridad backend, propiedades de
+aplicacion y dos suites backend existentes.
+Siguen presentes los dos archivos de catalogo Flutter, catalog_test.dart,
+catalog_widgets_test.dart, GoogleBook.java, GoogleBooksClient.java,
+GoogleBooksController.java, GoogleBooksImportService.java, GoogleBooksService.java,
+GoogleBooksEndpointTests.java, GoogleBooksMigrationTests.java, GoogleBooksTests.java
+y V4__add_google_books_metadata.sql.
+No se muestran eliminaciones actuales en Git. Varios archivos nuevos siguen
+sin seguimiento (??); no estan protegidos por un commit.
+
+INFORME TXT DE 90 LINEAS E HISTORIAL
+INFORME_BLOQUE_3_GOOGLE_BOOKS.txt esta en la raiz, fuera de android.
+Conteo comprobado: 90 lineas; longitud observada: 5683 bytes.
+Fecha de creacion observada: 2026-11-11 12:30:50; ultima escritura: 12:32:55.
+Contiene solo la seccion de la ultima correccion, no el informe extenso previo
+mencionado por el usuario.
+Las operaciones registradas muestran creacion con apertura append, sin una
+operacion de truncado de un archivo existente.
+No se encontro version anterior del mismo nombre en el arbol actual ni mediante
+git log --all --follow.
+El commit historico 9a6ff52 (docs: remove redundant technical reports) elimino:
+- AUDITORIA_TECNICA_INTEGRAL_CAPITULO_0_2026-11-10.txt: 944 lineas.
+- INFORME_BLOQUE_1_AUTENTICACION_2026-11-11.txt: 335 lineas.
+- INFORME_BLOQUE_1_WEB_FIREBASE_CORS_2026-11-11.txt: 315 lineas.
+- INFORME_BLOQUE_2_BIBLIOTECA_PROGRESO_2026-11-11.txt: 200 lineas.
+- INFORME_CONTINUIDAD_AUDITORIA_BLOQUES_2_3_4_2026-11-11.txt: 432 lineas.
+No incluye INFORME_BLOQUE_3_GOOGLE_BOOKS.txt y no fue realizado durante mi
+correccion del buscador.
+El archivo actual tiene 90 lineas porque es el informe nuevo de esa correccion.
+No se determino donde quedo un informe anterior con ese mismo nombre ni se
+puede garantizar la conservacion de ese historial. Debio dejarse pendiente
+antes de declarar cumplido el requisito documental. No se reconstruyo nada.
+
+PRUEBAS: ALCANCE DE LA EVIDENCIA PREVIA
+En la intervencion anterior se registraron 106 pruebas aprobadas y una omitida
+por requerir web; nueve widgets aprobados en comprobacion final y analisis
+estatico sin incidencias. NO se ejecutaron otra vez durante esta auditoria.
+Esos resultados no garantizan ausencia de regresiones ni funcionamiento real.
+No cubrieron sincronizacion de Inicio al editar/borrar, panel con teclado ni
+cambio de modo sin aplicar. No sustituyen validacion real Firebase/backend/
+Google Books/persistencia ni comparacion visual Figma.
+
+ACCIONES RECOMENDADAS, PENDIENTES DE AUTORIZACION
+1. Corregir sincronizacion de estado buscador/Inicio y agregar prueba especifica.
+2. Resolver coherencia de modo pendiente frente a resultados ya enviados.
+3. Validar y asegurar acceso a todos los filtros con teclado/pantalla pequena.
+4. Acordar comportamiento de filtros sin texto y sugerencias con genero.
+5. Validar consultas reales por autor, fichas y biblioteca en entorno autorizado.
+6. Investigar ubicacion del informe anterior sin sobrescribir ni reconstruir.
+No se implemento ninguna de estas correcciones durante la auditoria.

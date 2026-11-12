@@ -33,7 +33,7 @@ public class SecurityConfiguration {
             .exceptionHandling(ex -> ex.authenticationEntryPoint(errors).accessDeniedHandler(errors))
             .authorizeHttpRequests(auth -> auth
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/health", "/api/books", "/api/books/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/health", "/api/books", "/api/books/*", "/api/catalog/search", "/api/catalog/google-books/*").permitAll()
                 .requestMatchers("/api/users", "/api/users/").denyAll()
                 .anyRequest().authenticated())
             .addFilterBefore(new FirebaseBearerFilter(verifier, errors), AnonymousAuthenticationFilter.class)

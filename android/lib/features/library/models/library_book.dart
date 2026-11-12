@@ -13,8 +13,12 @@ class LibraryBook {
     this.isBackendBook = false,
     this.publisher = '',
     this.totalPages = 0,
+    this.googleVolumeId,
+    this.googleBooks,
   });
 
+  final String? googleVolumeId;
+  final Map<String,dynamic>? googleBooks;
   final int id;
   final String title;
   final String author;

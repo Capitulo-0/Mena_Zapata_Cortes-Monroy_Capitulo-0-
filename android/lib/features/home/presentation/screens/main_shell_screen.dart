@@ -5,6 +5,7 @@ import '../../../library/presentation/dialogs/add_library_book_dialog.dart';
 import '../../../library/presentation/widgets/library_sync_bar.dart';
 import '../../../../core/session/local_account_scope.dart';
 import 'dart:async';
+import '../../../catalog/data/catalog_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -34,11 +35,13 @@ class MainShellScreen extends StatefulWidget {
     required this.isDarkMode,
     this.profileDisplayName,
     this.libraryRepository,
+    this.catalogRepository,
     required this.onDarkModeChanged,
   });
 
   final bool isGuest;
   final LibraryRepository? libraryRepository;
+  final CatalogRepository? catalogRepository;
   final String? profileDisplayName;
   final VoidCallback onLogout;
   final VoidCallback onGuestLoginRequested;
@@ -85,14 +88,14 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   void _addRealBook() {
     final remote = _remoteLibrary;
-    if (remote != null && remote.canWrite) showAddLibraryBookDialog(context, remote);
+    if (remote != null && remote.canWrite) showAddLibraryBookDialog(context, remote, initialManual: true);
   }
 
   Widget _libraryBody(Widget child) {
     final remote = _remoteLibrary;
     if (remote == null) return child;
     return Column(children: [
-      if ([0, 1, 4].contains(selectedIndex)) LibrarySyncBar(controller: remote, onAdd: _addRealBook),
+      if (selectedIndex == 1) LibrarySyncBar(controller: remote, onAdd: _addRealBook),
       Expanded(key: const ValueKey('library-main-stack'), child: child),
     ]);
   }
@@ -544,6 +547,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
   Future<void> _addToLibrary(Map<String, dynamic> data) async {
     if (widget.isGuest) { _showGuestAccessDialog(); return; }
     if (_remoteLibrary != null) {
+      if (data['googleVolumeId'] is String && widget.catalogRepository != null) {
+        await _remoteLibrary!.addExternal(() => widget.catalogRepository!.importBook(data['googleVolumeId'] as String));
+        final found = _remoteLibrary!.entries.values.where((entry) => entry.book.googleVolumeId == data['googleVolumeId']);
+        if (found.isNotEmpty) { data['id'] = found.first.book.id; data['isBackendBook'] = true; }
+        return;
+      }
       if (data['isBackendBook'] != true) return;
       await _remoteLibrary!.add(data['id'] as int);
       return;
@@ -1001,6 +1010,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   List<Widget> _mainScreens() {
     return [
       HomeScreen(
+        catalogRepository: widget.catalogRepository,
         catalogBooks: _remoteLibrary == null ? null : _libraryBooks.map(LibraryEntry.homeData).toList(),
         onReadBook: _openReading,
         onAddBook: _addToLibrary,

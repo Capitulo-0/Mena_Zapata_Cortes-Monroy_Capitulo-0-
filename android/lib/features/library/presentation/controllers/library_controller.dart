@@ -139,6 +139,14 @@ class LibraryController extends ChangeNotifier {
     _catalog[entry.book.id] = entry.book;
   }
 
+  Future<bool> addExternal(Future<Map<String,dynamic>> Function() resolve) => _mutate(() async {
+    final data = await resolve();
+    _ensureAccount();
+    final book = LibraryEntry.parseBook(data);
+    _catalog[book.id] = book;
+    _store(await repository.add(book.id));
+  });
+
   Future<bool> add(int sqlBookId) async {
     if (!canWrite) return false;
     if (_entries.containsKey(sqlBookId)) return true;

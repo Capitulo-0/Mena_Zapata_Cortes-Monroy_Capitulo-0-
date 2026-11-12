@@ -26,7 +26,7 @@ class BackendApplicationTests {
 
     @Test
     void migrationsPreserveTheTechnicalMarker() {
-        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
+        assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("4");
         assertThat(jdbc.queryForObject(
                 "SELECT service_name FROM backend_bootstrap WHERE id = 1", String.class))
                 .isEqualTo("capitulo-0-backend");

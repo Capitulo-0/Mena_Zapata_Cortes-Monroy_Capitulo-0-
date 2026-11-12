@@ -1,0 +1,251 @@
+CAPITULO 0 - AUDITORIA FINAL PREVIA AL CIERRE DEL BLOQUE 3
+Fecha de la revision: 2026-11-11
+Rama: feature/google-books
+
+ALCANCE
+Auditoria de lectura de Git, codigo, migraciones, documentos y reportes locales
+existentes. No se ejecutaron pruebas, servicios, migraciones ni conexiones a
+Neon. No se modificaron archivos durante la revision. Este TXT separado se crea
+posteriormente por solicitud expresa del usuario. No se reconstruyen ni combinan
+informes anteriores. Los resultados reflejan el estado observado en esa revision.
+
+DICTAMEN
+El Bloque 3 permite iniciar la preparacion de una validacion controlada y aislada
+en PostgreSQL. NO se recomienda aplicar V4 directamente a Neon compartido ni dar
+por cerrado el paquete de commit todavia.
+Impedimentos concretos: test PostgreSQL fijado en V3; validacion PostgreSQL real
+y destino pendientes; respaldo recuperable del destino no verificado; documentos
+faltantes; seleccion de archivos para commit pendiente.
+No se encontro evidencia de perdida de modulos anteriores o respaldos.
+
+1. ESTADO DE GIT
+Rama: feature/google-books.
+Ultimo commit: 103e13a83823d5b062159842f17d74bf1e9ea34d.
+Mensaje: feat: integrate Firebase authentication and persistent library (blocks 1-2) (57).
+Diferencia de commits develop...HEAD: 0 por delante y 0 por detras.
+HEAD, develop, origin/develop y origin/feature/google-books apuntan al mismo commit.
+Son referencias locales; no se hizo fetch ni comprobacion remota de actualidad.
+Los cambios del Bloque 3 siguen en el arbol de trabajo, fuera de commits.
+26 archivos rastreados modificados; 34 sin seguimiento contados individualmente;
+0 eliminaciones registradas; 0 archivos preparados en staging.
+git diff develop: 26 archivos, 786 inserciones y 359 eliminaciones de lineas,
+sin incluir archivos nuevos no rastreados. Las eliminaciones de lineas no
+significan por si mismas eliminacion de funcionalidades: incluyen sustituciones
+y formato; se revisaron diferencias y conexiones de codigo.
+git diff --check: sin errores.
+No se cambio de rama ni se ejecutaron reset, clean, restore, stash, commit,
+push o merge.
+
+2. ARCHIVOS MODIFICADOS PENDIENTES DE COMMIT (26)
+android/lib/app.dart
+android/lib/core/network/api_client.dart
+android/lib/features/home/presentation/screens/home_book_detail_screen.dart
+android/lib/features/home/presentation/screens/home_screen.dart
+android/lib/features/home/presentation/screens/main_shell_screen.dart
+android/lib/features/home/presentation/widgets/home_network_cover.dart
+android/lib/features/home/presentation/widgets/home_search_section.dart
+android/lib/features/home/presentation/widgets/recommended_books_section.dart
+android/lib/features/library/models/library_book.dart
+android/lib/features/library/models/library_entry.dart
+android/lib/features/library/presentation/controllers/library_controller.dart
+android/lib/features/library/presentation/dialogs/add_library_book_dialog.dart
+android/lib/features/library/presentation/dialogs/personal_list_dialogs.dart
+android/lib/features/library/presentation/screens/library_book_detail_screen.dart
+android/lib/features/library/presentation/widgets/library_book_card.dart
+android/lib/features/library/presentation/widgets/library_sync_bar.dart
+android/lib/features/profile/presentation/widgets/profile_works_badges_section.dart
+android/test/library_remote_widgets_test.dart
+backend/src/main/java/com/capitulo0/backend/catalog/book/dto/BookResponse.java
+backend/src/main/java/com/capitulo0/backend/catalog/book/entity/Book.java
+backend/src/main/java/com/capitulo0/backend/catalog/book/mapper/BookMapper.java
+backend/src/main/java/com/capitulo0/backend/catalog/book/repository/BookRepository.java
+backend/src/main/java/com/capitulo0/backend/config/security/SecurityConfiguration.java
+backend/src/main/resources/application.properties
+backend/src/test/java/com/capitulo0/backend/BackendApplicationTests.java
+backend/src/test/java/com/capitulo0/backend/FirebaseIdentityMigrationTests.java
+
+NUEVOS SIN SEGUIMIENTO EN LA REVISION (34)
+Flutter (5):
+android/lib/features/catalog/data/catalog_repository.dart
+android/lib/features/catalog/presentation/catalog_controller.dart
+android/test/catalog_test.dart
+android/test/catalog_widgets_test.dart
+android/test/google_books_covers_test.dart
+Backend (9):
+backend/src/main/java/com/capitulo0/backend/integration/googlebooks/GoogleBook.java
+backend/src/main/java/com/capitulo0/backend/integration/googlebooks/GoogleBooksClient.java
+backend/src/main/java/com/capitulo0/backend/integration/googlebooks/GoogleBooksController.java
+backend/src/main/java/com/capitulo0/backend/integration/googlebooks/GoogleBooksImportService.java
+backend/src/main/java/com/capitulo0/backend/integration/googlebooks/GoogleBooksService.java
+backend/src/main/resources/db/migration/V4__add_google_books_metadata.sql
+backend/src/test/java/com/capitulo0/backend/GoogleBooksEndpointTests.java
+backend/src/test/java/com/capitulo0/backend/GoogleBooksMigrationTests.java
+backend/src/test/java/com/capitulo0/backend/GoogleBooksTests.java
+Documentos (3):
+ANEXO_LIBRARY_SYNC_BAR_2026-11-11.txt
+AUDITORIA_BUSCADOR_SEGURIDAD_REGRESION_2026-11-11.txt
+AUDITORIA_LIBRARY_SYNC_BAR_2026-11-11.txt
+Respaldos (17): 13 copias de archivos, 3 manifiestos hashes_antes.json y
+1 estado_informe.txt en los tres directorios de respaldo descritos mas abajo.
+Este TXT final es un archivo adicional creado despues del inventario anterior;
+no estaba incluido en los 34 archivos observados en la auditoria.
+
+SELECCION Y PRIVACIDAD PARA FUTURO COMMIT
+Los archivos nuevos de catalogo, Google Books, pruebas y V4 estan presentes.
+Omitirlos del futuro commit dejaria incompleta la integracion.
+respaldos/ no esta ignorado: puede incorporarse accidentalmente con una seleccion
+amplia. Conservarlo localmente, sin borrarlo, y decidir su exclusion del commit.
+Seleccionar explicitamente codigo, pruebas, migracion y documentacion acordada.
+Mantener fuera credenciales, configuraciones locales y artefactos de compilacion.
+google-services.json y firebase_web.local.json existen y estan ignorados.
+Las rutas rastreadas candidatas por nombre de privacidad fueron .env.example y
+backend/.env.example. No se hizo una auditoria exhaustiva del contenido de
+secretos; no se certifica ausencia de credenciales en todo el repositorio.
+No se leyeron ni alteraron valores privados para esta comprobacion.
+
+3. CONTINUIDAD DE BLOQUES 1, 2 Y 3
+Firebase, sesiones y aprovisionamiento: conservados en codigo; sus modulos no
+presentan diferencias frente a develop. Permanecen /api/me/provision, /api/me
+y verificacion de identidad.
+Separacion por cuenta: ownerUid, comprobacion de cuenta actual, alcance local
+por usuario y repositorios privados conservados.
+Biblioteca/progreso: integracion real implementada; operaciones de incorporacion,
+actualizacion, eliminacion y recuperacion presentes. Validacion manual confirmada
+por el usuario, no repetida en esta auditoria.
+Google Books: busqueda, modos, sugerencias, fichas e importacion implementados;
+archivos nuevos presentes y validacion manual confirmada.
+Portadas: fallback permanece en los puntos corregidos; usuario confirmo Chrome.
+LibrarySyncBar: solo Biblioteca; formulario manual directo y Ver catalogo;
+controlador y carga inicial independientes de su visibilidad.
+Perfil/reto/estantes: reciben estados y progreso de biblioteca. El conteo lector
+usa esos datos; esto no acredita persistencia remota de todas las preferencias
+o configuraciones del Perfil.
+Writer/historias propias: funciones con SharedPreferences y alcance por cuenta;
+no constituyen publicacion remota en backend.
+Clubes/puntos lectores: datos demostrativos y estado de interfaz; el mapa no
+convierte esos datos en un servicio remoto de clubes.
+Gemini: utiliza _geminiDemoAnswer, no una conexion real a Gemini.
+Escaner ISBN del encabezado: busca en la coleccion recibida y conserva mensajes
+de demostracion; es distinto de la busqueda ISBN real del buscador Google Books.
+Lector: mantiene muestra expresamente demostrativa, no texto completo de la obra.
+Estas limitaciones locales o demostrativas NO son regresiones nuevas del Bloque 3.
+La navegacion y sus conexiones siguen presentes; no se ejecuto aplicacion ni se
+certifico visualmente cada recorrido en esta auditoria.
+
+4. RIESGOS CONCRETOS Y EVIDENCIA DE PRUEBAS
+A. Test PostgreSQL desactualizado:
+backend/src/test/java/com/capitulo0/backend/PostgresConnectionTests.java exige
+Flyway version 3. Con V4 aplicada, esa expectativa queda desactualizada.
+Es un SpringBootTest condicionado por DB_URL jdbc:postgresql y puede arrancar
+Flyway; NO debe ejecutarse contra una base compartida sin autorizacion.
+
+B. PostgreSQL real pendiente:
+GoogleBooksMigrationTests valida V3 a V4 usando H2 en modo PostgreSQL, no el
+motor PostgreSQL real. Existen reportes Surefire previos sin fallos, pero la
+prueba PostgresConnectionTests aparece omitida. Esos artefactos no prueban
+migracion real exitosa ni se actualizaron durante esta revision.
+
+C. Modo de busqueda sin aplicar:
+El panel cambia _mode inmediatamente. Cerrar sin aplicar puede cambiar el
+encabezado mientras conserva resultados de la consulta anterior. Hallazgo
+previo pendiente, no corregido durante esta auditoria.
+
+D. Filtros y recomendaciones:
+Generos y orden operan sobre paginas cargadas. Pagina vacia filtrada no demuestra
+ausencia global. Recomendaciones generales, no personalizacion individual.
+
+E. Metadatos existentes:
+Un volumen ya importado se reutiliza sin refresco automatico de portada y
+metadatos. No afecta a V4, pero conviene documentarlo.
+
+La ultima ejecucion Flutter registrada en esta conversacion fue 121 aprobadas,
+1 omitida por requerir web y analisis satisfactorio. NO se repitio ahora.
+Las pruebas manuales confirmadas por el usuario son la evidencia de Chrome.
+No se declara funcionamiento real unicamente por presencia de archivos o tests.
+
+5. DOCUMENTACION Y RESPALDOS
+Falta en raiz: INFORME_BLOQUE_3_GOOGLE_BOOKS.txt.
+Copia antigua: respaldos/sincronizacion_buscador_2026-11-11/
+INFORME_BLOQUE_3_GOOGLE_BOOKS.txt: 90 lineas.
+Copia posterior: respaldos/portadas_web_2026-11-11/
+INFORME_BLOQUE_3_GOOGLE_BOOKS.txt: 159 lineas, anterior a corregir portadas.
+Ninguna se presenta como informe final completo.
+Presente en raiz: ANEXO_LIBRARY_SYNC_BAR_2026-11-11.txt.
+Presentes en raiz: auditorias del buscador y LibrarySyncBar.
+No localizada en el arbol actual revisado:
+AUDITORIA_PORTADAS_GOOGLE_BOOKS_2026-11-11.txt.
+Documentos historicos rastreados y presentes en raiz:
+BLOQUE_1_AUTENTICACION.md
+BLOQUE_1_WEB_FIREBASE_CORS.md
+BLOQUE_2_BIBLIOTECA_PROGRESO.md
+
+Directorios de respaldo verificados:
+respaldos/sincronizacion_buscador_2026-11-11: 3 copias.
+respaldos/portadas_web_2026-11-11: 6 copias.
+respaldos/library_sync_bar_2026-11-11: 4 copias.
+Las 13 copias coinciden con sus respectivos manifiestos de hashes.
+Desde 8c0c6aa son recuperables cinco TXT historicos eliminados por 9a6ff52:
+AUDITORIA_TECNICA_INTEGRAL_CAPITULO_0_2026-11-10.txt
+INFORME_BLOQUE_1_AUTENTICACION_2026-11-11.txt
+INFORME_BLOQUE_1_WEB_FIREBASE_CORS_2026-11-11.txt
+INFORME_BLOQUE_2_BIBLIOTECA_PROGRESO_2026-11-11.txt
+INFORME_CONTINUIDAD_AUDITORIA_BLOQUES_2_3_4_2026-11-11.txt
+No se recuperaron, combinaron ni reconstruyeron documentos.
+La ausencia de informes actuales es pendiente documental real, no eliminacion
+rastreada detectada por Git: archivos sin seguimiento pueden desaparecer sin
+figurar como D. No se determino quien o que produjo esas ausencias.
+
+6. PREPARACION PARA NEON
+V1-V3 sin diferencias frente a develop. V4 es aditiva:
+ALTER TABLE books ADD COLUMN google_volume_id VARCHAR(128);
+ALTER TABLE books ADD COLUMN external_metadata TEXT;
+ALTER TABLE books ADD CONSTRAINT uq_books_google_volume UNIQUE (google_volume_id);
+
+Solo modifica books. Ambas columnas permiten NULL y no tienen valor por defecto.
+No contiene DROP, DELETE, UPDATE, cambios de claves existentes ni cambios a
+users o library_entries.
+Desde V3, registros previos quedan con columnas nuevas en NULL. PostgreSQL permite
+varios NULL bajo esta restriccion; rechaza identificadores no nulos repetidos.
+La prueba H2 existente verifica preservacion de un libro y avance 73/300,
+unicidad externa y segunda ejecucion Flyway sin nueva migracion; no se ejecuto ahora.
+
+Riesgos operativos:
+- ALTER TABLE y creacion de unicidad pueden bloquear operaciones.
+- Conflicto si columnas/restriccion ya existen fuera de Flyway.
+- Divergencias de historial/checksums Flyway con migraciones locales.
+- Arranque accidental del backend: spring.flyway.enabled=true.
+- Respaldo insuficiente para recuperar datos si falla una operacion posterior.
+Hibernate usa ddl-auto=validate; no sustituye el control de migraciones.
+No se inspecciono la base destino y no se certifica su estado.
+
+ANTES DE APLICAR, CON AUTORIZACION INDEPENDIENTE
+1. Identificar proyecto, rama y base destino inequivocamente.
+2. Respaldo recuperable de datos, esquema e historial Flyway; verificar restauracion.
+3. Validar versiones y checksums V1-V3; comprobar si V4 ya existe.
+4. Inspeccionar columnas, restricciones y estado real de books.
+5. Registrar cantidades e invariantes de usuarios, libros, pertenencias y progreso.
+6. Corregir expectativa del test PostgreSQL y validar V3 a V4 en PostgreSQL aislado
+   con datos representativos; no ejecutar el test actual contra Neon compartido.
+7. Acordar ventana, permisos, control de arranque y recuperacion.
+
+VALIDACIONES POSTERIORES
+- V4 exitosa y Flyway valido.
+- Cantidades, identificadores y datos previos conservados.
+- Libros manuales y progreso sin alteraciones.
+- Importacion repetida del mismo volumen sin duplicar libro.
+- Dos cuentas con pertenencias y avances independientes.
+- Busqueda, fichas, portadas, biblioteca, Perfil, reto y recarga funcionales.
+- Revision de errores y comportamiento despues de reiniciar.
+No se ejecutaron estas operaciones contra Neon.
+
+REFERENCIAS OFICIALES PARA SEMANTICA POSTGRESQL
+https://www.postgresql.org/docs/current/ddl-constraints.html
+https://www.postgresql.org/docs/current/sql-altertable.html
+La revision de documentacion publica no implico acceso a ninguna base de datos.
+
+7. ESTADO FINAL Y PROXIMO PASO
+Apto para preparar validacion controlada y aislada; no listo para aplicar
+directamente a Neon compartido.
+Pendientes: test PostgreSQL V3, validacion real y destino, respaldo recuperable,
+localizacion de informes actuales y seleccion explicita de archivos para commit.
+No se hicieron correcciones. Se espera autorizacion para intervenir.

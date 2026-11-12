@@ -1,4 +1,6 @@
 import 'dart:async';
+import '../../../catalog/data/catalog_repository.dart';
+import '../../../catalog/presentation/catalog_controller.dart';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -28,6 +30,7 @@ class HomeScreen extends StatefulWidget {
     super.key,
     this.onReadBook,
     this.catalogBooks,
+    this.catalogRepository,
     this.progresses = const {},
     this.statuses = const {},
     this.onBookStatusChanged,
@@ -55,6 +58,7 @@ class HomeScreen extends StatefulWidget {
     required this.onContinueReadingProgressChanged,
   });
 
+  final CatalogRepository? catalogRepository;
   final List<Map<String, dynamic>>? catalogBooks;
   final Future<int?> Function(BuildContext context, int bookId)? onReadBook;
   final Map<int, int> progresses;
@@ -95,6 +99,23 @@ class HomeScreen extends StatefulWidget {
 
 class HomeScreenState extends State<HomeScreen> {
   bool searchSubmitted = false;
+  bool _openingBook = false;
+  CatalogController? _recommendations;
+  @override
+  void initState() {
+    super.initState();
+    if (widget.catalogRepository != null) {
+      _recommendations = CatalogController(widget.catalogRepository!)..addListener(_catalogChanged);
+      unawaited(_recommendations!.search('subject:fiction'));
+    }
+  }
+  void _catalogChanged() { if (mounted) setState(() {}); }
+  @override
+  void dispose() {
+    _recommendations?..removeListener(_catalogChanged)..dispose();
+    super.dispose();
+  }
+
 
 
 
@@ -123,7 +144,7 @@ class HomeScreenState extends State<HomeScreen> {
   final List<Map<String, String>> quotes =
       HomeDemoData.quotes.map(Map<String, String>.from).toList();
 
-  List<Map<String, dynamic>> get books => widget.catalogBooks ?? HomeDemoData.books.map(Map<String, dynamic>.from).toList();
+  List<Map<String, dynamic>> get books => _recommendations?.items ?? widget.catalogBooks ?? HomeDemoData.books.map(Map<String, dynamic>.from).toList();
 
   final List<Map<String, String>> stories =
       HomeDemoData.stories.map(Map<String, String>.from).toList();
@@ -149,7 +170,10 @@ class HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.only(bottom: 130),
           children: [
             if (!searchSubmitted) _buildWelcome(),
+            if (_openingBook) const LinearProgressIndicator(),
             HomeSearchSection(
+              key: const ValueKey('home-search'),
+              catalogRepository: widget.catalogRepository,
               books: books,
               onBookTap: _showBookDetails,
               onSearchModeChanged: (submitted) {
@@ -165,7 +189,15 @@ class HomeScreenState extends State<HomeScreen> {
             if (!searchSubmitted) ...[
               HomeQuoteSection(quotes: quotes),
               _buildContinueReading(),
+              if (_recommendations?.loading == true) const LinearProgressIndicator(),
+              if (_recommendations?.error != null) TextButton(
+                onPressed: () => _recommendations!.retry(),
+                child: Text('Google Books: no disponible. Reintentar')),
               _buildRecommendedBooks(),
+              if (widget.catalogRepository != null) const Padding(
+                padding: EdgeInsets.symmetric(horizontal:16),
+                child: Text('Recomendaciones generales · Fuente: Google Books', style:TextStyle(fontSize:10))),
+
               _buildReadingClubs(),
               _buildCommunityStories(),
               _buildNearbyReadingPoint(),
@@ -257,7 +289,28 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showBookDetails(Map<String, dynamic> book) {
+  Future<void> _showBookDetails(Map<String, dynamic> book) async {
+    if (_openingBook) return;
+    if (book['googleVolumeId'] is String && widget.catalogRepository != null) {
+      setState(() => _openingBook = true);
+      try {
+        final detail = await widget.catalogRepository!.detail(book['googleVolumeId'] as String);
+        // Keep an existing internal identity; fetching metadata must never import.
+        final matches = (widget.catalogBooks ?? <Map<String,dynamic>>[])
+          .where((saved) => saved['googleVolumeId'] == book['googleVolumeId']);
+        book = {...book, ...detail,
+          if (book['id'] is int) 'id': book['id']
+          else if (matches.isNotEmpty) 'id': matches.first['id']};
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('No pudimos cargar la ficha. Vuelve a intentarlo.')));
+        return;
+      } finally {
+        if (mounted) setState(() => _openingBook = false);
+      }
+      if (!mounted) return;
+    }
+
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => HomeBookDetailScreen(
@@ -266,7 +319,7 @@ class HomeScreenState extends State<HomeScreen> {
           readStatus: () => widget.statuses[book['id']],
           readProgress: () => widget.progresses[book['id']] ?? 0,
           onStatusChanged: widget.onBookStatusChanged == null ? null
-            : (status) => widget.onBookStatusChanged!(book['id'] as int, status),
+            : (status) async { if (book['id'] is int) await widget.onBookStatusChanged!(book['id'] as int, status); },
           onRead: () async {
             if (widget.isGuest) {
               widget.onGuestRestrictedAction();
@@ -278,12 +331,12 @@ class HomeScreenState extends State<HomeScreen> {
                 Future<int?>.value();
           },
           currentUsername: widget.currentUsername,
-          initialReview: widget.reviews[book['id'] as int],
+          initialReview: widget.reviews[book['id']],
           onReviewSaved: widget.onReviewSaved,
           initiallyFavorite:
-              widget.favoriteBookIds.contains(book['id'] as int),
+              widget.favoriteBookIds.contains(book['id']),
           onToggleFavorite: () {
-            widget.onToggleFavoriteBook(book['id'] as int);
+            if (book['id'] is int) widget.onToggleFavoriteBook(book['id'] as int);
           },
           onOpenOwnProfile: () {
             Navigator.of(context).pop();

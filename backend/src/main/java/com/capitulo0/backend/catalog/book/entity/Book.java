@@ -27,6 +27,14 @@ public class Book {
     private Instant createdAt;
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+    @Column(name = "google_volume_id", length = 128, unique = true)
+    private String googleVolumeId;
+    @Column(name = "external_metadata", columnDefinition = "text")
+    private String externalMetadata;
+    public String getGoogleVolumeId() { return googleVolumeId; }
+    public void setGoogleVolumeId(String value) { googleVolumeId=value; }
+    public String getExternalMetadata() { return externalMetadata; }
+    public void setExternalMetadata(String value) { externalMetadata=value; }
     protected Book() {}
     public static Book create() { return new Book(); }
     @PrePersist void onCreate() { createdAt = updatedAt = Instant.now(); }

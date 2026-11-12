@@ -6,6 +6,8 @@ public final class BookMapper {
     public static BookResponse toResponse(Book book) {
         return new BookResponse(book.getId(), book.getTitle(), book.getAuthor(), book.getSynopsis(),
             book.getIsbn(), book.getPublisher(), book.getTotalPages(), book.getPublicationYear(),
-            book.getCoverUrl(), book.getCreatedAt(), book.getUpdatedAt());
+            book.getCoverUrl(), book.getCreatedAt(), book.getUpdatedAt(), book.getGoogleVolumeId(),
+            book.getExternalMetadata()==null?null:tools.jackson.databind.json.JsonMapper.builder().build().readValue(
+                book.getExternalMetadata(),com.capitulo0.backend.integration.googlebooks.GoogleBook.class));
     }
 }

@@ -117,6 +117,7 @@ class _LibraryBookDetailScreenState extends State<LibraryBookDetailScreen> {
   bool get _isFree => widget.book.isFree;
 
   double get _bookRating {
+    if (widget.book.googleVolumeId != null) return 0;
     return switch (widget.book.id) {
       1 => 4.9,
       2 => 4.8,
@@ -218,6 +219,7 @@ class _LibraryBookDetailScreenState extends State<LibraryBookDetailScreen> {
         children: [
           Image.network(
             _cover,
+            webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
             fit: BoxFit.cover,
             errorBuilder: (_, _, _) => Container(
               color: _deep,
@@ -360,7 +362,7 @@ class _LibraryBookDetailScreenState extends State<LibraryBookDetailScreen> {
             right: 16,
             top: 64,
             child: Text(
-              'PUBLICADO · $_year',
+              _year > 0 ? 'PUBLICADO · $_year' : 'FECHA NO DISPONIBLE',
               style: GoogleFonts.inter(
                 color: const Color(0xFFF3E6D1),
                 fontSize: 6.5,
@@ -472,7 +474,7 @@ class _LibraryBookDetailScreenState extends State<LibraryBookDetailScreen> {
               ),
             ),
             child: Text(
-              _synopsis,
+              _synopsis.trim().isEmpty ? 'Sin sinopsis disponible' : _synopsis,
               style: GoogleFonts.merriweather(
                 color: _textPrimary,
                 fontSize: 10.5,
@@ -496,7 +498,7 @@ class _LibraryBookDetailScreenState extends State<LibraryBookDetailScreen> {
               ),
               const SizedBox(width: 3),
               Text(
-                _bookRating.toStringAsFixed(1),
+                widget.book.googleVolumeId != null ? 'Sin valorar' : _bookRating.toStringAsFixed(1),
                 style: GoogleFonts.inter(
                   color: _textPrimary,
                   fontSize: 8,
@@ -513,7 +515,7 @@ class _LibraryBookDetailScreenState extends State<LibraryBookDetailScreen> {
               ),
               const SizedBox(width: 10),
               Text(
-                '136 reseñas',
+                widget.book.googleVolumeId != null ? 'Sin reseñas sincronizadas' : '136 reseñas · Demo',
                 style: GoogleFonts.inter(
                   color: _textSecondary,
                   fontSize: 8,
@@ -549,11 +551,22 @@ class _LibraryBookDetailScreenState extends State<LibraryBookDetailScreen> {
             child: Column(
               children: [
                 _infoRow('Autor', _author),
-                _infoRow('Publicación', '$_year'),
+                _infoRow('Publicación', _year > 0 ? '$_year' : 'No disponible'),
                 _infoRow('ISBN', _isbn),
+                if (widget.book.googleBooks case final Map<String,dynamic> metadata) ...[
+                  _infoRow('Subtítulo', (metadata['subtitle'] ?? 'No disponible').toString()),
+                  _infoRow('Autores', (metadata['authors'] as List? ?? []).join(', ')),
+                  _infoRow('Editorial', (metadata['publisher'] ?? 'No disponible').toString()),
+                  _infoRow('Fecha', (metadata['publishedDate'] ?? 'No disponible').toString()),
+                  _infoRow('Páginas', (metadata['pageCount'] ?? 'No disponible').toString()),
+                  _infoRow('Categorías', (metadata['categories'] as List? ?? []).join(', ')),
+                  _infoRow('Idioma', (metadata['language'] ?? 'No disponible').toString()),
+                  _infoRow('Identificadores', (metadata['identifiers'] as Map? ?? {}).entries.map((e) => '${e.key}: ${e.value}').join(' · ')),
+                  _infoRow('Fuente', 'Google Books'),
+                ],
                 _infoRow(
                   'Disponibilidad',
-                  _isFree ? 'Gratis' : 'Lectura externa',
+                  _isFree ? 'Gratis' : 'Lectura no disponible en la app',
                   valueColor: _isFree
                       ? const Color(0xFF2F7C39)
                       : _textPrimary,
@@ -562,7 +575,7 @@ class _LibraryBookDetailScreenState extends State<LibraryBookDetailScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          _sectionTitle('COMENTARIOS DE LA COMUNIDAD'),
+          _sectionTitle(widget.book.googleVolumeId != null ? 'COMENTARIOS DE LA COMUNIDAD · DEMO' : 'COMENTARIOS DE LA COMUNIDAD'),
           const SizedBox(height: 10),
           ..._comments.asMap().entries.map(
             (entry) => Padding(
@@ -815,7 +828,7 @@ class _LibraryBookDetailScreenState extends State<LibraryBookDetailScreen> {
           ),
           Expanded(
             child: Text(
-              value,
+              value.trim().isEmpty ? 'No disponible' : value,
               style: GoogleFonts.inter(
                 color: valueColor ?? _textPrimary,
                 fontSize: 7.5,

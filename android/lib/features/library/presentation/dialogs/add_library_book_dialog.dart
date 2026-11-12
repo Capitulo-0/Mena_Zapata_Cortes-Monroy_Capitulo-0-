@@ -5,14 +5,22 @@ import '../controllers/library_controller.dart';
 
 Future<void> showAddLibraryBookDialog(
   BuildContext context,
-  LibraryController controller,
-) => showDialog<void>(
+  LibraryController controller, {
+  bool initialManual = false,
+}) => showDialog<void>(
   context: context,
-  builder: (_) => _AddLibraryBookDialog(controller: controller),
+  builder: (_) => _AddLibraryBookDialog(
+    controller: controller,
+    initialManual: initialManual,
+  ),
 );
 
 class _AddLibraryBookDialog extends StatefulWidget {
-  const _AddLibraryBookDialog({required this.controller});
+  const _AddLibraryBookDialog({
+    required this.controller,
+    required this.initialManual,
+  });
+  final bool initialManual;
   final LibraryController controller;
   @override
   State<_AddLibraryBookDialog> createState() => _AddLibraryBookDialogState();
@@ -25,7 +33,7 @@ class _AddLibraryBookDialogState extends State<_AddLibraryBookDialog> {
   final publisher = TextEditingController();
   final isbn = TextEditingController();
   final form = GlobalKey<FormState>();
-  bool manual = false;
+  late bool manual = widget.initialManual;
   bool busy = false;
   @override
   void dispose() {
