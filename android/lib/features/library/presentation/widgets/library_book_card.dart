@@ -460,6 +460,7 @@ class _Cover extends StatelessWidget {
         height: height,
         child: Image.network(
           url,
+          webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
           fit: BoxFit.cover,
           errorBuilder: (_, _, _) {
             return Container(

@@ -1,0 +1,92 @@
+
+
+IMPLEMENTACION MINIMA AUTORIZADA DE LibrarySyncBar Y REGISTRO MANUAL
+Fecha: 2026-11-11. Rama: feature/google-books.
+
+Alcance y respaldo verificable:
+Antes de intervenir se copiaron los tres archivos de produccion autorizados y
+android/test/library_remote_widgets_test.dart a:
+respaldos/library_sync_bar_2026-11-11/ (rutas relativas conservadas).
+hashes_antes.json contiene SHA-256 de 451 archivos rastreados y nuevos del
+inventario previo, excluyendo respaldos. Las cuatro copias coinciden con esos
+hashes originales. Los cambios pendientes previos se conservaron.
+
+Archivos modificados:
+- android/lib/features/home/presentation/screens/main_shell_screen.dart
+  LibrarySyncBar visible solo en selectedIndex == 1 (Mi Biblioteca).
+  El boton solicita showAddLibraryBookDialog con initialManual: true.
+- android/lib/features/library/presentation/widgets/library_sync_bar.dart
+  Etiqueta: Añadir libro manualmente. Conserva carga, guardado, sincronizacion,
+  error, Recargar y Reintentar, callbacks y condiciones busy/canWrite originales.
+  En anchos menores a 480 px utiles, estado sobre controles con Wrap.
+  En anchos amplios conserva la fila. Mensaje de error estrecho con altura
+  maxima 96 px y desplazamiento: texto completo accesible y Reintentar separado.
+  Se conservan colores y controles; no se ocultan acciones con el nuevo rotulo.
+- android/lib/features/library/presentation/dialogs/add_library_book_dialog.dart
+  Parametro opcional initialManual (por defecto false) e inicializacion del modo.
+  Desde la barra abre formulario manual. Ver catalogo y Registrar libro siguen
+  alternando modos. Seleccion, recarga, validaciones, guardado y recuperacion
+  originales se conservan; no se cambia la logica de _save ni createAndAdd.
+- android/test/library_remote_widgets_test.dart
+  Adaptacion de accesos anteriores desde Inicio y cinco casos nuevos.
+
+Funcionamiento conservado:
+LibraryController, carga inicial, listener _syncRemoteLibrary, repositorios,
+autenticacion y seguridad por cuenta no se editaron. Tampoco importacion Google
+Books, progreso, Perfil, reto anual, estantes, Writer, buscador, sugerencias,
+portadas, fichas ni recomendaciones. No se editaron backend ni migraciones.
+La barra sigue fuera del contenido condicionado por dataAvailable; la recuperacion
+continua disponible en Biblioteca incluso tras un fallo de carga inicial.
+Cambiar de pestaña no recarga ni recrea el controlador.
+
+Pruebas reales y resultados:
+flutter test --no-pub: 121 aprobadas, 1 omitida por requerir web, cero fallos,
+salida 0. Incluye suite de catalogo/importacion Google Books, busqueda/filtros/
+sugerencias, sincronizacion Inicio, portadas, fichas/navegacion, biblioteca,
+seguridad por cuenta, persistencia simulada y progreso.
+flutter analyze --no-pub: No issues found, salida 0.
+git diff --check: sin errores, salida 0.
+Pruebas focalizadas finales de barra estrecha: 2 aprobadas, cero fallos.
+Durante iteracion se detectaron desbordamientos con texto ampliado y errores
+largos; se ajusto la distribucion solo dentro de LibrarySyncBar. Tambien se
+ajustaron localizadores de tests al nuevo acceso y a los datos del fixture.
+Los resultados finales anteriores son posteriores a esos ajustes.
+
+Cobertura nueva y adaptada:
+- Barra ausente en Inicio y Perfil, presente en Biblioteca.
+- Carga inicial aun comenzando en Inicio, una consulta list inicial.
+- Cambiar pestañas no duplica cargas.
+- Recarga actualiza estado/progreso de Biblioteca y Perfil.
+- Reto anual muestra 1 / objetivo libros tras recuperar un libro LEIDO de fixture.
+- Recargar y Reintentar accesibles tras error inicial; ambas recuperaciones probadas.
+- Apertura directa de formulario manual y Ver catalogo disponible.
+- Validacion de titulo y guardado manual; flujo anterior de seleccion conservado.
+- Fallo al incorporar tras crear: recarga catalogo y recuperacion sin segundo create.
+- Seleccion de libro ya incorporado no duplica entrada ni repite add.
+- Ancho 320 px a escalas de texto 1 y 2: sin excepciones de layout en normal,
+  carga y error; botones de alta y recarga deshabilitados durante carga controlada.
+- Invitado no invoca repositorio privado ni tiene acceso al alta manual.
+Las pruebas usan dobles/fixtures locales y no validan servicios reales.
+
+Control final de preservacion:
+Solo difieren del inventario previo los tres archivos autorizados y la suite
+intervenida; los otros 447 archivos mantienen sus hashes y ninguno falta.
+No se descartaron archivos nuevos ni cambios anteriores.
+No se ejecuto reset, clean, restore, stash, commit, push ni merge.
+No se iniciaron servicios ni se establecieron conexiones a Neon.
+
+Documentacion pendiente por ausencia de archivo actual:
+INFORME_BLOQUE_3_GOOGLE_BOOKS.txt no existia en la raiz al iniciar esta tarea.
+La busqueda recursiva solo encontro copias antiguas bajo respaldos.
+Se solicito al usuario ubicacion de la version actual para anexar sin perder
+historial. No se reconstruyo el informe ni se alteraron copias anteriores.
+Esta seccion se conserva separada como anexo pendiente de incorporacion.
+No se declara cumplido el anexado al informe ausente.
+
+Validacion manual pendiente en Chrome:
+Verificar Inicio y Perfil sin barra, Biblioteca con barra, formulario manual,
+Ver catalogo, registro/seleccion, recarga y reintento. Revisar ancho estrecho,
+texto ampliado, mensajes largos desplazables, teclado, scroll y composicion
+respecto de Figma. Las pruebas no equivalen a una comparacion visual real.
+Confirmar tambien incorporacion Google Books y actualizacion de Perfil/reto
+con servicios autorizados, sin acceder a Neon compartido desde esta tarea.

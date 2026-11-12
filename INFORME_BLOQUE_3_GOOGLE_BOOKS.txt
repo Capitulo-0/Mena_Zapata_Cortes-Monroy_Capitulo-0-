@@ -1,0 +1,252 @@
+
+
+CORRECCIÓN DEL BUSCADOR ORIGINAL Y SUGERENCIAS — BLOQUE 3
+Fecha: 2026-11-11. Rama: feature/google-books.
+
+Historial y alcance:
+No se encontro un informe previo con este nombre en la busqueda recursiva del
+repositorio. Se crea este archivo; se usa apertura append para conservar cualquier
+contenido existente. El arbol ya contenia cambios de los bloques anteriores:
+se preservaron. Sin commit, push ni merge.
+
+Auditoria y causas comprobadas:
+Se comparo home_search_section.dart con develop mediante git show.
+El original incluia Filtrar con Generos, Orden (recientes/calificados), limpiar
+filtros y una tarjeta SUGERENCIA. Esta filtraba localmente titulo, autor y genero
+con contains y mostraba una sola obra (take(1)).
+La integracion agregaba un Dropdown Buscar por separado del panel original.
+Las sugerencias seguian consultando widget.books (recomendaciones), mientras
+Google Books se consultaba solo al enviar. Una ausencia local podia mostrarse
+sin haber recibido una respuesta de Google Books para el texto introducido.
+El controlador de catalogo ya descartaba respuestas antiguas por generacion.
+El backend construye intitle:, inauthor:, isbn: o texto libre y no filtra por
+coincidencia exacta de nombre en Flutter. Se mantiene esa construccion sin cambios.
+No se reprodujo una respuesta externa real vacia para Gabriel en esta sesion;
+no se atribuye ese caso definitivamente al proveedor.
+
+Soluciones implementadas:
+Los cuatro modos se integran como opciones del panel literario Filtrar existente,
+con sus estilos y componentes. Se elimina el selector inferior redundante.
+Se conservan Generos, Orden y limpiar filtros (ahora restablece texto libre).
+Se utiliza un segundo CatalogController exclusivamente para sugerencias reales,
+sin mezclar sus items ni cursor con los resultados y su paginacion.
+Debounce de 400 ms; al editar se invalida inmediatamente la respuesta anterior.
+Enviar manualmente cancela el temporizador y descarta sugerencias pendientes.
+Se conserva la tarjeta original, su portada, tipografia, colores y tamanos;
+seleccionarla abre la ficha mediante el callback existente. En modo autor se
+sugieren obras con sus autores reales, sin crear perfiles o biografias.
+Se muestran carga, error con reintento y ausencia solo tras respuesta valida.
+El encabezado de resultados por autor identifica LIBROS DEL AUTOR y la consulta.
+Se conserva la busqueda local cuando no se proporciona repositorio.
+
+Archivos modificados en esta correccion:
+android/lib/features/home/presentation/widgets/home_search_section.dart
+android/test/catalog_widgets_test.dart
+INFORME_BLOQUE_3_GOOGLE_BOOKS.txt (este informe)
+No se editaron otros archivos de producto en esta intervencion.
+
+Funcionalidades conservadas:
+Navegacion a fichas completas, callback de biblioteca, recomendaciones reales,
+paginacion y repositorio Google Books existentes. No se modificaron autenticacion,
+Google Sign-In, aprovisionamiento, progreso, PostgreSQL/Neon, Writer, perfil,
+mapas, clubes ni lector. No se modificaron migraciones V1-V4, secretos ni ajustes
+Google Cloud. No se iniciaron servicios backend ni conexiones a Neon.
+
+Pruebas y resultados reales:
+flutter test, primera ejecucion: 104 aprobadas, 1 omitida, 1 fallo en etiqueta de
+prueba nueva por codificacion; corregida antes de repetir.
+flutter test, segunda ejecucion completa: 106 aprobadas, 1 omitida, cero fallos.
+La omitida es firebase_web_auth_test.dart, restringida a web (!kIsWeb).
+Nuevas pruebas: unico mecanismo sin Dropdown, opciones originales y cuatro modos,
+busqueda parcial, espera de 399/400 ms, descarte de respuesta tardia, seleccion
+que abre HomeBookDetailScreen, envio manual por titulo/autor/ISBN, carga y vacio,
+error de sugerencias con reintento y debounce al continuar escribiendo.
+Suite existente: autenticacion/navegacion/aprovisionamiento simulado, biblioteca
+por cuenta, importacion y fallo, fichas, persistencia/progreso con dobles locales,
+repositorio catalogo, errores/reintento, deduplicacion y paginacion.
+flutter analyze y flutter analyze --no-pub: No issues found, salida 0.
+git diff --check: salida 0.
+Las pruebas usan fixtures identificadas como tales; no validan servicios reales.
+
+Pendientes de validacion manual y limites:
+Validar visualmente tema claro/oscuro, teclado y dispositivos pequenos; no se
+realizo comparacion de capturas Figma. Verificar con backend local autorizado
+Gabriel y Gabriel Garcia Marquez, titulo, ISBN, apertura y biblioteca real.
+La coincidencia parcial remota depende de los metadatos y consulta Google Books;
+no se garantiza autocompletado arbitrario de prefijos ni autores completos.
+Generos y Orden mantienen el comportamiento local sobre paginas cargadas;
+un genero puede ocultar todas las obras de una pagina aunque existan en otras.
+Las calificaciones externas faltantes permanecen sin valorar; no se inventan.
+No se ejecuto backend ni pruebas integradas con Firebase real o Neon compartido.
+La regresion de Bloques 1/2 esta comprobada por suite Flutter local, no end-to-end.
+
+Riesgos y proximas acciones:
+Una pausa de 400 ms produce una consulta; peticiones ya enviadas se descartan
+logicamente, sin cancelacion HTTP. Vigilar cuota/latencia al validar manualmente.
+La sugerencia conserva una obra como el original; ampliar cantidad requiere
+validar el espacio visual. Perfiles biograficos de autores son una ampliacion
+futura que requiere autorizacion y una fuente verificable; no implementada.
+
+Comprobacion final tras ajuste de compatibilidad local: flutter test --no-pub test/catalog_widgets_test.dart: 9 aprobadas, cero fallos (salida 0). git diff --check final: salida 0.
+
+
+CORRECCIÓN AUTORIZADA DE SINCRONIZACIÓN BUSCADOR / INICIO
+Fecha: 2026-11-11. Rama: feature/google-books.
+Alcance autorizado: exclusivamente el defecto de sincronizacion identificado en
+AUDITORIA_BUSCADOR_SEGURIDAD_REGRESION_2026-11-11.txt. Los otros hallazgos de
+esa auditoria quedan pendientes; no fueron corregidos en esta intervencion.
+
+Respaldo previo:
+respaldos/sincronizacion_buscador_2026-11-11/
+Contiene copia de los tres archivos intervenidos, conservando su ruta relativa:
+- android/lib/features/home/presentation/widgets/home_search_section.dart
+- android/test/catalog_widgets_test.dart
+- INFORME_BLOQUE_3_GOOGLE_BOOKS.txt
+Incluye hashes_antes.json con SHA-256 de archivos pendientes y nuevos previos
+(excluye el propio directorio de respaldos). No se descartaron cambios previos.
+
+Defecto reproducido y solucion:
+Tras enviar una busqueda, editar o borrar cambiaba searchSubmitted local a false
+sin avisar a HomeScreen. El padre seguia ocultando sus bloques originales.
+Se agregaron solamente dos lineas de codigo de produccion:
+widget.onSearchModeChanged(false), despues del setState de onChanged y del
+boton de limpiar (cruz). HomeScreen no requirio cambios. Se mantienen los
+controladores, filtros, sugerencias, debounce, consultas, fichas y navegacion.
+
+Pruebas nuevas:
+Cuatro casos integrados en MainShellScreen: enviar y luego editar, borrar por
+teclado, limpiar con cruz o pulsar Volver. Verifican los siete bloques originales
+configurados en el ListView, incluso fuera del viewport: bienvenida, cita,
+Continuar leyendo, recomendaciones, clubes, historias y punto cercano.
+Antes de enviar estan presentes; tras enviar se ocultan; al salir de la busqueda
+se recuperan. Se comprueba tambien sugerencia tras editar, ausencia de nuevas
+consultas al borrar/volver y conservacion de 45 paginas de progreso de fixture.
+Los casos comprueban composicion de widgets, no una comparacion visual Figma.
+
+Resultados reales de ejecucion:
+- Primer intento de pruebas nuevas: fallo de interaccion del fixture al pulsar
+  Buscar antes de asentar layout; se ajusto la prueba a envio por teclado.
+- Antes del arreglo, pruebas nuevas corregidas: 1 aprobada (Volver) y 3 fallidas
+  por secciones no recuperadas (editar, borrar teclado y cruz). Defecto reproducido.
+- Tras arreglo: flutter test --no-pub test/catalog_widgets_test.dart
+  test/catalog_test.dart: 20 aprobadas, cero fallos.
+- flutter test --no-pub: 110 aprobadas, 1 omitida por requerir web, cero fallos.
+- flutter analyze --no-pub: No issues found (salida 0).
+- git diff --check: sin errores (salida 0).
+Se conservaron todas las pruebas anteriores; la comparacion con respaldo solo
+muestra inserciones de imports y casos nuevos en la suite de widgets.
+Las suites existentes de filtros, modos, sugerencias, respuesta tardia,
+seleccion/navegacion a ficha, importacion y fallo de biblioteca, paginacion,
+autenticacion simulada y progreso pasaron. Usan dobles locales; no prueban
+Firebase real, Google Books real o persistencia contra servicios compartidos.
+
+Preservacion comprobada:
+La comparacion contra el respaldo del buscador muestra solo las dos lineas
+agregadas. Los hashes de los demas archivos del inventario previo permanecen
+iguales salvo la suite intervenida y este informe anexado. Los archivos nuevos
+previos siguen presentes. El informe anterior se conserva integro como prefijo
+de este archivo y en la copia de seguridad. La auditoria TXT no se modifico.
+No se modificaron Firebase, Neon, Spring Boot, migraciones, configuraciones
+privadas ni modulos ajenos. No se ejecutaron reset, clean, restore, stash,
+commit, push ni merge. No se iniciaron servicios ni conexiones a Neon.
+
+Pendientes manuales:
+Comprobar en dispositivo/navegador buscar y luego editar, vaciar por teclado,
+pulsar cruz y Volver; revisar recuperacion visual y acceso a los bloques con
+teclado y scroll. Validar ficha y Google Books contra entorno autorizado.
+Los demas riesgos de la auditoria (panel, modo sin aplicar, filtros sin texto,
+consulta parcial real y ubicacion de informe historico) permanecen pendientes
+y requieren autorizacion independiente. No se declara corregido ninguno.
+
+
+CORRECCIÓN MÍNIMA DEL RENDERIZADO DE PORTADAS EN FLUTTER WEB
+Fecha: 2026-11-11. Rama: feature/google-books.
+
+Causa y autorizacion:
+El usuario confirmo en Chrome DevTools catalogo HTTP 200 y peticiones XHR a
+books.google.com/books/content con CORS error. Esto confirma el problema web
+reportado; no se atribuye el fallo a busqueda, importacion ni base de datos.
+Se autorizo exclusivamente WebHtmlElementStrategy.fallback en las portadas.
+No se modifico la API ni se implemento seleccion de thumbnails alternativos.
+
+Respaldo ANTES de modificar:
+respaldos/portadas_web_2026-11-11/
+Conserva los cinco archivos de produccion y el informe con sus rutas relativas,
+incluidos sus cambios pendientes. hashes_antes.json registra SHA-256 de archivos
+rastreados y nuevos del inventario Git, excluyendo los propios respaldos.
+El test nuevo no existia antes: test/google_books_covers_test.dart.
+
+Solucion aplicada:
+Se agrego una sola linea por llamada Image.network:
+webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
+El SDK local Flutter 3.47.7 admite ese parametro; se inspeccionaron image.dart,
+image_provider.dart y las implementaciones de NetworkImage web y nativa.
+En web permite intentar el elemento HTML cuando falla la descarga/decodificacion.
+La implementacion nativa acepta la opcion sin cambiar su ruta de descarga.
+No se cambio ningun Image.asset, archivo de imagen ni proveedor local.
+
+Archivos de produccion intervenidos (cinco lineas en total):
+- android/lib/features/home/presentation/widgets/home_network_cover.dart
+  Cubre Inicio, recomendaciones, resultados, sugerencias y Continuar leyendo
+  mediante sus llamadas existentes al widget compartido.
+- android/lib/features/home/presentation/screens/home_book_detail_screen.dart
+  Portada de la ficha abierta desde Inicio.
+- android/lib/features/library/presentation/widgets/library_book_card.dart
+  Portada de tarjeta de Mi Biblioteca.
+- android/lib/features/library/presentation/screens/library_book_detail_screen.dart
+  Portada de la ficha de biblioteca.
+- android/lib/features/library/presentation/dialogs/personal_list_dialogs.dart
+  Portadas de los libros en listas personales; solo su renderizado.
+Otros archivos: android/test/google_books_covers_test.dart (nuevo) y este informe
+(seccion anexada). No se cambio Perfil ni logica de biblioteca o listas.
+
+Preservacion y alcance:
+Comparacion con respaldo: solo cinco inserciones de parametro en produccion.
+Se conservan todos los demas bytes de esos archivos, incluidos tamanos, bordes,
+recortes, BoxFit.cover, radios, gradientes, colores, superposiciones, callbacks
+y errorBuilder. No se eliminaron iconos o imagenes de respaldo.
+Los parametros tambien se aplican a otras URLs que ya consumian esos mismos
+widgets compartidos; no se cambio su seleccion ni sus datos.
+Los demas archivos del inventario previo conservan su hash y siguen presentes.
+Los dos assets locales incluidos en el inventario Git conservaron sus hashes.
+El informe anterior se conserva byte por byte como prefijo y en el respaldo.
+No se tocaron Firebase, Spring Boot, PostgreSQL, Neon, Flyway V1-V4, busqueda,
+filtros, controladores de sugerencias, API Google Books, progreso, reto anual,
+estantes o Perfil. No se ejecutaron servicios contra Neon ni comandos Git de
+reset, clean, restore, stash, commit, push o merge.
+
+Pruebas y resultados reales:
+1. flutter test --no-pub test/google_books_covers_test.dart:
+   6 pruebas aprobadas, cero fallos, salida 0.
+   - Widget compartido: estrategia, BoxFit, tamano 44x62, radio 11 y respaldo.
+   - URL vacia: conserva icono y tamano.
+   - Tarjeta biblioteca: portada 62x88 y callback de apertura.
+   - Ficha Inicio y ficha Biblioteca: estrategia, hero de 285 px, Stack.expand,
+     imagen como primera capa, otras capas presentes y retorno de navegacion.
+   - Lista personal: estrategia de portada y cierre del dialogo.
+   Las descargas de esas pruebas son fixtures/fallos locales controlados por
+   el entorno de widgets; no son comprobaciones de Google Books real.
+2. flutter test --no-pub:
+   116 aprobadas, 1 omitida por requerir web, cero fallos, salida 0.
+   Incluye pruebas previas de filtros, sugerencias, sincronizacion Inicio,
+   fichas, importacion, biblioteca, autenticacion simulada y progreso.
+3. flutter analyze --no-pub:
+   No issues found, salida 0.
+4. git diff --check:
+   Sin errores, salida 0.
+
+LIMITES Y VALIDACION MANUAL OBLIGATORIA PENDIENTE:
+No se comprobo visualmente el fallback HTML en Chrome ni se ejecuto Android
+real. Las pruebas nativas de widgets y el analisis verifican compatibilidad
+local y estructura, no la composicion final de una plataforma HTML.
+El usuario debe validar en Chrome Inicio, resultados, sugerencias, ambas fichas,
+Mi Biblioteca y listas: portada visible, proporciones, recortes, bordes,
+gradientes/superposiciones, scroll, botones, apertura y retorno. Comprobar tambien
+libros sin portada o con error real para conservar el respaldo, y Android real.
+Con fallback puede seguir apareciendo una peticion XHR fallida antes del intento
+HTML; la comprobacion es que la portada se muestre y las interacciones se conserven.
+Una URL guardada vacia no se recupera con esta correccion de renderizado.
+No se declara resuelta esa condicion ni se actualizaron registros existentes.
+No se observaron incompatibilidades en pruebas ejecutadas; la validacion visual
+sigue pendiente. Si se detecta una, detenerse e informar antes de plantear una
+alternativa de mayor alcance. No se implementaron proxies ni cambios de CORS.

@@ -1,0 +1,190 @@
+CAPITULO 0 - BLOQUE 3
+AUDITORIA INFORMATIVA DE LibrarySyncBar, ANADIR LIBRO Y MainShellScreen
+Fecha: 2026-11-11
+Rama revisada: feature/google-books
+
+ALCANCE
+Auditoria exclusivamente de lectura de codigo. No se modificaron archivos,
+no se ejecutaron pruebas ni servicios y no se accedio a Neon durante la revision.
+Este TXT se crea posteriormente por solicitud expresa del usuario.
+No se implemento ninguna propuesta de este documento.
+El usuario confirmo manualmente portadas en Inicio, recomendaciones,
+Mi Biblioteca y ficha; esas funcionalidades no se rehicieron.
+
+CONCLUSION
+La repeticion es visual: MainShellScreen coloca una unica LibrarySyncBar sobre
+Inicio, Mi Biblioteca y Perfil. No existen tres sincronizadores independientes.
+La barra no ejecuta la sincronizacion automaticamente por estar visible.
+Es viable restringir su presentacion a Mi Biblioteca sin retirar el controlador,
+su carga inicial, listeners o mecanismos de persistencia.
+Deben conservarse recarga manual, reintento, estados de operacion y todas las
+capacidades del dialogo actual, incluida la seleccion del catalogo interno.
+Esta conclusion esta respaldada por codigo; no sustituye validacion en ejecucion.
+
+1. POR QUE SE REPITE
+Archivo: android/lib/features/home/presentation/screens/main_shell_screen.dart
+En _libraryBody(), aproximadamente linea 98, aparece:
+if ([0, 1, 4].contains(selectedIndex))
+  LibrarySyncBar(controller: remote, onAdd: _addRealBook)
+Los indices corresponden a Inicio, Mi Biblioteca y Perfil.
+La barra se coloca sobre el IndexedStack del contenedor general.
+Cuando no existe _remoteLibrary, _libraryBody devuelve directamente su contenido.
+La condicion explica la repeticion al navegar; no implica varias escrituras.
+
+2. RESPONSABILIDADES VISUALES DE LA BARRA
+Archivo: android/lib/features/library/presentation/widgets/library_sync_bar.dart
+Es un StatelessWidget que recibe controller y onAdd.
+Muestra:
+- Guardando en tu biblioteca cuando saving.
+- Cargando biblioteca cuando loading.
+- Biblioteca pendiente de sincronizar cuando hay error.
+- Mi biblioteca sincronizada en el caso restante.
+- Indicador de progreso mientras busy.
+- Texto de error y boton Reintentar cuando corresponde.
+
+Controles:
+- Recargar biblioteca llama controller.load; deshabilitado mientras busy.
+- Anadir libro ejecuta onAdd; habilitado cuando controller.canWrite.
+- Reintentar llama controller.retry; deshabilitado mientras busy.
+La barra no crea el controlador ni inicia por si misma una carga al construirse.
+El mensaje Mi biblioteca sincronizada no comprueba explicitamente loaded en su
+condicion final; no acredita sincronizacion continua ni cambios de otro equipo.
+
+3. SINCRONIZACION Y PERSISTENCIA REALES
+Archivos:
+android/lib/features/home/presentation/screens/main_shell_screen.dart
+android/lib/features/library/presentation/controllers/library_controller.dart
+android/lib/features/library/data/library_repository.dart
+
+MainShellScreen.initState crea LibraryController para usuario no invitado con
+repositorio, registra _syncRemoteLibrary y llama load() sin esperar su resultado.
+_syncRemoteLibrary actualiza libros, estados, porcentajes, registros lectores
+y ultimo libro avanzado desde los datos del controlador; despues reconstruye UI.
+Tambien muestra errores por SnackBar, evitando repetir el mismo error mientras
+no se limpie su estado.
+LibraryController.load consulta biblioteca privada y catalogo interno en paralelo,
+comprueba la cuenta, conserva datos obtenidos y notifica a sus listeners.
+Los metodos addExternal, add, setStatus, saveRecord, setProgress, remove y
+createAndAdd ejecutan operaciones del repositorio y notifican al contenedor.
+La UI recibe sus datos mediante esos listeners, no mediante LibrarySyncBar.
+No se encontro escucha remota ni sondeo periodico en este flujo.
+El temporizador de mensaje de lectura terminada en MainShellScreen no es un
+mecanismo de sincronizacion de biblioteca.
+
+El repositorio mantiene comprobacion de ownerUid/cuenta actual y usa:
+GET /api/me/library; GET /api/books; POST /api/books;
+POST /api/me/library; PATCH y DELETE /api/me/library/{bookId}.
+No se invocaron esos endpoints durante esta auditoria.
+Quitar el control visual de Inicio/Perfil no requiere modificar estos metodos.
+
+4. RECARGA Y REINTENTO NO SON LO MISMO
+Recargar llama load(): consulta biblioteca privada y catalogo interno.
+No recarga recomendaciones Google Books.
+Reintentar llama retry(): ejecuta la recuperacion que el controlador conserva,
+o load si no hay accion especifica.
+Algunas mutaciones registran reintentos propios. createAndAdd evita repetir
+indiscriminadamente la creacion del catalogo ante un fallo ambiguo.
+No se recomienda sustituir Reintentar por una recarga generica en todos los casos.
+La recarga y el reintento deben quedar accesibles en Mi Biblioteca aun cuando
+la carga inicial falle y LibraryScreen.dataAvailable sea false.
+
+5. QUE HACE REALMENTE ANADIR LIBRO
+Recorrido:
+LibrarySyncBar.onAdd -> MainShellScreen._addRealBook -> showAddLibraryBookDialog.
+_addRealBook comprueba que exista controlador y canWrite antes de abrir.
+Archivo del dialogo:
+android/lib/features/library/presentation/dialogs/add_library_book_dialog.dart
+
+El dialogo comienza actualmente con manual = false y muestra el catalogo interno.
+Permite:
+- Seleccionar un libro del catalogo y anadirlo con controller.add(book.id).
+- Ver pertenencia mediante el icono correspondiente.
+- Recargar catalogo, usando controller.load.
+- Cambiar a Registrar libro y completar titulo, autor, paginas, editorial e ISBN.
+- Validar titulo y total de paginas opcional positivo.
+- Guardar y anadir usando controller.createAndAdd.
+- Cancelar y gestionar fallos evitando duplicacion indiscriminada de creaciones.
+Por tanto NO es exclusivamente un formulario manual.
+Eliminar el selector de catalogo al renombrarlo eliminaria una capacidad actual.
+
+6. GOOGLE BOOKS ES UN FLUJO INDEPENDIENTE
+MainShellScreen._addToLibrary recibe el libro seleccionado desde la ficha.
+Cuando corresponde a Google Books, llama addExternal con
+catalogRepository.importBook(googleVolumeId).
+Este recorrido no usa el boton de LibrarySyncBar ni el dialogo de registro manual.
+Restringir la barra a Mi Biblioteca no requiere modificar fichas, busqueda,
+filtros, recomendaciones, metadatos o importacion de Google Books.
+No se propone cambiar esos archivos ni funcionalidades.
+
+7. PROPUESTA MINIMA, NO IMPLEMENTADA
+A. Cambiar solamente la visibilidad de LibrarySyncBar a selectedIndex == 1.
+B. Conservar controlador, carga inicial, listener, disposicion y datos compartidos.
+C. Mantener dentro de Mi Biblioteca recarga, reintento, carga/guardado y errores.
+D. Renombrar el boton como Anadir libro manualmente (con la grafia de UI:
+   Añadir libro manualmente).
+E. Agregar un parametro opcional al dialogo existente para abrir directamente
+   en modo manual desde ese boton.
+F. Conservar Ver catalogo y la seleccion de libros registrados, preservando
+   todas las capacidades actuales y los mecanismos de recuperacion.
+G. Mantener controles de recuperacion fuera del contenido condicionado por
+   LibraryScreen.dataAvailable, para no perderlos cuando falle la primera carga.
+
+El boton ya se muestra en Mi Biblioteca; no hace falta trasladar la logica
+persistente ni acoplar LibraryScreen al controlador para obtener este resultado.
+La opcion de menor alcance conserva el contenedor actual y restringe su pesta?a.
+No se propone redisenar el encabezado de LibraryScreen ni sus tarjetas.
+
+8. ARCHIVOS QUE SERIA NECESARIO MODIFICAR
+Produccion:
+- android/lib/features/home/presentation/screens/main_shell_screen.dart
+  Restringir barra a Biblioteca y solicitar apertura manual del dialogo.
+- android/lib/features/library/presentation/widgets/library_sync_bar.dart
+  Etiqueta del boton; conservar recarga, reintento y estados.
+- android/lib/features/library/presentation/dialogs/add_library_book_dialog.dart
+  Apertura opcional en modo manual, conservando catalogo, validaciones y errores.
+Pruebas:
+- android/test/library_remote_widgets_test.dart
+  Adaptar accesos que hoy abren Anadir libro desde Inicio y agregar regresiones.
+Podria convenir un test especifico de barra/dialogo si simplifica los casos,
+sin introducir modificaciones en modulos ajenos.
+No seria necesario modificar LibraryScreen, Perfil, controladores, repositorios,
+Firebase, Spring Boot, PostgreSQL, Neon, migraciones ni Google Books.
+Antes de cualquier implementacion, respaldar los archivos que se autoricen.
+
+9. PRUEBAS DE REGRESION PROPUESTAS, AUN NO EJECUTADAS
+- Barra y registro manual ausentes en Inicio/Perfil y presentes en Biblioteca.
+- Carga inicial independiente de la visibilidad de la barra.
+- Cambio de pesta?a sin nuevas cargas ni controladores duplicados.
+- Recarga que actualice biblioteca y catalogo; conservacion de progreso existente.
+- Fallo de primera carga: recarga/reintento accesibles y sin presentar vacio falso.
+- Reintento especifico de operacion conservado.
+- Botones deshabilitados mientras busy y restricciones de invitado/cuenta intactas.
+- Apertura directa del formulario, validaciones, cancelacion y guardado.
+- Seleccion desde Ver catalogo todavia accesible.
+- Fallo durante creacion/incorporacion sin duplicar registros indiscriminadamente.
+- Importacion Google Books desde ficha sin depender de la barra.
+- Cambios reflejados en Biblioteca/Perfil sin alterar progreso ni estadisticas.
+- Navegacion, regreso, sincronizacion de Inicio y portadas actuales conservadas.
+Ejecutar pruebas Flutter pertinentes, analisis y diff --check solo tras autorizacion
+de implementacion, registrando resultados reales, sin servicios contra Neon.
+
+10. RIESGOS Y LIMITES
+- Perder acceso al catalogo interno si se elimina en vez de conservarlo.
+- Ocultar recarga/reintento si se insertan solo donde dataAvailable sea true.
+- Alterar semantica de retry si se lo reemplaza por load indiscriminadamente.
+- Boton con etiqueta mas larga: posible desbordamiento en pantallas pequenas.
+- Inicio/Perfil ganaran altura disponible al quitar la barra; comprobar scroll,
+  encabezados y composicion sin redisenar sus widgets.
+- Carga/guardado/error dejaran de verse en esa barra fuera de Biblioteca.
+  El SnackBar de error seguira en el contenedor; para reintentar se ira a Biblioteca.
+- Cambiar modo inicial del dialogo no debe romper su recuperacion tras fallo.
+- Los tests existentes que suponen el boton en Inicio deben adaptarse, no borrarse.
+No se compararon capturas Figma ni se ejecuto la aplicacion en esta auditoria.
+No se declara ausencia de regresiones visuales o integracion real solo por leer
+el codigo. La propuesta requiere implementacion autorizada y validacion posterior.
+
+ESTADO FINAL
+Diagnostico de responsabilidades y propuesta minima completados.
+No se implementaron cambios ni se eliminaron funcionalidades.
+No se ejecutaron reset, clean, restore, stash, commit, push ni merge.
+Se espera autorizacion antes de implementar.

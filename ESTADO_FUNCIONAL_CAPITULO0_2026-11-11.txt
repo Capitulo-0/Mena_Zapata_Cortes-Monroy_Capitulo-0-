@@ -1,0 +1,451 @@
+CAPITULO 0 - ESTADO FUNCIONAL REAL DEL PROYECTO
+Fecha: 2026-11-11
+Rama inspeccionada: feature/google-books
+Corte: preparacion del cierre del Bloque 3.
+
+OBJETIVO Y METODO
+Evaluacion del codigo Flutter y Spring Boot, migraciones locales, pruebas y
+artefactos disponibles; incluye validaciones manuales comunicadas por el usuario.
+No se modifico implementacion, configuracion ni datos. No se ejecutaron pruebas,
+compilaciones, servicios o migraciones para crear este documento. No se accedio
+a Neon ni se leyeron secretos locales. Se crea solamente este TXT.
+Las rutas se expresan desde la raiz del repositorio. No se incluyen credenciales,
+tokens, identificadores completos de usuarios o cadenas de conexion.
+
+CRITERIOS DE ESTADO
+IMPLEMENTADO Y CONECTADO: integracion real y evidencia disponible de funcionamiento.
+PARCIALMENTE IMPLEMENTADO: hay componentes funcionales, pero falta parte de la
+integracion, persistencia remota o cobertura del alcance completo.
+DEMO / ESTÁTICO: datos simulados, estaticos o interacciones de memoria sin un
+servicio persistente real. No significa que no exista interfaz o codigo util.
+PENDIENTE: no se encontro implementacion suficiente de esa capacidad.
+NO VERIFICADO: codigo o infraestructura presentes, sin evidencia suficiente para
+confirmar ese funcionamiento concreto.
+La persistencia local real de Writer se clasifica PARCIALMENTE IMPLEMENTADO,
+no como inexistente: se distingue almacenamiento local de publicacion remota.
+Los estados se asignan por capacidad, no por apariencia de una pantalla completa.
+
+EVIDENCIA GENERAL DISPONIBLE
+- El usuario confirmo manualmente en Chrome busquedas Google Books, sugerencias,
+  fichas, portadas en Inicio/recomendaciones/Biblioteca/ficha, incorporacion,
+  persistencia de biblioteca, estados/progreso, Perfil/reto y LibrarySyncBar.
+- Ultima suite Flutter registrada en la conversacion: 121 aprobadas y 1 omitida
+  por requerir web; flutter analyze --no-pub y git diff --check sin incidencias.
+  No se ejecutaron nuevamente para este documento.
+- Pruebas backend disponibles: seguridad, CORS, aprovisionamiento, biblioteca,
+  importacion Google Books y migraciones. Reportes locales previos sin fallos;
+  la prueba de conexion PostgreSQL estaba omitida. No son validacion de Neon.
+- El backend inspeccionado tiene controladores de identidad, libros, biblioteca,
+  salud y Google Books. No se encontraron controladores equivalentes para
+  comunidad, clubes, Writer, listas personales, resenas, metas o Gutendex.
+
+1. FIREBASE AUTHENTICATION Y PREPARACION DE USUARIOS
+
+1.1 Acceso y sesion autenticada
+Estado: IMPLEMENTADO Y CONECTADO para el flujo base integrado.
+Componentes: android/lib/features/auth/data/firebase_auth_repository.dart;
+features/auth/presentation/controllers/session_controller.dart;
+android/lib/app.dart; android/lib/core/network/api_client.dart.
+Servicio: Firebase Authentication; llamadas autenticadas al backend Spring Boot.
+Evidencia: signInWithEmailAndPassword, signInWithPopup en web, proveedor Google
+nativo, renovacion de token, escucha authStateChanges y cierre de sesion reales.
+SessionController distingue preparacion, verificacion, fallo backend, listo e
+invitado y descarta respuestas de otra generacion/cuenta.
+Pruebas: auth_session_test.dart, auth_navigation_test.dart, api_client_test.dart.
+Falta: matriz final por plataforma y entrega; no inferir de Chrome que Android
+firmado o todos los escenarios de proveedores estan validados.
+
+1.2 Aprovisionamiento e identidad interna
+Estado: IMPLEMENTADO Y CONECTADO.
+Componentes: features/auth/data/account_repository.dart; backend/.../auth/
+controller/MeController.java; service/UserProvisioningService.java y
+CurrentUserService.java.
+API/BD: POST /api/me/provision; GET /api/me; tabla users con identidad Firebase.
+Evidencia: el cliente prepara y vuelve a consultar usuario, valida consistencia;
+el servidor obtiene identidad verificada, sin aceptar la identidad del cliente
+como propietario arbitrario. Pruebas de aprovisionamiento y cambio de cuenta.
+Falta: revalidacion del entorno Neon destino dentro de una operacion autorizada.
+
+1.3 Registro, verificacion de correo y recuperacion de contrasena
+Estado: PARCIALMENTE IMPLEMENTADO en cuanto a validacion completa de entrega.
+Componentes: firebase_auth_repository.dart; auth_controller.dart;
+forgot_password_controller.dart; SessionController.
+Servicio: Firebase createUserWithEmailAndPassword, sendEmailVerification y
+sendPasswordResetEmail reales; no se simula el envio en ese repositorio.
+Evidencia: llamadas SDK presentes y tratamiento de errores.
+Falta: NO VERIFICADO en esta revision el envio/recepcion real de correos y todos
+los casos limite; no se declara esa validacion por tener codigo o tests con dobles.
+
+2. BACKEND SPRING BOOT Y SEGURIDAD
+Estado: IMPLEMENTADO Y CONECTADO para el nucleo de identidad, libros y biblioteca.
+Componentes: backend/.../config/security/SecurityConfiguration.java;
+auth/service/FirebaseAdminTokenVerifier.java; auth/model y auth/service;
+library/controller/MyLibraryController.java y library/service/LibraryService.java.
+API: /api/me; /api/me/provision; /api/books; /api/me/library;
+/api/catalog/search; /api/catalog/google-books/{volumeId}; /api/books/import/google-books.
+Evidencia: filtro Bearer Firebase, politica stateless, operaciones privadas
+basadas en usuario autenticado y CORS configurado. Lecturas de catalogo publicas;
+importacion y biblioteca requieren autenticacion. /api/users esta denegado en la
+configuracion de seguridad aunque exista controlador heredado.
+Pruebas: FirebaseBearerFilterTests, FirebaseAdminTokenVerifierTests,
+SecurityEndpointTests, ProvisioningEndpointTests, CorsEndpointTests y
+MyLibraryPersistenceTests.
+Falta: no hay backend funcional para todos los modulos visuales. No presentar
+este nucleo como backend social o de autopublicacion terminado.
+
+3. POSTGRESQL, NEON Y FLYWAY V1-V4
+
+3.1 Modelo y persistencia relacional
+Estado: IMPLEMENTADO Y CONECTADO en la implementacion y flujo funcional probado;
+NO VERIFICADO el estado actual del entorno Neon destino.
+Componentes: backend/.../catalog/book/entity/Book.java;
+library/entity y repository; user/entity y repository;
+android/lib/features/library/data/library_repository.dart.
+BD/API: users, books, library_entries; JPA y PostgreSQL; endpoints propios de cuenta.
+Evidencia: biblioteca funciona con backend y persistencia confirmada por usuario;
+pruebas de repositorio, aislamiento y recuperacion. Eso no identifica ni certifica
+la base Neon de destino, su esquema ni sus datos actuales.
+Falta: respaldo, comprobacion de historial/esquema y validacion aislada PostgreSQL
+antes de aplicar cambios a Neon. No se hizo conexion en esta tarea.
+
+3.2 Migraciones
+Estado: IMPLEMENTADO para scripts; PARCIALMENTE IMPLEMENTADO en validacion destino.
+Ruta: backend/src/main/resources/db/migration/.
+V1__initialize_backend.sql: marcador tecnico backend_bootstrap.
+V2__create_users_books_library.sql: users, books, library_entries, restricciones
+de pertenencia y paginas/estados.
+V3__add_firebase_identity_to_users.sql: firebase_uid opcional y unico en users.
+V4__add_google_books_metadata.sql: books.google_volume_id VARCHAR(128),
+books.external_metadata TEXT y unicidad de google_volume_id. Adicion sin borrar
+ni actualizar registros existentes; columnas nuevas permiten NULL.
+Evidencia: GoogleBooksMigrationTests usa H2 en modo PostgreSQL y verifica
+preservacion de libro/progreso, unicidad y segunda ejecucion sin nueva migracion.
+Falta: PostgresConnectionTests todavia espera version 3; requiere ajuste autorizado
+antes de validacion V4 real. Ese test puede arrancar Flyway y no debe apuntarse
+sin control a base compartida. No se afirma que V4 este aplicada en Neon.
+
+4. GOOGLE BOOKS
+
+4.1 Busquedas por texto libre, titulo, autor e ISBN
+Estado: IMPLEMENTADO Y CONECTADO.
+Frontend: features/catalog/data/catalog_repository.dart;
+features/catalog/presentation/catalog_controller.dart;
+features/home/presentation/widgets/home_search_section.dart.
+Backend: integration/googlebooks/GoogleBooksController.java,
+GoogleBooksService.java y GoogleBooksClient.java.
+API: GET /api/catalog/search -> Google Books Volumes API.
+Evidencia: construccion intitle:/inauthor:/isbn:, paginacion, deduplicacion,
+estados de carga/error y consultas reales confirmadas en Chrome.
+Pruebas: catalog_test.dart, catalog_widgets_test.dart, GoogleBooksTests y
+GoogleBooksEndpointTests.
+Limites: coincidencia parcial depende del proveedor y metadatos. No existe
+base de perfiles biograficos ni autocompletado dedicado de autores.
+
+4.2 Filtros y sugerencias
+Estado: IMPLEMENTADO Y CONECTADO, con limites localizados documentados.
+Componentes: home_search_section.dart y CatalogController.
+Evidencia: cuatro modos en Filtrar, sugerencia de obra real, debounce 400 ms,
+descarte de respuestas antiguas, seleccion a ficha y sincronizacion con Inicio.
+Pruebas: respuesta tardia, seleccion, envio manual, error/reintento y recuperacion
+de secciones de Inicio. Validacion manual confirmada por el usuario.
+Limites: generos/orden operan sobre paginas cargadas; nombres de categorias pueden
+diferir. Cambiar modo y cerrar sin Aplicar puede dejar encabezado y resultados
+de distintas consultas. No se corrigio ese hallazgo en esta tarea.
+
+4.3 Fichas e importacion
+Estado: IMPLEMENTADO Y CONECTADO.
+Componentes: HomeBookDetailScreen; LibraryBookDetailScreen; GoogleBooksImportService;
+BookMapper y BookResponse; MainShellScreen._addToLibrary y LibraryController.addExternal.
+API/BD: detalle por volumen; POST /api/books/import/google-books; despues alta en
+/api/me/library; metadatos en books y pertenencia en library_entries.
+Evidencia: reutilizacion por identificador externo, identificador interno SQL,
+metadatos bibliograficos y biblioteca privada; pruebas y Chrome confirmados.
+Limites: reimportar existente no refresca automaticamente metadatos. Google Books
+no entrega aqui texto completo legible dentro de la app.
+
+5. BIBLIOTECA PERSONAL, ESTADOS Y PROGRESO
+Estado: IMPLEMENTADO Y CONECTADO.
+Componentes: LibraryController, ApiLibraryRepository, LibraryEntry/LibraryBook,
+LibraryScreen, ReadingStatusField, MainShellScreen._syncRemoteLibrary;
+backend MyLibraryController, LibraryService y LibraryEntryRepository.
+API/BD: GET/POST /api/me/library; PATCH/DELETE /api/me/library/{bookId};
+POST /api/books para registro manual; tables books y library_entries.
+Evidencia: por leer/leyendo/leido, formato, paginas, total, editorial y porcentaje;
+recarga, error/reintento y aislamiento por cuenta. Chrome confirmo persistencia.
+Pruebas: library_repository_test, library_controller_test,
+library_remote_widgets_test, reading_flow_test y pruebas backend de biblioteca.
+LibrarySyncBar se muestra solo en Biblioteca; alta manual directa y Ver catalogo
+funcionales sin retirar sincronizacion real. Pruebas a 320 px y texto ampliado.
+Falta: validacion del destino Neon y entrega Android; no rehacer los flujos ya
+validados para completar otros modulos.
+
+6. ESTANTES, LISTAS PERSONALES, FAVORITOS Y RESENAS
+
+6.1 Estantes por estados lectores
+Estado: IMPLEMENTADO Y CONECTADO para pertenencia y estados derivados de biblioteca.
+Componentes: LibraryScreen/LibraryStatusCounters; ProfileScreen y secciones lectoras;
+MainShellScreen transmite books/statuses/progresses.
+BD: library_entries; no tabla independiente necesaria para agrupar por estado.
+Evidencia: cambio de estado reflejado en Biblioteca/Perfil, pruebas y Chrome.
+Limite: no equivale a sincronizacion de cualquier estante personalizado o favorito.
+
+6.2 Listas personales y seleccion de libros en listas
+Estado: PARCIALMENTE IMPLEMENTADO.
+Componentes: LibraryScreen._personalLists; PersonalLibraryList;
+presentation/dialogs/personal_list_dialogs.dart.
+Servicio/BD: estado en memoria de la pantalla, sin API ni tabla de listas.
+Evidencia: crear, editar, seleccionar libros y ver detalles mediante setState;
+no se encontro almacenamiento persistente de _personalLists.
+Falta: contrato de listas por cuenta y persistencia al reiniciar/entre equipos.
+No considerar esas listas datos remotos solo por mostrar libros de la biblioteca.
+
+6.3 Favoritos, resenas, valoraciones y respuestas de libros
+Estado: PARCIALMENTE IMPLEMENTADO.
+Componentes: MainShellScreen._favoriteBookIds y _bookReviews;
+BookReview; book_interaction_store.dart; fichas y secciones de Perfil.
+Servicio/BD: mapas/conjuntos de memoria; BookInteractionStore es estatico en memoria;
+no se encontraron endpoints/tablas de resenas, likes o favoritos.
+Evidencia: guardado visible en la sesion y callbacks entre vistas; varios
+comentarios/contadores son demostrativos. El flujo autenticado limpia fixtures
+iniciales de favoritos/resenas al crear su biblioteca remota.
+Falta: persistencia por cuenta, moderacion/privacidad real y sincronizacion social.
+Los libros importados muestran Sin valorar/Sin resenas sincronizadas, evitando
+presentar calificaciones inventadas como metadatos reales.
+
+6.4 Exportar/compartir biblioteca o listas
+Estado: PARCIALMENTE IMPLEMENTADO.
+Componentes: LibraryExportDialogs y LibraryScreen._showExportLibraryDialog.
+Evidencia: resumen y opciones de compartir/copiar de la interfaz.
+Falta: acreditar exportacion completa de catalogo y recursos publicos persistentes;
+no tratar el resumen de texto como API de biblioteca compartida terminada.
+
+7. PERFIL, ESTADISTICAS, GENEROS Y METAS
+
+7.1 Perfil y estadisticas lectoras
+Estado: PARCIALMENTE IMPLEMENTADO.
+Componentes: profile_screen.dart; profile_main_card.dart;
+profile_reading_summary_section.dart; MainShellScreen.
+Datos: libros/estados/progreso reales; preferencias y aspectos sociales locales/demo.
+Evidencia: _readBooks filtra LEIDO; conteos y estantes reflejan biblioteca real.
+Seguidores/seguidos incluyen bases estaticas y ProfileDemoData; no red social real.
+Nombre/biografia/preferencias/meta se editan en estado del contenedor, sin API
+completa de perfil que persista todas esas preferencias.
+Falta: separar estadisticas reales de indicadores sociales demo y persistir
+preferencias segun alcance futuro, sin perder el funcionamiento actual.
+
+7.2 Generos mas leidos
+Estado: PARCIALMENTE IMPLEMENTADO.
+Componentes: ProfileScreen._genreCounts/_topGenres;
+profile_reading_summary_section.dart.
+Datos: generos de libros terminados de biblioteca; categorias externas disponibles.
+Evidencia: ordena por frecuencia y YA aplica take(4) en el codigo actual.
+Limites: agrupa book.genre como cadena completa, que puede contener varias
+categorias; etiqueta se muestra completa sin abreviacion especifica.
+MEJORA VISUAL PENDIENTE SOLICITADA: asegurar solo cuatro generos en la vista real
+y acortar nombres extensos. No falta agregar take(4): ya existe; falta validar
+su representacion y definir abreviacion/normalizacion sin alterar datos originales.
+
+7.3 Reto anual y meta
+Estado: PARCIALMENTE IMPLEMENTADO.
+Componentes: MainShellScreen._annualGoal; ProfileScreen._booksReadThisYear;
+profile_reading_summary_section.dart._buildReadingChallenge.
+Evidencia: avance visual responde a libros LEIDO y objetivo; Chrome y prueba de
+actualizacion tras recarga confirman el indicador.
+Limites: _booksReadThisYear devuelve _readBooks.length, sin filtrar por fecha de
+finalizacion/anio. Meta inicia en 25 y cambia en memoria; no hay persistencia
+remota acreditada de objetivo ni historial anual. Funciona como indicador actual,
+no como registro historico anual completo.
+Falta: modelo de fecha de finalizacion, periodo y objetivo por cuenta si se
+requiere historial anual real. No se cambia este flujo en el Bloque 3 actual.
+
+8. INICIO, RECOMENDACIONES Y PORTADAS
+
+8.1 Inicio y navegacion
+Estado: IMPLEMENTADO Y CONECTADO para rutas principales y datos bibliograficos.
+Componentes: MainShellScreen, HomeScreen, HomeSearchSection y widgets de Inicio.
+Evidencia: callbacks, IndexedStack, busqueda/ficha/biblioteca y recuperacion de
+secciones al editar/borrar busqueda, cubiertos por pruebas y validacion manual.
+Limite: no todos los bloques visibles de Inicio representan servicios remotos.
+
+8.2 Recomendaciones
+Estado: IMPLEMENTADO Y CONECTADO como recomendaciones GENERALES.
+Componentes: HomeScreen._recommendations; RecommendedBooksSection;
+ApiCatalogRepository y CatalogController.
+API: Google Books con subject:fiction y metadatos reales.
+Evidencia: consulta real, carga/error/reintento, fichas; Chrome confirmado.
+PENDIENTE: recomendacion personalizada por gustos, comportamiento o historial.
+No hay motor individual de recomendacion ni entrenamiento acreditado.
+
+8.3 Portadas en Inicio, resultados, sugerencias, Biblioteca y fichas
+Estado: IMPLEMENTADO Y CONECTADO.
+Componentes: home_network_cover.dart; home_book_detail_screen.dart;
+library_book_card.dart; library_book_detail_screen.dart; personal_list_dialogs.dart.
+Datos: Google Books thumbnail -> coverUrl -> cover/LibraryBook.cover.
+Evidencia: WebHtmlElementStrategy.fallback, respaldos conservados;
+google_books_covers_test.dart y Chrome validado en las vistas indicadas por usuario.
+Limites: URL ausente o imagen realmente no disponible conserva respaldo.
+No hay garantia de portada para todos los volumenes ni refresco de guardados.
+
+8.4 Portadas en algunas secciones de Perfil
+Estado: PARCIALMENTE IMPLEMENTADO; causa exacta NO VERIFICADA por seccion afectada.
+Componentes: profile_reviews_reading_section.dart (Image.network(book.cover));
+profile_screen.dart (ficha privada de Perfil); profile_works_badges_section.dart.
+Evidencia: hay rutas propias Image.network sin fallback en algunas vistas de
+Perfil; usuario reporta portadas ausentes alli, aunque otras vistas funcionan.
+MEJORA VISUAL PENDIENTE SOLICITADA: investigar portadas de esas secciones.
+Comprobar URL recibida, CORS, error del navegador y widget concreto; no asumir que
+el problema se encuentra en base de datos. Fallback es hipotesis coherente, no
+causa confirmada para cada caso. Conservar iconos de respaldo, medidas y capas.
+
+9. CLUBES DE LECTURA Y COMUNIDAD
+Estado: DEMO / ESTÁTICO para datos sociales y persistencia compartida.
+Componentes: MainShellScreen._clubs/_joinedClubIds/_toggleClub;
+features/clubs; HomeDemoData; secciones de comunidad y ProfileDemoData.
+Servicio/BD: modelos y estado local; no controladores de clubes/comunidad en backend.
+Evidencia: lista de clubes en codigo y altas/bajas en conjunto de memoria;
+seguidores, comentarios y varias historias sociales son fixtures/datos demo.
+Falta: clubes/eventos/membresias por cuenta, permisos, publicaciones, comentarios,
+notificaciones y moderacion remotos. Las historias propias de Writer se tratan
+separadamente: pueden guardarse localmente, no se suben por ello a comunidad.
+
+10. TALLER DE ESCRITURA Y AUTOPUBLICACION
+
+10.1 Taller: obras, capitulos y edicion
+Estado: PARCIALMENTE IMPLEMENTADO, con persistencia LOCAL real.
+Componentes: WriterLocalService; create_story_screen.dart; chapter_editor_screen.dart;
+manage_story_screen.dart; writer_screen.dart; modelos WriterStory/WriterChapter.
+Servicio: SharedPreferences con namespace por cuenta via LocalAccountScope.
+Evidencia: create/update/save y lectura de JSON local; local_account_storage_test
+verifica separacion y preservacion de datos Writer anteriores.
+Falta: backend, almacenamiento remoto, sincronizacion, conflictos y respaldo
+multi-dispositivo. No calificarlo como simple pantalla estatica ni como nube real.
+
+10.2 Publicar/despublicar obras y lectura de obras propias
+Estado: PARCIALMENTE IMPLEMENTADO.
+Componentes: ManageStoryScreen y PublishedStoryScreen;
+WriterLocalService y published_story_persistence.dart.
+Evidencia: cambia draft/published y guarda obra local; el codigo declara una
+simulacion visual de escritura en backend. Algunas respuestas de historias
+se guardan localmente con SharedPreferences; hay comentarios mock.
+Falta: publicacion remota, catalogo publico, disponibilidad a otras cuentas,
+permisos de autor, derechos y moderacion. El estado published local no constituye
+una autopublicacion accesible en Internet.
+
+11. MAPAS Y LECTORES CERCANOS
+
+11.1 Mapa y puntos
+Estado: PARCIALMENTE IMPLEMENTADO.
+Componentes: features/maps/presentation/screens/maps_screen.dart;
+features/maps/data/maps_demo_data.dart; modelos/mapas y plugin google_maps_flutter.
+Servicio: widget GoogleMap real; puntos obtenidos desde MapsDemoData.
+Evidencia: camara y marcadores/filtros de interfaz; myLocationEnabled false y
+myLocationButtonEnabled false. No hay consulta backend de puntos reales.
+Falta: validar proveedor/plataformas en entrega, permisos y ubicacion si se
+habilitan, fuente real de puntos/eventos y reglas de privacidad.
+
+11.2 Lectores cercanos y encuentro por geolocalizacion
+Estado: PENDIENTE como servicio real.
+Componentes actuales: interfaz de puntos y clubes, sin fuente de ubicaciones de
+lectores autenticados ni endpoint de cercania encontrado.
+Falta: consentimiento, ubicacion, consultas de proximidad, limites de exposicion,
+seguridad y datos reales. No confundir GoogleMap visible con lectores conectados.
+
+12. GUTENDEX, LECTOR Y FUTURAS INTEGRACIONES
+
+12.1 Gutendex
+Estado: PENDIENTE.
+Evidencia: no se encontro cliente, repositorio, endpoint o integracion Gutendex
+suficiente en Flutter o Java inspeccionados. No se atribuyen sus datos a Google Books.
+Falta: catalogo de dominio publico, formatos disponibles, idioma, paginacion,
+identidad/fuente del libro y adaptacion al lector; validacion de disponibilidad
+y condiciones del contenido para cada obra antes de presentarlo como legible.
+
+12.2 Lector de obras externas completas
+Estado: PARCIALMENTE IMPLEMENTADO como experiencia/seguimiento; PENDIENTE para
+contenido completo de Gutendex.
+Componentes: simulated_reader_screen.dart; ReadingRecord y flujo _openReading.
+Evidencia: muestra identificada como demostracion; Google Books indica lectura
+no disponible en app. El progreso privado y lectura externa tienen seguimiento real.
+Falta: descarga/carga de formatos, renderizado, posiciones estables, errores y
+vinculacion de progreso de un texto real. No entregar muestras como texto original.
+
+12.3 Asistente Gemini y escaner del encabezado
+Estado: DEMO / ESTÁTICO como integraciones de IA/camara.
+Componentes: home_gemini_assistant_sheet.dart._geminiDemoAnswer;
+home_isbn_scanner_dialog.dart.
+Evidencia: respuestas locales y comparacion de ISBN contra la coleccion recibida;
+no cliente Gemini ni escaneo real de camara acreditados en esos flujos.
+Falta: servicios reales, permisos/costos/errores segun alcance autorizado.
+La busqueda ISBN del buscador Google Books SI esta conectada y es independiente.
+
+13. ENTREGA ANDROID Y DESPLIEGUE WEB
+
+13.1 Web en Chrome
+Estado: IMPLEMENTADO Y CONECTADO para uso manual validado; despliegue publico
+estable NO VERIFICADO.
+Componentes: android/web/; android/Dockerfile; android/nginx.conf;
+docker-compose.yml y README_DOCKER.md.
+Evidencia: usuario valido Chrome; hay artefactos build/web y receta Flutter web
+con Nginx. La presencia de build no acredita que sea la ultima version desplegada.
+Falta: comprobar URL/hosting final, HTTPS, configuracion publica por entorno,
+recarga de rutas, dominios autorizados y smoke test del artefacto que se entregue.
+No se leyeron configuraciones locales privadas ni se hizo despliegue.
+
+13.2 Android
+Estado: PARCIALMENTE IMPLEMENTADO; entrega release NO VERIFICADA.
+Componentes: android/android/; Flutter multiplataforma, Firebase y rama nativa
+Google Sign-In; mapas y networking. Hay artefactos APK DEBUG locales.
+Evidencia: proyecto y APK debug presentes; tests de widgets no equivalen a
+instalacion real ni validacion de proveedores/portadas en dispositivo.
+Falta: compilacion de entrega autorizada, firma gestionada de forma segura,
+prueba en dispositivo de auth/Google, navegacion, persistencia, portadas y mapa;
+versionado y distribucion. No se afirma existencia de APK/AAB release firmado.
+
+14. RESUMEN DE LO QUE ESTA CONECTADO Y LO QUE NO
+Conectado en el nucleo: identidad Firebase, preparacion de usuario, seguridad
+backend, catalogo Google Books, fichas/importacion, biblioteca privada, estados
+y progreso, portadas validadas y controles de sincronizacion.
+Parcial: Perfil integral, metas anuales historicas, listas/resenas/favoritos,
+Writer y autopublicacion local, mapa con datos demo, entrega Android y hosting final.
+Demo: datos sociales, clubes/comunidad, asistente Gemini y parte del lector/escanner.
+Pendiente: Gutendex, lectura de texto externo real integrada, autopublicacion
+remota y servicio real de lectores cercanos, ademas de backends de modulos parciales.
+No verificado: Neon destino/V4 real, correos en todos los casos, release Android,
+hosting publico definitivo y causa exacta de cada portada faltante de Perfil.
+No se presentan las capacidades pendientes de otros bloques como regresiones de
+Google Books. No es necesario rehacer el nucleo validado para documentar su alcance.
+
+15. PRIORIDADES POSTERIORES AL BLOQUE 3
+1. GUTENDEX: iniciar integracion separada conservando Google Books. Definir fuente
+   e identidad de volumen, metadatos, idiomas, formatos, paginacion y errores.
+   Incorporar pruebas de contrato sin reemplazar fichas ni importar datos masivamente.
+2. LECTOR REAL: conectar una obra de dominio publico al lector por formato
+   soportado, preservar progreso y separar muestra/lectura externa/texto real.
+3. PERFIL VISUAL: validar maximo cuatro generos ya existente, abreviar etiquetas
+   largas e investigar portadas ausentes por widget y error real de Chrome.
+   Mantener datos completos y respaldos de imagen; no redisenar el Perfil.
+4. PERSISTENCIA PENDIENTE: listas, favoritos, resenas, preferencias y metas por
+   cuenta; anio real del reto con fecha de finalizacion. Disenar contratos y
+   migraciones nuevas por separado, sin alterar V1-V4 ya acordadas.
+5. WRITER REMOTO: obras/capitulos, publicacion real, permisos de autor y privacidad,
+   preservando escritos locales y separacion por cuenta; plan de transferencia
+   explicito y no destructivo.
+6. COMUNIDAD/CLUBES/MAPAS: servicios reales de membresias, eventos, contenido y
+   puntos; despues cercania de lectores con consentimiento y privacidad.
+7. ENTREGA: consolidar pruebas Android reales, release firmado y despliegue web
+   verificable; matriz de regresion del nucleo de Bloques 1, 2 y 3.
+
+CONDICIONES YA IDENTIFICADAS PARA CERRAR EL BLOQUE 3
+Mantener este alcance funcional en el PR sin presentar demos como servicios reales.
+Seleccionar explicitamente codigo/pruebas/V4; no incorporar secretos o respaldos
+por accidente. Conservar informes y copias locales.
+Antes de aplicar a Neon: validacion aislada PostgreSQL y del test que espera V3,
+respaldo recuperable y verificacion de destino/historial. No se ejecuta aqui.
+Localizar informe principal de Bloque 3 faltante en raiz sin sustituirlo por una
+copia antigua ni reconstruir su historia. Este documento no lo reemplaza.
+Estas tareas de cierre son distintas de completar todas las funciones futuras.
+
+FIN DEL INFORME
+Evaluacion concreta basada en codigo, pruebas disponibles y validacion manual
+informada. Solo se creo el archivo solicitado; no hubo cambios de implementacion,
+commit, push, Pull Request, migraciones, movimientos ni eliminacion de archivos.

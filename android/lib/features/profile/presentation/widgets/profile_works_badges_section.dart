@@ -499,6 +499,8 @@ extension _ProfileWorksBadgesSection on _ProfileScreenState {
       'authorReal': book.author,
       'rating': book.isBackendBook ? 0.0 : 4.8,
       'isBackendBook': book.isBackendBook,
+      'googleVolumeId': book.googleVolumeId,
+      'googleBooks': book.googleBooks,
       'year': book.year,
       'genre': book.genre,
       'availability': book.isFree ? 'GRATIS' : 'EXTERNA',

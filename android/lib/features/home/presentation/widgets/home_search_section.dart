@@ -1,4 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
+import '../../../catalog/data/catalog_repository.dart';
+import '../../../catalog/presentation/catalog_controller.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -8,10 +14,12 @@ class HomeSearchSection extends StatefulWidget {
   const HomeSearchSection({
     super.key,
     required this.books,
+    this.catalogRepository,
     required this.onBookTap,
     required this.onSearchModeChanged,
   });
 
+  final CatalogRepository? catalogRepository;
   final List<Map<String, dynamic>> books;
   final ValueChanged<Map<String, dynamic>> onBookTap;
   final ValueChanged<bool> onSearchModeChanged;
@@ -22,6 +30,54 @@ class HomeSearchSection extends StatefulWidget {
 
 class _HomeSearchSectionState extends State<HomeSearchSection> {
   final TextEditingController searchController = TextEditingController();
+
+  CatalogController? _catalog;
+  CatalogController? _suggestions;
+  Timer? _debounce;
+  bool _suggestionsPending = false;
+  static const _modes = {
+    'all': 'Texto libre',
+    'title': 'Título',
+    'author': 'Autor',
+    'isbn': 'ISBN',
+  };
+
+  void _queueSuggestions() {
+    _debounce?.cancel();
+    _suggestions?.clear();
+    _suggestionsPending = _suggestions != null && searchQuery.trim().isNotEmpty;
+    if (!_suggestionsPending || _suggestions == null) return;
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      setState(() => _suggestionsPending = false);
+      unawaited(_suggestions!.search(searchQuery.trim(), mode: _mode));
+    });
+  }
+
+  String _mode = 'all';
+  @override
+  void initState() {
+    super.initState();
+    if (widget.catalogRepository != null) {
+      _catalog = CatalogController(widget.catalogRepository!)
+        ..addListener(_changed);
+      _suggestions = CatalogController(widget.catalogRepository!)
+        ..addListener(_changed);
+    }
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
+
+  void _search() {
+    _debounce?.cancel();
+    _suggestions?.clear();
+    _suggestionsPending = false;
+    if (_catalog != null && searchController.text.trim().isNotEmpty) {
+      unawaited(_catalog!.search(searchController.text.trim(), mode: _mode));
+    }
+  }
 
   String searchQuery = '';
   String searchFilter = 'titulo';
@@ -42,14 +98,15 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
       ? AppColors.darkTextPrimary
       : AppColors.background;
 
-  List<Map<String, dynamic>> get books => widget.books;
+  List<Map<String, dynamic>> get books =>
+      searchSubmitted && _catalog != null ? _catalog!.items : widget.books;
 
   List<Map<String, dynamic>> get filteredBooks {
     final query = searchQuery.trim().toLowerCase();
 
     var result = [...books];
 
-    if (query.isNotEmpty) {
+    if (query.isNotEmpty && _catalog == null) {
       result = result.where((book) {
         final title = book['title'].toString().toLowerCase();
         final author = book['authorReal'].toString().toLowerCase();
@@ -83,6 +140,13 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
+    _suggestions
+      ?..removeListener(_changed)
+      ..dispose();
+    _catalog
+      ?..removeListener(_changed)
+      ..dispose();
     searchController.dispose();
     super.dispose();
   }
@@ -150,9 +214,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
               color: _surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: showEmptySearchError
-                    ? _accent
-                    : _gold,
+                color: showEmptySearchError ? _accent : _gold,
                 width: showEmptySearchError ? 1.7 : 1.15,
               ),
               boxShadow: showEmptySearchError
@@ -167,11 +229,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.search_rounded,
-                  color: _gold,
-                  size: 16,
-                ),
+                Icon(Icons.search_rounded, color: _gold, size: 16),
                 const SizedBox(width: 7),
                 Expanded(
                   child: TextField(
@@ -190,9 +248,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                       ),
                       isDense: true,
                       filled: false,
-                      contentPadding: const EdgeInsets.symmetric(
-                        vertical: 11,
-                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 11),
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
@@ -203,10 +259,14 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                           ? null
                           : IconButton(
                               onPressed: () {
+                                _catalog?.clear();
                                 searchController.clear();
                                 setState(() {
                                   searchQuery = '';
+                                  searchSubmitted = false;
+                                  _queueSuggestions();
                                 });
+                                widget.onSearchModeChanged(false);
                               },
                               splashRadius: 14,
                               icon: Icon(
@@ -219,7 +279,11 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                     onChanged: (value) {
                       setState(() {
                         searchQuery = value;
+                        searchSubmitted = false;
+                        _catalog?.clear();
+                        _queueSuggestions();
                       });
+                      widget.onSearchModeChanged(false);
                     },
                     onSubmitted: (_) {
                       final query = searchController.text.trim();
@@ -230,6 +294,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                           searchQuery = '';
                           showFilters = false;
                         });
+                        _catalog?.clear();
                         widget.onSearchModeChanged(false);
                         _flashEmptySearchError();
                         return;
@@ -241,6 +306,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                         showFilters = false;
                       });
                       widget.onSearchModeChanged(true);
+                      _search();
                     },
                   ),
                 ),
@@ -257,10 +323,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       minimumSize: const Size(0, 27),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      side: BorderSide(
-                        color: _gold,
-                        width: 1,
-                      ),
+                      side: BorderSide(color: _gold, width: 1),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(7),
                       ),
@@ -294,6 +357,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                           searchQuery = '';
                           showFilters = false;
                         });
+                        _catalog?.clear();
                         widget.onSearchModeChanged(false);
                         _flashEmptySearchError();
                         return;
@@ -305,6 +369,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                         showFilters = false;
                       });
                       widget.onSearchModeChanged(true);
+                      _search();
                     },
                     style: FilledButton.styleFrom(
                       backgroundColor: _accent,
@@ -351,9 +416,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                   top: Radius.circular(26),
                 ),
                 border: Border(
-                  top: BorderSide(
-                    color: _gold.withValues(alpha: 0.34),
-                  ),
+                  top: BorderSide(color: _gold.withValues(alpha: 0.34)),
                 ),
               ),
               child: SafeArea(
@@ -397,16 +460,32 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                           ),
                         ),
                         IconButton(
-                          onPressed: () =>
-                              Navigator.of(sheetContext).pop(),
-                          icon: Icon(
-                            Icons.close_rounded,
-                            color: _textPrimary,
-                          ),
+                          onPressed: () => Navigator.of(sheetContext).pop(),
+                          icon: Icon(Icons.close_rounded, color: _textPrimary),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
+                    if (_catalog != null) ...[
+                      for (final mode in _modes.entries)
+                        _searchFilterMenuTile(
+                          icon: _mode == mode.key
+                              ? Icons.check_circle_outline
+                              : Icons.search_rounded,
+                          title: mode.value,
+                          value: _mode == mode.key
+                              ? 'Seleccionado'
+                              : 'Buscar por ${mode.value.toLowerCase()}',
+                          onTap: () {
+                            setState(() {
+                              _mode = mode.key;
+                              _queueSuggestions();
+                            });
+                            setSheetState(() {});
+                          },
+                        ),
+                      const SizedBox(height: 8),
+                    ],
                     _searchFilterMenuTile(
                       icon: Icons.menu_book_outlined,
                       title: 'Géneros',
@@ -428,8 +507,8 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                       value: searchFilter == 'calificados'
                           ? 'Mejor calificados'
                           : searchFilter == 'recientes'
-                              ? 'Más recientes'
-                              : 'Predeterminado',
+                          ? 'Más recientes'
+                          : 'Predeterminado',
                       onTap: () {
                         setState(() {
                           searchFilter = switch (searchFilter) {
@@ -443,7 +522,8 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                     ),
                     if (selectedGenres.isNotEmpty ||
                         searchFilter == 'recientes' ||
-                        searchFilter == 'calificados') ...[
+                        searchFilter == 'calificados' ||
+                        _mode != 'all') ...[
                       const SizedBox(height: 10),
                       Align(
                         alignment: Alignment.centerRight,
@@ -452,6 +532,8 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                             setState(() {
                               selectedGenres.clear();
                               searchFilter = 'titulo';
+                              _mode = 'all';
+                              _queueSuggestions();
                             });
                             setSheetState(() {});
                           },
@@ -479,9 +561,12 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                         onPressed: () {
                           Navigator.of(sheetContext).pop();
                           setState(() {
-                            searchSubmitted = true;
+                            searchSubmitted = searchController.text
+                                .trim()
+                                .isNotEmpty;
                           });
-                          widget.onSearchModeChanged(true);
+                          widget.onSearchModeChanged(searchSubmitted);
+                          _search();
                         },
                         style: FilledButton.styleFrom(
                           backgroundColor: _accent,
@@ -490,10 +575,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                             borderRadius: BorderRadius.circular(11),
                           ),
                         ),
-                        icon: const Icon(
-                          Icons.tune_rounded,
-                          size: 16,
-                        ),
+                        icon: const Icon(Icons.tune_rounded, size: 16),
                         label: Text(
                           'Aplicar filtros',
                           style: GoogleFonts.inter(
@@ -529,17 +611,11 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
         decoration: BoxDecoration(
           color: _surface,
           borderRadius: BorderRadius.circular(13),
-          border: Border.all(
-            color: _gold.withValues(alpha: 0.38),
-          ),
+          border: Border.all(color: _gold.withValues(alpha: 0.38)),
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: _gold,
-              size: 19,
-            ),
+            Icon(icon, color: _gold, size: 19),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -553,17 +629,10 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
             ),
             Text(
               value,
-              style: GoogleFonts.inter(
-                color: _textSecondary,
-                fontSize: 7.5,
-              ),
+              style: GoogleFonts.inter(color: _textSecondary, fontSize: 7.5),
             ),
             const SizedBox(width: 5),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: _gold,
-              size: 18,
-            ),
+            Icon(Icons.chevron_right_rounded, color: _gold, size: 18),
           ],
         ),
       ),
@@ -603,9 +672,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                       top: Radius.circular(26),
                     ),
                     border: Border(
-                      top: BorderSide(
-                        color: _gold.withValues(alpha: 0.34),
-                      ),
+                      top: BorderSide(color: _gold.withValues(alpha: 0.34)),
                     ),
                   ),
                   child: SafeArea(
@@ -614,140 +681,141 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                       controller: scrollController,
                       padding: const EdgeInsets.fromLTRB(18, 9, 18, 20),
                       children: [
-                    Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: _deepSurface,
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        IconButton(
-                          onPressed: () =>
-                              Navigator.of(sheetContext).pop(),
-                          icon: Icon(
-                            Icons.arrow_back_rounded,
-                            color: _gold,
+                        Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: _deepSurface,
+                            borderRadius: BorderRadius.circular(99),
                           ),
                         ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'GÉNEROS',
-                                style: GoogleFonts.cinzel(
-                                  color: _textPrimary,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              Text(
-                                'Selecciona uno o más géneros.',
-                                style: GoogleFonts.inter(
-                                  color: _textSecondary,
-                                  fontSize: 8,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 9),
-                    ...genres.map((genre) {
-                      final name = genre['name'] as String;
-                      final icon = genre['icon'] as IconData;
-                      final active = selectedGenres.contains(name);
-
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 7),
-                        child: InkWell(
-                          onTap: () {
-                            setState(() {
-                              if (active) {
-                                selectedGenres.clear();
-                              } else {
-                                selectedGenres
-                                  ..clear()
-                                  ..add(name);
-                              }
-                            });
-                            setSheetState(() {});
-                            changed = true;
-                          },
-                          borderRadius: BorderRadius.circular(12),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            curve: Curves.easeOutCubic,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 11,
-                            ),
-                            decoration: BoxDecoration(
-                              color: active
-                                  ? _gold.withValues(alpha: 0.16)
-                                  : _surface,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: active
-                                    ? _gold
-                                    : _gold.withValues(alpha: 0.30),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            IconButton(
+                              onPressed: () => Navigator.of(sheetContext).pop(),
+                              icon: Icon(
+                                Icons.arrow_back_rounded,
+                                color: _gold,
                               ),
                             ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 34,
-                                  height: 34,
-                                  decoration: BoxDecoration(
-                                    color: active
-                                        ? _deepSurface
-                                        : _gold.withValues(alpha: 0.09),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    icon,
-                                    color: active ? _gold : _textSecondary,
-                                    size: 18,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    name,
-                                    style: GoogleFonts.merriweather(
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'GÉNEROS',
+                                    style: GoogleFonts.cinzel(
                                       color: _textPrimary,
-                                      fontSize: 9.5,
+                                      fontSize: 14,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                                ),
-                                AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 160),
-                                  child: active
-                                      ? Icon(
-                                          Icons.check_circle_rounded,
-                                          key: const ValueKey('selected'),
-                                          color: _gold,
-                                          size: 19,
-                                        )
-                                      : Icon(
-                                          Icons.circle_outlined,
-                                          key: const ValueKey('unselected'),
-                                          color: _textSecondary,
-                                          size: 18,
-                                        ),
-                                ),
-                              ],
+                                  Text(
+                                    'Selecciona uno o más géneros.',
+                                    style: GoogleFonts.inter(
+                                      color: _textSecondary,
+                                      fontSize: 8,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
+                          ],
                         ),
-                      );
-                    }),
+                        const SizedBox(height: 9),
+                        ...genres.map((genre) {
+                          final name = genre['name'] as String;
+                          final icon = genre['icon'] as IconData;
+                          final active = selectedGenres.contains(name);
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 7),
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  if (active) {
+                                    selectedGenres.clear();
+                                  } else {
+                                    selectedGenres
+                                      ..clear()
+                                      ..add(name);
+                                  }
+                                });
+                                setSheetState(() {});
+                                changed = true;
+                              },
+                              borderRadius: BorderRadius.circular(12),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                curve: Curves.easeOutCubic,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 11,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: active
+                                      ? _gold.withValues(alpha: 0.16)
+                                      : _surface,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: active
+                                        ? _gold
+                                        : _gold.withValues(alpha: 0.30),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 34,
+                                      height: 34,
+                                      decoration: BoxDecoration(
+                                        color: active
+                                            ? _deepSurface
+                                            : _gold.withValues(alpha: 0.09),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Icon(
+                                        icon,
+                                        color: active ? _gold : _textSecondary,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        name,
+                                        style: GoogleFonts.merriweather(
+                                          color: _textPrimary,
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    AnimatedSwitcher(
+                                      duration: const Duration(
+                                        milliseconds: 160,
+                                      ),
+                                      child: active
+                                          ? Icon(
+                                              Icons.check_circle_rounded,
+                                              key: const ValueKey('selected'),
+                                              color: _gold,
+                                              size: 19,
+                                            )
+                                          : Icon(
+                                              Icons.circle_outlined,
+                                              key: const ValueKey('unselected'),
+                                              color: _textSecondary,
+                                              size: 18,
+                                            ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
                       ],
                     ),
                   ),
@@ -769,15 +837,20 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
       return const SizedBox.shrink();
     }
 
-    final previewResults = books.where((book) {
-      final title = book['title'].toString().toLowerCase();
-      final author = book['authorReal'].toString().toLowerCase();
-      final genre = book['genre'].toString().toLowerCase();
+    final previewResults = _suggestions != null
+        ? _suggestions!.items.take(1).toList()
+        : books
+              .where((book) {
+                final title = book['title'].toString().toLowerCase();
+                final author = book['authorReal'].toString().toLowerCase();
+                final genre = book['genre'].toString().toLowerCase();
 
-      return title.contains(query) ||
-          author.contains(query) ||
-          genre.contains(query);
-    }).take(1).toList();
+                return title.contains(query) ||
+                    author.contains(query) ||
+                    genre.contains(query);
+              })
+              .take(1)
+              .toList();
 
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 220),
@@ -790,9 +863,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
         decoration: BoxDecoration(
           color: _surface,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: _gold.withValues(alpha: 0.34),
-          ),
+          border: Border.all(color: _gold.withValues(alpha: 0.34)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.035),
@@ -801,7 +872,16 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
             ),
           ],
         ),
-        child: previewResults.isEmpty
+        child: _suggestionsPending || _suggestions?.loading == true
+            ? const LinearProgressIndicator()
+            : _suggestions?.error != null
+            ? TextButton(
+                onPressed: _queueSuggestions,
+                child: const Text(
+                  'No se pudieron cargar sugerencias. Reintentar',
+                ),
+              )
+            : previewResults.isEmpty
             ? Row(
                 children: [
                   Container(
@@ -835,11 +915,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        Icons.search_rounded,
-                        color: _gold,
-                        size: 14,
-                      ),
+                      Icon(Icons.search_rounded, color: _gold, size: 14),
                       const SizedBox(width: 6),
                       Text(
                         'SUGERENCIA',
@@ -910,10 +986,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                             ],
                           ),
                         ),
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          color: _gold,
-                        ),
+                        Icon(Icons.chevron_right_rounded, color: _gold),
                       ],
                     ),
                   ),
@@ -935,7 +1008,11 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
             alignment: Alignment.centerLeft,
             child: OutlinedButton.icon(
               onPressed: () {
+                _catalog?.clear();
                 searchController.clear();
+                _debounce?.cancel();
+                _suggestions?.clear();
+                _suggestionsPending = false;
 
                 setState(() {
                   searchQuery = '';
@@ -944,14 +1021,13 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                   selectedGenres.clear();
                   searchFilter = 'titulo';
                 });
+                _catalog?.clear();
                 widget.onSearchModeChanged(false);
               },
               style: OutlinedButton.styleFrom(
                 foregroundColor: _textPrimary,
                 backgroundColor: _surface,
-                side: BorderSide(
-                  color: _gold.withValues(alpha: 0.55),
-                ),
+                side: BorderSide(color: _gold.withValues(alpha: 0.55)),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 7,
@@ -962,11 +1038,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              icon: Icon(
-                Icons.arrow_back_rounded,
-                size: 15,
-                color: _gold,
-              ),
+              icon: Icon(Icons.arrow_back_rounded, size: 15, color: _gold),
               label: Text(
                 'Volver',
                 style: GoogleFonts.inter(
@@ -978,7 +1050,9 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
           ),
           const SizedBox(height: 13),
           Text(
-            'RESULTADOS',
+            _mode == 'author'
+                ? 'LIBROS DEL AUTOR: ${searchController.text.trim()}'
+                : 'RESULTADOS',
             style: GoogleFonts.cinzel(
               color: _textPrimary,
               fontSize: 16,
@@ -989,10 +1063,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
           const SizedBox(height: 2),
           Text(
             '${results.length} ${results.length == 1 ? 'obra encontrada' : 'obras encontradas'}',
-            style: GoogleFonts.inter(
-              color: _textSecondary,
-              fontSize: 8.5,
-            ),
+            style: GoogleFonts.inter(color: _textSecondary, fontSize: 8.5),
           ),
           if (selectedGenres.isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -1008,9 +1079,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                   decoration: BoxDecoration(
                     color: _gold.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(99),
-                    border: Border.all(
-                      color: _gold.withValues(alpha: 0.28),
-                    ),
+                    border: Border.all(color: _gold.withValues(alpha: 0.28)),
                   ),
                   child: Text(
                     genre,
@@ -1025,15 +1094,21 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
             ),
           ],
           const SizedBox(height: 12),
-          if (results.isEmpty)
+          if (_catalog?.loading == true) const LinearProgressIndicator(),
+          if (_catalog?.error != null)
+            TextButton(
+              onPressed: () => _catalog!.retry(),
+              child: Text('No se pudo buscar. Reintentar'),
+            ),
+          if (results.isEmpty &&
+              _catalog?.loading != true &&
+              _catalog?.error == null)
             _emptySearch()
           else
             ...results.asMap().entries.map((entry) {
               return TweenAnimationBuilder<double>(
                 tween: Tween<double>(begin: 0.97, end: 1),
-                duration: Duration(
-                  milliseconds: 220 + (entry.key * 45),
-                ),
+                duration: Duration(milliseconds: 220 + (entry.key * 45)),
                 curve: Curves.easeOutBack,
                 builder: (context, value, child) {
                   return Opacity(
@@ -1060,9 +1135,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
       decoration: BoxDecoration(
         color: _surface,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: _gold.withValues(alpha: 0.35),
-        ),
+        border: Border.all(color: _gold.withValues(alpha: 0.35)),
       ),
       child: Column(
         children: [
@@ -1073,11 +1146,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
               color: _gold.withValues(alpha: 0.10),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              Icons.search_off_rounded,
-              color: _gold,
-              size: 26,
-            ),
+            child: Icon(Icons.search_off_rounded, color: _gold, size: 26),
           ),
           const SizedBox(height: 11),
           Text(
@@ -1118,9 +1187,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
         decoration: BoxDecoration(
           color: _surface,
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-            color: _gold.withValues(alpha: 0.38),
-          ),
+          border: Border.all(color: _gold.withValues(alpha: 0.38)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.035),
@@ -1132,11 +1199,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _networkCover(
-              book['cover'] as String,
-              width: 78,
-              height: 108,
-            ),
+            _networkCover(book['cover'] as String, width: 78, height: 108),
             const SizedBox(width: 11),
             Expanded(
               child: Column(
@@ -1157,11 +1220,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                           ),
                         ),
                       ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: _gold,
-                        size: 19,
-                      ),
+                      Icon(Icons.chevron_right_rounded, color: _gold, size: 19),
                     ],
                   ),
                   const SizedBox(height: 3),
@@ -1175,14 +1234,12 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(
-                        Icons.star_rounded,
-                        color: _gold,
-                        size: 14,
-                      ),
+                      Icon(Icons.star_rounded, color: _gold, size: 14),
                       const SizedBox(width: 2),
                       Text(
-                        '${book['rating']}',
+                        book['googleVolumeId'] != null
+                            ? 'Sin valorar'
+                            : '${book['rating']}',
                         style: GoogleFonts.inter(
                           color: _gold,
                           fontWeight: FontWeight.w800,
@@ -1232,15 +1289,9 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     );
   }
 
-  Widget _searchResultMetaChip(
-    IconData icon,
-    String label,
-  ) {
+  Widget _searchResultMetaChip(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 6,
-        vertical: 3,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
         color: _gold.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(99),
@@ -1248,11 +1299,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            color: _gold,
-            size: 10,
-          ),
+          Icon(icon, color: _gold, size: 10),
           const SizedBox(width: 3),
           Text(
             label,
@@ -1267,17 +1314,17 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         _buildSearch(),
-        if (searchSubmitted)
-          _buildSearchResults()
-        else
-          _buildSearchPreview(),
+        if (searchSubmitted) _buildSearchResults() else _buildSearchPreview(),
+        if (searchSubmitted && _catalog?.next != null)
+          TextButton(
+            onPressed: _catalog!.loading ? null : () => _catalog!.more(),
+            child: const Text('Más resultados'),
+          ),
       ],
     );
   }

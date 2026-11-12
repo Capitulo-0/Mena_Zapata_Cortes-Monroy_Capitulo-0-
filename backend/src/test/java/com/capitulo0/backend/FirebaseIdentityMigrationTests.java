@@ -32,7 +32,7 @@ class FirebaseIdentityMigrationTests {
                 originalUpdatedAt = row.getObject(2, java.time.OffsetDateTime.class);
             }
 
-            Flyway flyway = Flyway.configure().dataSource(dataSource).load();
+            Flyway flyway = Flyway.configure().dataSource(dataSource).target("3").load();
             assertThat(flyway.migrate().migrationsExecuted).isEqualTo(1);
             assertThat(flyway.info().current().getVersion().getVersion()).isEqualTo("3");
             try (var row = statement.executeQuery("SELECT u.id,u.email,u.display_name,u.firebase_uid,"

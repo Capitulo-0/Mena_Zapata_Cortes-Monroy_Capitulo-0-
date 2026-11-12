@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
+import 'features/catalog/data/catalog_repository.dart';
 import 'core/network/api_client.dart';
 import 'features/library/data/library_repository.dart';
 import 'core/session/local_account_scope.dart';
@@ -48,6 +49,8 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
     return _libraryRepository!;
   }
 
+  late final _catalogApi = ApiClient(auth: widget.session.auth);
+  late final _catalog = ApiCatalogRepository(_catalogApi);
   final _navigatorKey = GlobalKey<NavigatorState>();
   final _messengerKey = GlobalKey<ScaffoldMessengerState>();
 
@@ -82,6 +85,7 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
 
   @override
   void dispose() {
+    _catalogApi.close();
     widget.session.removeListener(_sessionChanged);
     super.dispose();
   }
@@ -153,6 +157,7 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
           uid: scope,
           child: MainShellScreen(
             isGuest: guest,
+            catalogRepository: _catalog,
             libraryRepository: guest ? null : _repositoryFor(scope),
             onLogout: _logout,
             onGuestLoginRequested: () => _openAuth(login: true),

@@ -36,7 +36,7 @@ class ApiClient {
   final Duration timeout;
   final bool _allowHttp;
 
-  Uri _uri(String path) {
+  Uri _uri(String path, [Map<String,String>? queryParameters]) {
     final base = Uri.tryParse(baseUrl);
     if (base == null ||
         base.host.isEmpty ||
@@ -57,6 +57,7 @@ class ApiClient {
     }
     return base.replace(
       path: '${base.path.replaceFirst(RegExp(r"/+$"), "")}$path',
+      queryParameters: queryParameters,
     );
   }
 
@@ -65,23 +66,28 @@ class ApiClient {
     String path, {
     Map<String, dynamic>? body,
     String? expectedUid,
+    bool publicRead = false,
+    Map<String,String>? queryParameters,
   }) async {
-    final uri = _uri(path);
+    final uri = _uri(path, queryParameters);
     final uid = auth.currentUser?.uid;
-    if (uid == null || (expectedUid != null && uid != expectedUid)) {
+    if (publicRead && (method != 'GET' || !path.startsWith('/api/catalog/'))) {
+      throw ApiFailure.forStatus(403);
+    }
+    if (!publicRead && (uid == null || (expectedUid != null && uid != expectedUid))) {
       throw ApiFailure.forStatus(401);
     }
     for (var attempt = 0; attempt < 2; attempt++) {
-      final token = await auth.getIdToken(forceRefresh: attempt == 1);
-      if (auth.currentUser?.uid != uid || token == null || token.isEmpty) {
+      final token = publicRead ? null : await auth.getIdToken(forceRefresh: attempt == 1);
+      if (!publicRead && (auth.currentUser?.uid != uid || token == null || token.isEmpty)) {
         throw ApiFailure.forStatus(401);
       }
       http.Response response;
       try {
         final request = http.Request(method, uri)
           ..followRedirects = false
-          ..headers['Accept'] = 'application/json'
-          ..headers['Authorization'] = 'Bearer $token';
+          ..headers['Accept'] = 'application/json';
+        if (!publicRead) request.headers['Authorization'] = 'Bearer $token';
         if (body != null) {
           request.headers['Content-Type'] = 'application/json';
           request.body = jsonEncode(body);
@@ -101,8 +107,8 @@ class ApiClient {
           'No pudimos conectar con el backend. Revisa tu conexión y la dirección configurada.',
         );
       }
-      if (auth.currentUser?.uid != uid) throw ApiFailure.forStatus(401);
-      if (response.statusCode == 401 && attempt == 0) continue;
+      if (!publicRead && auth.currentUser?.uid != uid) throw ApiFailure.forStatus(401);
+      if (!publicRead && response.statusCode == 401 && attempt == 0) continue;
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw ApiFailure.forStatus(response.statusCode);
       }
