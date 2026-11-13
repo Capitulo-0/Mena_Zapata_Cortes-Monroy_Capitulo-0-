@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:android/core/network/api_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:android/features/auth/domain/auth_repository.dart';
 import 'package:android/features/auth/presentation/controllers/session_controller.dart';
 import 'package:android/features/auth/presentation/controllers/forgot_password_controller.dart';
@@ -9,6 +10,10 @@ import 'package:android/features/auth/presentation/controllers/forgot_password_c
 import 'support/auth_fakes.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
   late FakeAuth auth;
   late FakeAccounts accounts;
   late SessionController session;
@@ -79,6 +84,7 @@ void main() {
     () async {
       await session.register(
         'Reader',
+        'usuario_prueba',
         'reader@example.test',
         'fixture-password',
       );

@@ -157,6 +157,7 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
           uid: scope,
           child: MainShellScreen(
             isGuest: guest,
+            profileUser: widget.session.user,
             catalogRepository: _catalog,
             libraryRepository: guest ? null : _repositoryFor(scope),
             onLogout: _logout,

@@ -5,6 +5,7 @@ import 'session_controller.dart';
 enum RegisterValidationResult {
   valid,
   missingFields,
+  invalidUsername,
   invalidPassword,
   passwordMismatch,
 }
@@ -24,6 +25,8 @@ class AuthController extends ChangeNotifier {
   final TextEditingController loginPasswordController = TextEditingController();
 
   final TextEditingController registerNameController = TextEditingController();
+  final TextEditingController registerUsernameController =
+      TextEditingController();
   final TextEditingController registerBirthDateController =
       TextEditingController();
   final TextEditingController registerEmailController = TextEditingController();
@@ -58,6 +61,10 @@ class AuthController extends ChangeNotifier {
   bool get passwordHasSpecial =>
       RegExp(r'[!@#\$%^&*()_\-+=\[\]{};:"\\|,.<>/?`~]')
           .hasMatch(registerPasswordController.text);
+
+  bool get usernameIsValid => RegExp(
+    r'^[a-z0-9_]{3,30}$',
+  ).hasMatch(registerUsernameController.text.trim());
 
   bool get passwordIsValid =>
       passwordHasMinLength &&
@@ -164,12 +171,17 @@ class AuthController extends ChangeNotifier {
 
   RegisterValidationResult validateRegister() {
     if (registerNameController.text.trim().isEmpty ||
+        registerUsernameController.text.trim().isEmpty ||
         registerBirthDateController.text.trim().isEmpty ||
         selectedGender == null ||
         registerEmailController.text.trim().isEmpty ||
         registerPasswordController.text.isEmpty ||
         registerConfirmPasswordController.text.isEmpty) {
       return RegisterValidationResult.missingFields;
+    }
+
+    if (!usernameIsValid) {
+      return RegisterValidationResult.invalidUsername;
     }
 
     if (!passwordIsValid) {
@@ -189,6 +201,7 @@ class AuthController extends ChangeNotifier {
     try {
       await session.register(
         registerNameController.text.trim(),
+        registerUsernameController.text.trim(),
         registerEmailController.text.trim(),
         registerPasswordController.text,
       );
@@ -204,6 +217,7 @@ class AuthController extends ChangeNotifier {
 
   void resetRegisterForm() {
     registerNameController.clear();
+    registerUsernameController.clear();
     registerBirthDateController.clear();
     registerEmailController.clear();
     registerPasswordController.clear();
@@ -235,6 +249,7 @@ class AuthController extends ChangeNotifier {
     loginEmailController.dispose();
     loginPasswordController.dispose();
     registerNameController.dispose();
+    registerUsernameController.dispose();
     registerBirthDateController.dispose();
     registerEmailController.dispose();
     registerPasswordController.dispose();

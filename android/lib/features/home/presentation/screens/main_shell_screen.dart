@@ -8,6 +8,7 @@ import 'dart:async';
 import '../../../catalog/data/catalog_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../auth/domain/domain_user.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../clubs/models/reading_club.dart';
@@ -34,6 +35,7 @@ class MainShellScreen extends StatefulWidget {
     required this.onGuestRegisterRequested,
     required this.isDarkMode,
     this.profileDisplayName,
+    this.profileUser,
     this.libraryRepository,
     this.catalogRepository,
     required this.onDarkModeChanged,
@@ -43,6 +45,7 @@ class MainShellScreen extends StatefulWidget {
   final LibraryRepository? libraryRepository;
   final CatalogRepository? catalogRepository;
   final String? profileDisplayName;
+  final DomainUser? profileUser;
   final VoidCallback onLogout;
   final VoidCallback onGuestLoginRequested;
   final VoidCallback onGuestRegisterRequested;
@@ -100,10 +103,17 @@ class _MainShellScreenState extends State<MainShellScreen> {
     ]);
   }
 
-  late String _profileName = widget.profileDisplayName ?? 'Constanza Mena';
-  String _profileUsername = '@constanza.lectora';
-  String _profileBiography =
-      'Entre libros, café y lugares tranquilos para leer.';
+  late String _profileName = 
+      widget.profileUser?.displayName ??
+      widget.profileUser?.email ??
+      'Invitado';
+  late String _profileUsername = 
+      widget.profileUser?.username != null &&
+              widget.profileUser!.username!.isNotEmpty
+          ? '@${widget.profileUser!.username}'
+          : '@sin_usuario';
+  late String _profileBiography =
+      widget.profileUser?.biography ?? '';
   String _readingFormat = 'Ambos';
   int _annualGoal = 25;
 

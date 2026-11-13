@@ -60,6 +60,20 @@ class AuthRegisterForm extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
+        const AuthFieldLabel('Nombre de usuario'),
+        const SizedBox(height: 7),
+        TextField(
+          controller: controller.registerUsernameController,
+          keyboardType: TextInputType.text,
+          autocorrect: false,
+          textCapitalization: TextCapitalization.none,
+          maxLength: 30,
+          decoration: authInputDecoration(
+            hintText: 'Ej: edu_lector',
+            prefixIcon: Icons.alternate_email_rounded,
+          ),
+        ),
+        const SizedBox(height: 16),
         const AuthFieldLabel('Fecha de nacimiento'),
         const SizedBox(height: 7),
         TextField(

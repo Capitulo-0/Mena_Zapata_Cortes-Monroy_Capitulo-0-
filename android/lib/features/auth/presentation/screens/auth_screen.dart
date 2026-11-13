@@ -86,6 +86,13 @@ class _AuthScreenState extends State<AuthScreen> {
       case RegisterValidationResult.missingFields:
         showAuthErrorMessage(context, 'Completa todos los campos');
         return;
+      case RegisterValidationResult.invalidUsername:
+        showAuthErrorMessage(
+          context,
+          'El nombre de usuario debe tener entre 3 y 30 caracteres '
+          'y solo puede contener letras minúsculas, números y guiones bajos (_).',
+        );
+        return;
       case RegisterValidationResult.invalidPassword:
         showAuthErrorMessage(context, 'La contraseña no cumple los requisitos');
         return;
