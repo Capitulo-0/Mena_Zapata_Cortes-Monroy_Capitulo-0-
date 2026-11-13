@@ -105,6 +105,10 @@ class SecurityEndpointTests {
     }
     @Test void meUsesVerifiedUidNotClientSuppliedIdsOrEmail() throws Exception {
         User first = user(), second = user();
+        first.setUsername("edu");
+        first.setBiography("Me encanta leer manga y novelas.");
+        first.setAvatarUrl("https://example.test/avatar.png");
+        users.saveAndFlush(first);
         String authorization = token(first);
         var response = call("GET", "/api/me?firebaseUid=" + second.getFirebaseUid() + "&userId=" + second.getId(),
             authorization, null);
@@ -112,6 +116,11 @@ class SecurityEndpointTests {
         assertThat(result.get("id").asLong()).isEqualTo(first.getId());
         assertThat(result.get("email").asString()).isEqualTo(first.getEmail());
         assertThat(result.get("displayName").asString()).isEqualTo("Domain name");
+        assertThat(result.get("username").asString()).isEqualTo("edu");
+        assertThat(result.get("biography").asString())
+            .isEqualTo("Me encanta leer manga y novelas.");
+        assertThat(result.get("avatarUrl").asString())
+            .isEqualTo("https://example.test/avatar.png");
         assertThat(result.has("firebaseUid")).isFalse();
         assertThat(result.has("firebase_uid")).isFalse();
         assertThat(response.headers().firstValue("Set-Cookie")).isEmpty();
