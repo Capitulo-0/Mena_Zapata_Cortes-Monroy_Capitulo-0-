@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -9,6 +10,8 @@ class ProfileMainCard extends StatelessWidget {
     required this.name,
     required this.username,
     required this.biography,
+    required this.avatarUrl,
+    required this.createdAt,
     required this.moodEmoji,
     required this.readBooksCount,
     required this.followerCount,
@@ -20,6 +23,8 @@ class ProfileMainCard extends StatelessWidget {
   final String name;
   final String username;
   final String biography;
+  final String? avatarUrl;
+  final DateTime? createdAt;
   final String moodEmoji;
   final int readBooksCount;
   final int followerCount;
@@ -27,26 +32,56 @@ class ProfileMainCard extends StatelessWidget {
   final VoidCallback onFollowersTap;
   final VoidCallback onFollowingTap;
 
+  String get memberSince {
+    if (createdAt == null) {
+      return 'Fecha de registro no disponible';
+    }
+
+    const months = [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ];
+
+    final date = createdAt!.toLocal();
+
+    return 'Miembro desde: ${months[date.month - 1]} ${date.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final surfaceColor =
         isDark ? AppColors.darkSurface : AppColors.surface;
+
     final textPrimaryColor =
         isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+
     final textSecondaryColor =
         isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+
     final headingColor =
         isDark ? AppColors.darkTextPrimary : AppColors.deep;
-    final deepSurfaceColor =
-        isDark ? AppColors.darkDeep : AppColors.deep;
 
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.gold, width: 1.3),
+        border: Border.all(
+          color: AppColors.gold,
+          width: 1.3,
+        ),
       ),
       child: Column(
         children: [
@@ -67,25 +102,8 @@ class ProfileMainCard extends StatelessWidget {
                       ),
                     ),
                     child: ClipOval(
-                      child: Image.network(
-                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face',
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) {
-                          return Container(
-                            color: deepSurfaceColor,
-                            alignment: Alignment.center,
-                            child: Text(
-                              name.trim().isEmpty
-                                  ? '?'
-                                  : name.trim()[0].toUpperCase(),
-                              style: GoogleFonts.cinzel(
-                                color: AppColors.gold,
-                                fontSize: 26,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          );
-                        },
+                      child: _ProfileAvatar(
+                        avatarUrl: avatarUrl,
                       ),
                     ),
                   ),
@@ -104,7 +122,9 @@ class ProfileMainCard extends StatelessWidget {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.10),
+                            color: Colors.black.withValues(
+                              alpha: 0.10,
+                            ),
                             blurRadius: 8,
                             offset: const Offset(0, 3),
                           ),
@@ -113,7 +133,9 @@ class ProfileMainCard extends StatelessWidget {
                       alignment: Alignment.center,
                       child: Text(
                         moodEmoji,
-                        style: const TextStyle(fontSize: 14),
+                        style: const TextStyle(
+                          fontSize: 14,
+                        ),
                       ),
                     ),
                   ),
@@ -143,7 +165,7 @@ class ProfileMainCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Miembro desde: Marzo 2024',
+                      memberSince,
                       style: GoogleFonts.inter(
                         color: textSecondaryColor,
                         fontSize: 8,
@@ -168,11 +190,15 @@ class ProfileMainCard extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(
+              vertical: 8,
+            ),
             decoration: BoxDecoration(
               border: Border.symmetric(
                 horizontal: BorderSide(
-                  color: AppColors.gold.withValues(alpha: 0.28),
+                  color: AppColors.gold.withValues(
+                    alpha: 0.28,
+                  ),
                 ),
               ),
             ),
@@ -215,6 +241,48 @@ class ProfileMainCard extends StatelessWidget {
   }
 }
 
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({
+    required this.avatarUrl,
+  });
+
+  final String? avatarUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = avatarUrl?.trim();
+
+    if (value == null || value.isEmpty) {
+      return const _DefaultProfileAvatar();
+    }
+
+    return Image.network(
+      value,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) {
+        return const _DefaultProfileAvatar();
+      },
+    );
+  }
+}
+
+class _DefaultProfileAvatar extends StatelessWidget {
+  const _DefaultProfileAvatar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.person,
+        size: 34,
+        color: Colors.grey.shade500,
+      ),
+    );
+  }
+}
+
 class _StatItem extends StatelessWidget {
   const _StatItem({
     required this.value,
@@ -238,7 +306,9 @@ class _StatItem extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2),
+        padding: const EdgeInsets.symmetric(
+          vertical: 2,
+        ),
         child: Column(
           children: [
             Text(
@@ -258,8 +328,9 @@ class _StatItem extends StatelessWidget {
               style: GoogleFonts.inter(
                 color: textSecondaryColor,
                 fontSize: 7,
-                decoration:
-                    highlighted ? TextDecoration.underline : null,
+                decoration: highlighted
+                    ? TextDecoration.underline
+                    : null,
               ),
             ),
           ],

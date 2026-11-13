@@ -3,7 +3,7 @@ part of '../screens/profile_screen.dart';
 extension _ProfileTabsFavoritesSection on _ProfileScreenState {
   Widget _buildTabs() {
     final worksCount = widget.publishedStories.length;
-    const badgesCount = 5;
+    const badgesCount = 0;
 
     final tabs = [
       {'id': 'favoritos', 'label': 'Favoritos'},
@@ -15,7 +15,7 @@ extension _ProfileTabsFavoritesSection on _ProfileScreenState {
       },
       {
         'id': 'insignias',
-        'label': badgesCount > 0 ? 'Insignias ($badgesCount)' : 'Insignias',
+        'label': 'Insignias ($badgesCount)',
       },
     ];
 

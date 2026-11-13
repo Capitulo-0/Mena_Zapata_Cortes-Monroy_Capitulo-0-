@@ -1,3 +1,4 @@
+
 class ProfileDemoData {
   ProfileDemoData._();
 
@@ -47,39 +48,9 @@ class ProfileDemoData {
     },
   ];
 
-  static const List<Map<String, String>> followers = [
-    {
-      'name': 'Valentina Cruz',
-      'user': '@valencruz',
-      'initial': 'V',
-      'bio': 'Autora independiente y amante de la poesía contemporánea.',
-    },
-    {
-      'name': 'Marco Ibáñez',
-      'user': '@MarcoIbanez17',
-      'initial': 'M',
-      'bio': 'Lector de misterio, faros y relatos breves.',
-    },
-    {
-      'name': 'María Paz Rojas',
-      'user': '@mariaPaz200',
-      'initial': 'M',
-      'bio': 'Creadora de clubes de lectura y fan de los clásicos.',
-    },
-  ];
+  // Sin datos simulados de relaciones sociales.
+  // Las listas reales se conectarán al backend cuando estén disponibles.
+  static const List<Map<String, String>> followers = [];
 
-  static const List<Map<String, String>> following = [
-    {
-      'name': 'Jane Austen',
-      'user': '@JaneAusten1',
-      'initial': 'J',
-      'bio': 'Perfil literario dedicado a los clásicos de Jane Austen.',
-    },
-    {
-      'name': 'Valentina Cruz',
-      'user': '@valencruz',
-      'initial': 'V',
-      'bio': 'Autora independiente y amante de la poesía contemporánea.',
-    },
-  ];
+  static const List<Map<String, String>> following = [];
 }

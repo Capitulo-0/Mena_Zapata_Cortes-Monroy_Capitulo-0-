@@ -283,33 +283,9 @@ extension _ProfileWorksBadgesSection on _ProfileScreenState {
   }
 
   Widget _buildBadges() {
-    final badges = <Map<String, Object>>[
-      {
-        'icon': Icons.auto_stories_rounded,
-        'title': 'Lectora constante',
-        'description': 'Mantienes el hábito de lectura activo.',
-      },
-      {
-        'icon': Icons.local_fire_department_rounded,
-        'title': 'Racha de 14 días',
-        'description': 'Dos semanas leyendo sin perder el ritmo.',
-      },
-      {
-        'icon': Icons.dark_mode_rounded,
-        'title': 'Amante del gótico',
-        'description': 'Tus lecturas reflejan tu lado más oscuro.',
-      },
-      {
-        'icon': Icons.star_rounded,
-        'title': '${widget.reviews.values.where((review) => review.isPublic).length} reseñas guardadas',
-        'description': 'Compartes tu opinión sobre lo que lees.',
-      },
-      {
-        'icon': Icons.emoji_events_rounded,
-        'title': '$_booksReadThisYear libros este año',
-        'description': 'Cada libro terminado suma a tu recorrido.',
-      },
-    ];
+    // Las insignias se conectarán a los logros reales de Library.
+    // No se otorgan logros simulados a las cuentas.
+    final badges = <Map<String, Object>>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -367,7 +343,43 @@ extension _ProfileWorksBadgesSection on _ProfileScreenState {
           ),
         ),
         const SizedBox(height: 10),
-        GridView.builder(
+        if (badges.isEmpty)
+          _sectionCard(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.workspace_premium_outlined,
+                  size: 48,
+                  color: _goldColor.withValues(alpha: 0.65),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'AÚN NO TIENES INSIGNIAS',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.cinzel(
+                    color: _headingColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Cada lectura es un nuevo logro. '
+                  'Pronto podrás desbloquear insignias '
+                  'mientras avanzas en tu aventura literaria.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.merriweather(
+                    color: _textSecondaryColor,
+                    fontSize: 10,
+                    height: 1.6,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: badges.length,

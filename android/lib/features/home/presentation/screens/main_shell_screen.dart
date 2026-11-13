@@ -1123,6 +1123,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         name: _profileName,
         username: _profileUsername,
         biography: _profileBiography,
+        avatarUrl: widget.isGuest ? null : widget.profileUser?.avatarUrl,
+        createdAt: widget.isGuest ? null : widget.profileUser?.createdAt,
         readingFormat: _readingFormat,
         annualGoal: _annualGoal,
         clubs: _clubs,

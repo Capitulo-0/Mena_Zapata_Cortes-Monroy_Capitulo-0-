@@ -32,6 +32,8 @@ class ProfileScreen extends StatefulWidget {
     required this.name,
     required this.username,
     required this.biography,
+    this.avatarUrl,
+    this.createdAt,
     required this.readingFormat,
     required this.annualGoal,
     required this.clubs,
@@ -58,6 +60,8 @@ class ProfileScreen extends StatefulWidget {
   final String name;
   final String username;
   final String biography;
+  final String? avatarUrl;
+  final DateTime? createdAt;
   final String readingFormat;
   final int annualGoal;
 
@@ -168,17 +172,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       .where((club) => widget.joinedClubIds.contains(club.id))
       .toList();
 
-  int get _followerCount =>
-      139 +
-      _followers
-          .where((user) => !_blockedUsers.contains(user['user']))
-          .length;
+  int get _followerCount => _followers
+      .where((user) => !_blockedUsers.contains(user['user']))
+      .length;
+  int get _followingCount => _following
+      .where((user) => !_blockedUsers.contains(user['user']))
+      .length;
 
-  int get _followingCount =>
-      87 +
-      _following
-          .where((user) => !_blockedUsers.contains(user['user']))
-          .length;
   int get _booksReadThisYear => _readBooks.length;
 
   Map<String, int> get _genreCounts {
@@ -233,11 +233,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMainProfileCard() {
+  Widget _buildMainProfileCard(){
     return ProfileMainCard(
       name: widget.name,
       username: widget.username,
       biography: widget.biography,
+      avatarUrl: widget.avatarUrl,
+      createdAt: widget.createdAt,
       moodEmoji: _currentMood['emoji']!,
       readBooksCount: _readBooks.length,
       followerCount: _followerCount,
