@@ -13,6 +13,12 @@ public class User {
     private String email;
     @Column(name = "display_name", length = 120)
     private String displayName;
+    @Column(length = 30)
+    private String username;
+    @Column(length = 500)
+    private String biography;
+    @Column(name = "avatar_url", length = 2048)
+    private String avatarUrl;
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
     @Column(name = "updated_at", nullable = false)
@@ -30,4 +36,22 @@ public class User {
     public void setEmail(String value) { this.email = value; }
     public String getDisplayName() { return displayName; }
     public void setDisplayName(String value) { this.displayName = value; }
+    public void setUsername(String username) {
+        this.username = username;
+    }
+    public String getUsername() {
+        return username;
+    }
+    public String getBiography() {
+        return biography;
+    }
+    public void setBiography(String biography) {
+        this.biography = biography;
+    }
+    public String getAvatarUrl() {
+        return avatarUrl;
+    }
+    public void setAvatarUrl(String avatarUrl) {
+        this.avatarUrl = avatarUrl;
+    }
 }
