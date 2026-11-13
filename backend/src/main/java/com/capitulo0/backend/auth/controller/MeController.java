@@ -7,6 +7,9 @@ import com.capitulo0.backend.user.mapper.UserMapper;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.capitulo0.backend.auth.dto.ProvisionUserRequest;
+import org.springframework.web.bind.annotation.RequestBody;
+import jakarta.validation.Valid;
 
 @RestController
 public class MeController {
@@ -19,5 +22,14 @@ public class MeController {
     @GetMapping("/api/me")
     public UserResponse me() { return UserMapper.toResponse(current.require()); }
     @PostMapping("/api/me/provision")
-    public UserResponse provision() { return provisioning.provision(current.requireIdentity()); }
+    public UserResponse provision(
+        @Valid @RequestBody(required = false) ProvisionUserRequest request
+    ) {
+        String username = request == null ? null : request.username();
+
+        return provisioning.provision(
+            current.requireIdentity(),
+            username
+        );
+    }
 }
