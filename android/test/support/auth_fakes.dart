@@ -96,7 +96,7 @@ class FakeAccounts implements AccountRepository {
   int calls = 0;
   Future<DomainUser> Function()? handler;
   @override
-  Future<DomainUser> provisionAndLoad() async {
+  Future<DomainUser> provisionAndLoad({String? username}) async {
     calls++;
     if (handler != null) return handler!();
     if (failure != null) throw failure!;

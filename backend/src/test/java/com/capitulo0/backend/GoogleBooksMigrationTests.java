@@ -13,7 +13,7 @@ class GoogleBooksMigrationTests {
             s.executeUpdate("INSERT INTO books(id,title,created_at,updated_at) VALUES(51,'Existing',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP),(52,'Another',CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
             s.executeUpdate("INSERT INTO library_entries(id,user_id,book_id,status,reading_format,current_page,total_pages,created_at,updated_at) VALUES(61,41,51,'LEYENDO','FISICO',73,300,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)");
             var flyway=Flyway.configure().dataSource(ds).load();
-            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(1);
+            assertThat(flyway.migrate().migrationsExecuted).isEqualTo(2);
             try(var rows=s.executeQuery("SELECT b.title,b.google_volume_id,b.external_metadata,l.current_page FROM books b JOIN library_entries l ON b.id=l.book_id")) {
                 assertThat(rows.next()).isTrue();
                 assertThat(rows.getString(1)).isEqualTo("Existing");
