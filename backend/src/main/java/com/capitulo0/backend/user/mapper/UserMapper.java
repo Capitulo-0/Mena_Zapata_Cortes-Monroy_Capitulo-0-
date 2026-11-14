@@ -11,6 +11,7 @@ public final class UserMapper {
             user.getUsername(),
             user.getBiography(),
             user.getAvatarUrl(),
+            user.getAnnualReadingGoal(),
             user.getCreatedAt(),
             user.getUpdatedAt()
         );

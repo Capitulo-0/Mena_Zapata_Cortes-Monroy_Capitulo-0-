@@ -4,12 +4,16 @@ import '../../../library/presentation/controllers/library_controller.dart';
 import '../../../library/presentation/dialogs/add_library_book_dialog.dart';
 import '../../../library/presentation/widgets/library_sync_bar.dart';
 import '../../../../core/session/local_account_scope.dart';
+
 import 'dart:async';
+
 import '../../../catalog/data/catalog_repository.dart';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../auth/domain/domain_user.dart';
 
+import '../../../auth/domain/domain_user.dart';
+import '../../../auth/data/account_repository.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../clubs/models/reading_club.dart';
 import '../../../library/presentation/screens/library_screen.dart';
@@ -38,6 +42,8 @@ class MainShellScreen extends StatefulWidget {
     this.profileUser,
     this.libraryRepository,
     this.catalogRepository,
+    this.accountRepository,
+    this.onProfileUpdated,
     required this.onDarkModeChanged,
   });
 
@@ -46,6 +52,8 @@ class MainShellScreen extends StatefulWidget {
   final CatalogRepository? catalogRepository;
   final String? profileDisplayName;
   final DomainUser? profileUser;
+  final ValueChanged<DomainUser>? onProfileUpdated;
+  final AccountRepository? accountRepository;
   final VoidCallback onLogout;
   final VoidCallback onGuestLoginRequested;
   final VoidCallback onGuestRegisterRequested;
@@ -62,7 +70,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
   final GlobalKey<HomeScreenState> _homeKey = GlobalKey<HomeScreenState>();
   bool _headerCompact = false;
 
-  late final WriterLocalService _writerService = WriterLocalService(scope: LocalAccountScope.read(context));
+  late final WriterLocalService _writerService = WriterLocalService(
+    scope: LocalAccountScope.read(context),
+  );
   List<WriterStory> _writerStories = <WriterStory>[];
 
   bool showSettings = false;
@@ -73,50 +83,83 @@ class _MainShellScreenState extends State<MainShellScreen> {
     final remote = _remoteLibrary;
     if (!mounted || remote == null) return;
     setState(() {
-      _libraryBooks..clear()..addAll(remote.catalog);
-      _bookStatuses..clear()..addAll({for (final entry in remote.entries.values) entry.book.id: entry.status});
-      _bookProgresses..clear()..addAll({for (final entry in remote.entries.values) entry.book.id: entry.progressPercentage.floor()});
-      _readingRecords..clear()..addAll({for (final entry in remote.entries.values) entry.book.id: entry.record});
-      final reading = remote.entries.values.where((entry) => entry.status == BookStatus.leyendo).toList()
-        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      _libraryBooks
+        ..clear()
+        ..addAll(remote.catalog);
+      _bookStatuses
+        ..clear()
+        ..addAll({
+          for (final entry in remote.entries.values)
+            entry.book.id: entry.status,
+        });
+      _bookProgresses
+        ..clear()
+        ..addAll({
+          for (final entry in remote.entries.values)
+            entry.book.id: entry.progressPercentage.floor(),
+        });
+      _readingRecords
+        ..clear()
+        ..addAll({
+          for (final entry in remote.entries.values)
+            entry.book.id: entry.record,
+        });
+      final reading =
+          remote.entries.values
+              .where((entry) => entry.status == BookStatus.leyendo)
+              .toList()
+            ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       _lastAdvancedBookId = reading.isEmpty ? null : reading.first.book.id;
     });
     if (remote.error != null && _shownLibraryError != remote.error) {
       _shownLibraryError = remote.error;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(remote.error ?? 'No se pudo sincronizar la biblioteca.')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                remote.error ?? 'No se pudo sincronizar la biblioteca.',
+              ),
+            ),
+          );
+        }
       });
-    } else if (remote.error == null) { _shownLibraryError = null; }
+    } else if (remote.error == null) {
+      _shownLibraryError = null;
+    }
   }
 
   void _addRealBook() {
     final remote = _remoteLibrary;
-    if (remote != null && remote.canWrite) showAddLibraryBookDialog(context, remote, initialManual: true);
+    if (remote != null && remote.canWrite) {
+      showAddLibraryBookDialog(context, remote, initialManual: true);
+    }
   }
 
   Widget _libraryBody(Widget child) {
     final remote = _remoteLibrary;
     if (remote == null) return child;
-    return Column(children: [
-      if (selectedIndex == 1) LibrarySyncBar(controller: remote, onAdd: _addRealBook),
-      Expanded(key: const ValueKey('library-main-stack'), child: child),
-    ]);
+    return Column(
+      children: [
+        if (selectedIndex == 1)
+          LibrarySyncBar(controller: remote, onAdd: _addRealBook),
+        Expanded(key: const ValueKey('library-main-stack'), child: child),
+      ],
+    );
   }
 
-  late String _profileName = 
+  late String _profileName =
       widget.profileUser?.displayName ??
       widget.profileUser?.email ??
       'Invitado';
-  late String _profileUsername = 
+  late String _profileUsername =
       widget.profileUser?.username != null &&
-              widget.profileUser!.username!.isNotEmpty
-          ? '@${widget.profileUser!.username}'
-          : '@sin_usuario';
-  late String _profileBiography =
-      widget.profileUser?.biography ?? '';
+          widget.profileUser!.username!.isNotEmpty
+      ? '@${widget.profileUser!.username}'
+      : '@sin_usuario';
+  late String _profileBiography = widget.profileUser?.biography ?? '';
   String _readingFormat = 'Ambos';
-  int _annualGoal = 25;
-
+  late int _annualGoal = widget.profileUser?.annualReadingGoal ?? 25;
 
   @override
   void initState() {
@@ -130,7 +173,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
       _bookReviews.clear();
       _favoriteBookIds.clear();
       _lastAdvancedBookId = null;
-      _remoteLibrary = LibraryController(widget.libraryRepository!)..addListener(_syncRemoteLibrary);
+      _remoteLibrary = LibraryController(widget.libraryRepository!)
+        ..addListener(_syncRemoteLibrary);
       unawaited(_remoteLibrary!.load());
     }
   }
@@ -151,10 +195,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
     _writerStories = List<WriterStory>.from(stories);
   }
 
-  List<WriterStory> get _publishedWriterStories => _writerStories
-      .where((story) => story.isPublished)
-      .toList()
-    ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  List<WriterStory> get _publishedWriterStories =>
+      _writerStories.where((story) => story.isPublished).toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
   // Estado compartido de clubes de lectura.
   final List<ReadingClub> _clubs = [
@@ -165,8 +208,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       book: 'Cumbres Borrascosas',
       date: 'Viernes 20:00',
       modality: 'Presencial',
-      description:
-          'Un espacio para quienes aman los grandes clásicos de la literatura universal. Cada semana conversamos sobre capítulos, personajes y contexto histórico.',
+      description: 'Un espacio para quienes aman los grandes clásicos de la literatura universal. Cada semana conversamos sobre capítulos, personajes y contexto histórico.',
     ),
     const ReadingClub(
       id: 2,
@@ -175,8 +217,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       book: 'Jane Eyre',
       date: 'Sábado 18:30',
       modality: 'Online',
-      description:
-          'Para amantes de la literatura gótica y victoriana. Misterio, romanticismo oscuro y personajes inolvidables.',
+      description: 'Para amantes de la literatura gótica y victoriana. Misterio, romanticismo oscuro y personajes inolvidables.',
     ),
     const ReadingClub(
       id: 3,
@@ -185,8 +226,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       book: 'El Jardín de los Recuerdos',
       date: 'Miércoles 19:00',
       modality: 'Presencial',
-      description:
-          'Club dedicado a literatura latinoamericana contemporánea y autores independientes.',
+      description: 'Club dedicado a literatura latinoamericana contemporánea y autores independientes.',
     ),
   ];
 
@@ -512,13 +552,19 @@ class _MainShellScreenState extends State<MainShellScreen> {
   @override
   void dispose() {
     _finishReadingTimer?.cancel();
-    _remoteLibrary?..removeListener(_syncRemoteLibrary)..dispose();
+    _remoteLibrary
+      ?..removeListener(_syncRemoteLibrary)
+      ..dispose();
     super.dispose();
   }
 
   void _rememberIncompleteReading(int bookId) {
     final progress = _bookProgresses[bookId] ?? 0;
-    if (_bookStatuses[bookId] != BookStatus.leyendo || progress <= 0 || progress >= 100) return;
+    if (_bookStatuses[bookId] != BookStatus.leyendo ||
+        progress <= 0 ||
+        progress >= 100) {
+      return;
+    }
     _lastIncompleteProgresses[bookId] = progress;
     final record = _readingRecords[bookId];
     if (record != null) _lastIncompleteRecords[bookId] = record;
@@ -531,7 +577,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
       _finishReadingTimer = Timer(const Duration(milliseconds: 2500), () {
         if (mounted) setState(() => _finishingBookId = null);
       });
-    } else if (status == BookStatus.leyendo || (status == BookStatus.porLeer && _finishingBookId == bookId)) {
+    } else if (status == BookStatus.leyendo ||
+        (status == BookStatus.porLeer && _finishingBookId == bookId)) {
       _finishReadingTimer?.cancel();
       if (_finishingBookId != null) setState(() => _finishingBookId = null);
     }
@@ -555,12 +602,25 @@ class _MainShellScreenState extends State<MainShellScreen> {
   };
 
   Future<void> _addToLibrary(Map<String, dynamic> data) async {
-    if (widget.isGuest) { _showGuestAccessDialog(); return; }
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
     if (_remoteLibrary != null) {
-      if (data['googleVolumeId'] is String && widget.catalogRepository != null) {
-        await _remoteLibrary!.addExternal(() => widget.catalogRepository!.importBook(data['googleVolumeId'] as String));
-        final found = _remoteLibrary!.entries.values.where((entry) => entry.book.googleVolumeId == data['googleVolumeId']);
-        if (found.isNotEmpty) { data['id'] = found.first.book.id; data['isBackendBook'] = true; }
+      if (data['googleVolumeId'] is String &&
+          widget.catalogRepository != null) {
+        await _remoteLibrary!.addExternal(
+          () => widget.catalogRepository!.importBook(
+            data['googleVolumeId'] as String,
+          ),
+        );
+        final found = _remoteLibrary!.entries.values.where(
+          (entry) => entry.book.googleVolumeId == data['googleVolumeId'],
+        );
+        if (found.isNotEmpty) {
+          data['id'] = found.first.book.id;
+          data['isBackendBook'] = true;
+        }
         return;
       }
       if (data['isBackendBook'] != true) return;
@@ -601,14 +661,22 @@ class _MainShellScreenState extends State<MainShellScreen> {
     if (matches.isEmpty) return null;
     final book = matches.first;
     if (_remoteLibrary != null) {
-      if (!_remoteLibrary!.canWrite || !_bookStatuses.containsKey(bookId)) return null;
-      final record = await showReadingRecordDialog(context: sourceContext, book: book,
-        initial: _readingRecords[bookId], status: _bookStatuses[bookId]!, progress: _bookProgresses[bookId] ?? 0,
-        allowUnknownTotal: true);
+      if (!_remoteLibrary!.canWrite || !_bookStatuses.containsKey(bookId)) {
+        return null;
+      }
+      final record = await showReadingRecordDialog(
+        context: sourceContext,
+        book: book,
+        initial: _readingRecords[bookId],
+        status: _bookStatuses[bookId]!,
+        progress: _bookProgresses[bookId] ?? 0,
+        allowUnknownTotal: true,
+      );
       if (record != null) await _remoteLibrary!.saveRecord(bookId, record);
       return mounted ? _bookProgresses[bookId] : null;
     }
-    if (book.isFree && (_bookStatuses[bookId] ?? BookStatus.porLeer) == BookStatus.porLeer) {
+    if (book.isFree &&
+        (_bookStatuses[bookId] ?? BookStatus.porLeer) == BookStatus.porLeer) {
       _changeBookStatus(bookId, BookStatus.leyendo);
     }
     void save(ReadingRecord record) {
@@ -626,9 +694,16 @@ class _MainShellScreenState extends State<MainShellScreen> {
     }
 
     if (book.isFree) {
-      await Navigator.of(sourceContext).push<void>(MaterialPageRoute(builder: (_) =>
-        SimulatedReaderScreen(book: book, initialProgress: _bookProgresses[bookId] ?? 0,
-          initialStatus: _bookStatuses[bookId] ?? BookStatus.porLeer, onChanged: save)));
+      await Navigator.of(sourceContext).push<void>(
+        MaterialPageRoute(
+          builder: (_) => SimulatedReaderScreen(
+            book: book,
+            initialProgress: _bookProgresses[bookId] ?? 0,
+            initialStatus: _bookStatuses[bookId] ?? BookStatus.porLeer,
+            onChanged: save,
+          ),
+        ),
+      );
     } else {
       final record = await showReadingRecordDialog(
         context: sourceContext,
@@ -642,19 +717,41 @@ class _MainShellScreenState extends State<MainShellScreen> {
     return _bookProgresses[bookId];
   }
 
-  Future<bool> _removeFromLibrary(BuildContext sourceContext, int bookId) async {
-    if (widget.isGuest) { _showGuestAccessDialog(); return false; }
+  Future<bool> _removeFromLibrary(
+    BuildContext sourceContext,
+    int bookId,
+  ) async {
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return false;
+    }
     if (!_bookStatuses.containsKey(bookId)) return false;
     final book = _libraryBooks.firstWhere((book) => book.id == bookId);
-    final confirmed = await showDialog<bool>(context: sourceContext, builder: (dialogContext) =>
-      AlertDialog(backgroundColor: AppColors.surfaceOf(dialogContext),
+    final confirmed = await showDialog<bool>(
+      context: sourceContext,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surfaceOf(dialogContext),
         title: const Text('¿Eliminar de Mi Biblioteca?'),
-        content: Text('Se quitará «${book.title}» de tu Biblioteca y se borrará su seguimiento de lectura. '
-          'Tus favoritos y reseñas se conservarán. El libro seguirá en el catálogo.'),
-        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Eliminar'))]));
+        content: Text(
+          'Se quitará «${book.title}» de tu Biblioteca y se borrará su seguimiento de lectura. '
+          'Tus favoritos y reseñas se conservarán. El libro seguirá en el catálogo.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
     if (confirmed != true || !mounted) return false;
-    if (_remoteLibrary != null && !await _remoteLibrary!.remove(bookId)) return false;
+    if (_remoteLibrary != null && !await _remoteLibrary!.remove(bookId)) {
+      return false;
+    }
     if (!mounted) return false;
     setState(() {
       _bookStatuses.remove(bookId);
@@ -682,17 +779,28 @@ class _MainShellScreenState extends State<MainShellScreen> {
       }
       return;
     }
-    if (widget.isGuest) { _showGuestAccessDialog(); return; }
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
     final wasCurrent = _lastAdvancedBook?.id == bookId;
     final previousStatus = _bookStatuses[bookId];
     setState(() {
       _rememberIncompleteReading(bookId);
       final current = _bookProgresses[bookId] ?? 0;
-      var progress = status == BookStatus.porLeer ? 0 : status == BookStatus.leido ? 100
-        : current >= 100 ? (_lastIncompleteProgresses[bookId] ?? 99) : current;
+      var progress = status == BookStatus.porLeer
+          ? 0
+          : status == BookStatus.leido
+          ? 100
+          : current >= 100
+          ? (_lastIncompleteProgresses[bookId] ?? 99)
+          : current;
       final record = _readingRecords[bookId];
       if (record != null) {
-        final updated = record.withStatus(status, resume: _lastIncompleteRecords[bookId]);
+        final updated = record.withStatus(
+          status,
+          resume: _lastIncompleteRecords[bookId],
+        );
         _readingRecords[bookId] = updated;
         progress = updated.progress;
       }
@@ -701,7 +809,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
       if (status == BookStatus.leyendo) _lastAdvancedBookId = bookId;
       _rememberIncompleteReading(bookId);
     });
-    if (status != previousStatus) _afterReadingChange(bookId, status, wasCurrent);
+    if (status != previousStatus) {
+      _afterReadingChange(bookId, status, wasCurrent);
+    }
   }
 
   Future<void> _changeBookProgress(int bookId, int progress) async {
@@ -712,7 +822,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
       }
       return;
     }
-    if (widget.isGuest) { _showGuestAccessDialog(); return; }
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
     final safeProgress = progress.clamp(0, 100).toInt();
     var status = safeProgress == 100 ? BookStatus.leido : BookStatus.leyendo;
     final wasCurrent = _lastAdvancedBook?.id == bookId;
@@ -750,7 +863,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
     });
   }
 
-
   void _toggleFavoriteCommunityStory(WriterStory story) {
     setState(() {
       if (_favoriteCommunityStories.containsKey(story.id)) {
@@ -760,7 +872,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
       }
     });
   }
-
 
   void _toggleClub(int clubId) {
     final index = _clubs.indexWhere((club) => club.id == clubId);
@@ -851,155 +962,149 @@ class _MainShellScreenState extends State<MainShellScreen> {
             backgroundColor: Colors.transparent,
             insetPadding: const EdgeInsets.symmetric(horizontal: 24),
             child: Container(
-            width: double.infinity,
-            constraints: const BoxConstraints(maxWidth: 390),
-            padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
-            decoration: BoxDecoration(
-              color: surface,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: gold.withValues(alpha: 0.48),
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 390),
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+              decoration: BoxDecoration(
+                color: surface,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: gold.withValues(alpha: 0.48)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.22),
+                    blurRadius: 28,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.22),
-                  blurRadius: 28,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    color: gold.withValues(alpha: 0.11),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: gold.withValues(alpha: 0.34),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: gold.withValues(alpha: 0.11),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: gold.withValues(alpha: 0.34)),
+                    ),
+                    child: Icon(
+                      Icons.auto_stories_outlined,
+                      color: gold,
+                      size: 28,
                     ),
                   ),
-                  child: Icon(
-                    Icons.auto_stories_outlined,
-                    color: gold,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 15),
-                Text(
-                  'ESTÁS EN MODO INVITADO',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.cinzel(
-                    color: textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.35,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Para acceder a las diferentes funcionalidades de Capítulo 0, inicia sesión o crea una cuenta.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    color: textSecondary,
-                    fontSize: 9.5,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 43,
-                        child: FilledButton(
-                          onPressed: () {
-                            final navigator = Navigator.of(
-                              dialogContext,
-                              rootNavigator: true,
-                            );
-
-                            navigator.pop();
-                            navigator.popUntil((route) => route.isFirst);
-
-                            widget.onGuestLoginRequested();
-                          },
-                          style: FilledButton.styleFrom(
-                            backgroundColor: accent,
-                            foregroundColor: background,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            'Iniciar sesión',
-                            style: GoogleFonts.inter(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: SizedBox(
-                        height: 43,
-                        child: OutlinedButton(
-                          onPressed: () {
-                            final navigator = Navigator.of(
-                              dialogContext,
-                              rootNavigator: true,
-                            );
-
-                            navigator.pop();
-                            navigator.popUntil((route) => route.isFirst);
-
-                            widget.onGuestRegisterRequested();
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: deep,
-                            backgroundColor: background,
-                            side: BorderSide(
-                              color: gold.withValues(alpha: 0.72),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            'Registrarse',
-                            style: GoogleFonts.inter(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  style: TextButton.styleFrom(
-                    foregroundColor: textSecondary,
-                  ),
-                  child: Text(
-                    'Seguir en modo invitado',
-                    style: GoogleFonts.inter(
-                      fontSize: 8.5,
+                  const SizedBox(height: 15),
+                  Text(
+                    'ESTÁS EN MODO INVITADO',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.cinzel(
+                      color: textPrimary,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
+                      letterSpacing: 0.35,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    'Para acceder a las diferentes funcionalidades de Capítulo 0, inicia sesión o crea una cuenta.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: textSecondary,
+                      fontSize: 9.5,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 43,
+                          child: FilledButton(
+                            onPressed: () {
+                              final navigator = Navigator.of(
+                                dialogContext,
+                                rootNavigator: true,
+                              );
+
+                              navigator.pop();
+                              navigator.popUntil((route) => route.isFirst);
+
+                              widget.onGuestLoginRequested();
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: accent,
+                              foregroundColor: background,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Iniciar sesión',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: SizedBox(
+                          height: 43,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              final navigator = Navigator.of(
+                                dialogContext,
+                                rootNavigator: true,
+                              );
+
+                              navigator.pop();
+                              navigator.popUntil((route) => route.isFirst);
+
+                              widget.onGuestRegisterRequested();
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: deep,
+                              backgroundColor: background,
+                              side: BorderSide(
+                                color: gold.withValues(alpha: 0.72),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Registrarse',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    style: TextButton.styleFrom(foregroundColor: textSecondary),
+                    child: Text(
+                      'Seguir en modo invitado',
+                      style: GoogleFonts.inter(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         );
       },
     );
@@ -1015,13 +1120,16 @@ class _MainShellScreenState extends State<MainShellScreen> {
     return fallback;
   }
 
-  int get _lastAdvancedBookProgress => _bookProgresses[_lastAdvancedBook?.id] ?? 0;
+  int get _lastAdvancedBookProgress =>
+      _bookProgresses[_lastAdvancedBook?.id] ?? 0;
 
   List<Widget> _mainScreens() {
     return [
       HomeScreen(
         catalogRepository: widget.catalogRepository,
-        catalogBooks: _remoteLibrary == null ? null : _libraryBooks.map(LibraryEntry.homeData).toList(),
+        catalogBooks: _remoteLibrary == null
+            ? null
+            : _libraryBooks.map(LibraryEntry.homeData).toList(),
         onReadBook: _openReading,
         onAddBook: _addToLibrary,
         onBookStatusChanged: _changeBookStatus,
@@ -1048,8 +1156,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
           }
           _toggleFavoriteBook(bookId);
         },
-        favoriteCommunityStoryIds:
-            _favoriteCommunityStories.keys.toSet(),
+        favoriteCommunityStoryIds: _favoriteCommunityStories.keys.toSet(),
         onToggleCommunityStoryFavorite: (story) {
           if (widget.isGuest) {
             _showGuestAccessDialog();
@@ -1135,10 +1242,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         progresses: widget.isGuest ? const <int, int>{} : _bookProgresses,
         reviews: _bookReviews,
         favorites: _favoriteBookIds,
-        favoriteCommunityStories:
-            _favoriteCommunityStories.values.toList(),
-        onToggleCommunityStoryFavorite:
-            _toggleFavoriteCommunityStory,
+        favoriteCommunityStories: _favoriteCommunityStories.values.toList(),
+        onToggleCommunityStoryFavorite: _toggleFavoriteCommunityStory,
         onStatusChanged: _changeBookStatus,
         onProgressChanged: _changeBookProgress,
         onReviewSaved: _saveBookReview,
@@ -1152,6 +1257,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
   Widget build(BuildContext context) {
     if (showSettings) {
       return SettingsScreen(
+        accountRepository: widget.accountRepository,
+        onProfileUpdated: widget.onProfileUpdated,
         onBack: () {
           setState(() {
             showSettings = false;
@@ -1159,9 +1266,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
         },
         onLogout: widget.onLogout,
         onDeleteAccount: () {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('La eliminación de cuenta aún no está disponible. No se eliminó ningún dato.'),
-          ));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'La eliminación de cuenta aún no está disponible. No se eliminó ningún dato.',
+              ),
+            ),
+          );
         },
 
         isDarkMode: widget.isDarkMode,
@@ -1172,14 +1283,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         initialBiography: _profileBiography,
         initialReadingFormat: _readingFormat,
         initialAnnualGoal: _annualGoal,
-        
-        onProfileSaved: (
-          name,
-          username,
-          biography,
-          readingFormat,
-          annualGoal,
-        ) {
+
+        onProfileSaved: (name, username, biography, readingFormat, annualGoal) {
           setState(() {
             _profileName = name;
             _profileUsername = username;
@@ -1207,10 +1312,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
               child: MediaQuery.removePadding(
                 context: context,
                 removeTop: true,
-                child: _libraryBody(IndexedStack(
-                  index: selectedIndex,
-                  children: _mainScreens(),
-                )),
+                child: _libraryBody(
+                  IndexedStack(index: selectedIndex, children: _mainScreens()),
+                ),
               ),
             ),
           ),
@@ -1379,9 +1483,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             width: active ? 68 : 42,
             height: active ? 58 : 42,
             decoration: BoxDecoration(
-              color: active
-                  ? AppColors.goldOf(context)
-                  : Colors.transparent,
+              color: active ? AppColors.goldOf(context) : Colors.transparent,
               borderRadius: BorderRadius.circular(active ? 28 : 999),
               boxShadow: active
                   ? [
@@ -1402,10 +1504,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 return FadeTransition(
                   opacity: animation,
                   child: ScaleTransition(
-                    scale: Tween<double>(
-                      begin: 0.88,
-                      end: 1,
-                    ).animate(
+                    scale: Tween<double>(begin: 0.88, end: 1).animate(
                       CurvedAnimation(
                         parent: animation,
                         curve: Curves.easeOutBack,
@@ -1451,9 +1550,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       ),
     );
   }
-
 }
-
 
 class _QuillPainter extends CustomPainter {
   const _QuillPainter({required this.color});

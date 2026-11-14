@@ -1,4 +1,3 @@
-
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -51,8 +50,7 @@ class SessionController extends ChangeNotifier {
 
         if (busy && identity?.uid == _observedUid) return;
 
-        if (identity?.uid == _preparedUid &&
-            phase == SessionPhase.ready) {
+        if (identity?.uid == _preparedUid && phase == SessionPhase.ready) {
           return;
         }
 
@@ -109,9 +107,7 @@ class SessionController extends ChangeNotifier {
 
       if (!_current(generation, identity.uid)) return;
 
-      final domain = await accounts.provisionAndLoad(
-        username: username,
-      );
+      final domain = await accounts.provisionAndLoad(username: username);
 
       if (!_current(generation, identity.uid)) return;
 
@@ -129,7 +125,7 @@ class SessionController extends ChangeNotifier {
     } on ApiFailure catch (failure) {
       if (!_current(generation, identity.uid)) return;
 
-      if (failure.code == 'USERNAME_TAKEN' || 
+      if (failure.code == 'USERNAME_TAKEN' ||
           failure.code == 'USERNAME_REQUIRED') {
         usernameRequired = true;
         message = failure.message;
@@ -159,13 +155,21 @@ class SessionController extends ChangeNotifier {
   }
 
   bool _current(int generation, String uid) =>
-      !_disposed &&
-      generation == _generation &&
-      auth.currentUser?.uid == uid;
+      !_disposed && generation == _generation && auth.currentUser?.uid == uid;
+  void applyUpdatedProfile(DomainUser updated, {required String expectedUid}) {
+    if (_disposed ||
+        phase != SessionPhase.ready ||
+        auth.currentUser?.uid != expectedUid ||
+        _preparedUid != expectedUid ||
+        user?.id != updated.id) {
+      return;
+    }
 
-  Future<void> _authenticate(
-    Future<void> Function() action,
-  ) async {
+    user = updated;
+    _notify();
+  }
+
+  Future<void> _authenticate(Future<void> Function() action) async {
     if (busy) return;
 
     busy = true;
@@ -205,28 +209,27 @@ class SessionController extends ChangeNotifier {
     String username,
     String email,
     String password,
-  ) =>
-      _authenticate(() async {
-        await auth.register(name, email, password);
+  ) => _authenticate(() async {
+    await auth.register(name, email, password);
 
-        final uid = auth.currentUser?.uid;
+    final uid = auth.currentUser?.uid;
 
-        if (uid == null) {
-          throw const AuthFailure(
-            'No pudimos identificar la cuenta recién creada.',
-          );
-        }
+    if (uid == null) {
+      throw const AuthFailure(
+        'No pudimos identificar la cuenta recién creada.',
+      );
+    }
 
-        try {
-          await pendingUsernames.save(uid, username);
-        } catch (_) {
-          throw const AuthFailure(
-            'La cuenta Firebase se creó, pero no pudimos guardar '
-            'temporalmente tu nombre de usuario. '
-            'No intentes registrarte nuevamente con el mismo correo.',
-          );
-        }
-      });
+    try {
+      await pendingUsernames.save(uid, username);
+    } catch (_) {
+      throw const AuthFailure(
+        'La cuenta Firebase se creó, pero no pudimos guardar '
+        'temporalmente tu nombre de usuario. '
+        'No intentes registrarte nuevamente con el mismo correo.',
+      );
+    }
+  });
 
   Future<void> google() => _authenticate(auth.signInWithGoogle);
 

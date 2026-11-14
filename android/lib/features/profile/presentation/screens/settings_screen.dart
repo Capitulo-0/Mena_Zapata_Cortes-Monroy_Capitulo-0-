@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import '../../../auth/domain/domain_user.dart';
+import '../../../../core/network/api_client.dart';
 import '../widgets/profile_gender_preference.dart';
 import '../widgets/profile_privacy_store.dart';
 import '../widgets/profile_blocked_users_store.dart';
-
-
 import '../../../../core/theme/app_colors.dart';
-
-
+import '../../../auth/data/account_repository.dart';
 part '../widgets/settings_home_section.dart';
 part '../widgets/settings_privacy_section.dart';
 part '../widgets/settings_blocked_users_section.dart';
@@ -35,6 +35,8 @@ class SettingsScreen extends StatefulWidget {
     required this.isDarkMode,
     required this.onDarkModeChanged,
     required this.onProfileSaved,
+    this.onProfileUpdated,
+    this.accountRepository,
     this.initialName = 'Constanza Mena',
     this.initialUsername = '@constanza.lectora',
     this.initialBiography =
@@ -52,7 +54,8 @@ class SettingsScreen extends StatefulWidget {
   final ValueChanged<bool> onDarkModeChanged;
 
   final ProfileSavedCallback onProfileSaved;
-
+  final ValueChanged<DomainUser>? onProfileUpdated;
+  final AccountRepository? accountRepository;
   final String initialName;
   final String initialUsername;
   final String initialBiography;
@@ -223,5 +226,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return _buildAppearanceSettings();
     }
   }
-
 }
