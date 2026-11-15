@@ -12,12 +12,18 @@ import '../../../catalog/data/catalog_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../profile/data/user_search_repository.dart';
+import '../../../profile/data/public_profile_repository.dart';
+import '../../../notifications/data/notification_repository.dart';
+import '../../../follow/data/follow_repository.dart';
+import '../../../notifications/presentation/screens/notifications_screen.dart';
 import '../../../auth/domain/domain_user.dart';
 import '../../../auth/data/account_repository.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../clubs/models/reading_club.dart';
 import '../../../library/presentation/screens/library_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
+import '../../../profile/presentation/screens/public_profile_screen.dart';
 import '../../../profile/presentation/screens/settings_screen.dart';
 import 'home_screen.dart';
 import '../../../library/models/reading_record.dart';
@@ -42,6 +48,10 @@ class MainShellScreen extends StatefulWidget {
     this.profileUser,
     this.libraryRepository,
     this.catalogRepository,
+    this.userSearchRepository,
+    this.publicProfileRepository,
+    this.notificationRepository,
+    this.followRepository,
     this.accountRepository,
     this.onProfileUpdated,
     required this.onDarkModeChanged,
@@ -50,6 +60,10 @@ class MainShellScreen extends StatefulWidget {
   final bool isGuest;
   final LibraryRepository? libraryRepository;
   final CatalogRepository? catalogRepository;
+  final UserSearchRepository? userSearchRepository;
+  final PublicProfileRepository? publicProfileRepository;
+  final NotificationRepository? notificationRepository;
+  final FollowRepository? followRepository;
   final String? profileDisplayName;
   final DomainUser? profileUser;
   final ValueChanged<DomainUser>? onProfileUpdated;
@@ -67,8 +81,72 @@ class MainShellScreen extends StatefulWidget {
 class _MainShellScreenState extends State<MainShellScreen> {
   int selectedIndex = 0;
 
+  // null: perfil propio; username: perfil de otra persona.
+  String? _visitingUsername;
+
+  void _openUserProfile(String username) {
+    final normalized = username.trim().replaceFirst(RegExp(r'^@'), '');
+    if (normalized.isEmpty) return;
+
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+
+    final repository = widget.publicProfileRepository;
+    final ownUsername = _profileUsername
+        .trim()
+        .replaceFirst(RegExp(r'^@'), '')
+        .toLowerCase();
+    final isOwnProfile = normalized.toLowerCase() == ownUsername;
+
+    // No intentamos abrir perfiles ajenos sin un repositorio autenticado.
+    if (!isOwnProfile && repository == null) return;
+
+    setState(() {
+      selectedIndex = 4;
+      _headerCompact = false;
+      showSettings = false;
+      _visitingUsername = isOwnProfile ? null : normalized;
+    });
+  }
+
   final GlobalKey<HomeScreenState> _homeKey = GlobalKey<HomeScreenState>();
   bool _headerCompact = false;
+  int _unreadNotificationsCount = 0;
+
+  Future<void> _refreshUnreadNotifications() async {
+    final repository = widget.notificationRepository;
+    if (widget.isGuest || repository == null) return;
+    try {
+      final count = await repository.getUnreadCount();
+      if (!mounted) return;
+      setState(() => _unreadNotificationsCount = count);
+    } catch (_) {
+      // El buzón mostrará cualquier error de red al abrirse.
+      // No bloqueamos Inicio por un fallo del contador.
+    }
+  }
+
+  Future<void> _openNotifications() async {
+    final repository = widget.notificationRepository;
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+    if (repository == null) return;
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (screenContext) => NotificationsScreen(
+          repository: repository,
+          followRepository: widget.followRepository,
+          onBack: () => Navigator.of(screenContext).pop(),
+        ),
+      ),
+    );
+    if (mounted) unawaited(_refreshUnreadNotifications());
+  }
 
   late final WriterLocalService _writerService = WriterLocalService(
     scope: LocalAccountScope.read(context),
@@ -165,6 +243,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   void initState() {
     super.initState();
     _loadWriterStories();
+    unawaited(_refreshUnreadNotifications());
     if (!widget.isGuest && widget.libraryRepository != null) {
       _libraryBooks.clear();
       _bookStatuses.clear();
@@ -915,6 +994,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
     setState(() {
       selectedIndex = index;
       _headerCompact = false;
+
+      if (index == 4) {
+        _visitingUsername = null;
+        showSettings = false;
+      }
     });
   }
 
@@ -1127,6 +1211,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
     return [
       HomeScreen(
         catalogRepository: widget.catalogRepository,
+        userSearchRepository: widget.userSearchRepository,
+        onOpenUserProfile: _openUserProfile,
         catalogBooks: _remoteLibrary == null
             ? null
             : _libraryBooks.map(LibraryEntry.homeData).toList(),
@@ -1220,36 +1306,46 @@ class _MainShellScreenState extends State<MainShellScreen> {
         currentUsername: _profileUsername,
         currentName: _profileName,
       ),
-      ProfileScreen(
-        onReadBook: _openReading,
-        onOpenSettings: () {
-          setState(() {
-            showSettings = true;
-          });
-        },
-        name: _profileName,
-        username: _profileUsername,
-        biography: _profileBiography,
-        avatarUrl: widget.isGuest ? null : widget.profileUser?.avatarUrl,
-        createdAt: widget.isGuest ? null : widget.profileUser?.createdAt,
-        readingFormat: _readingFormat,
-        annualGoal: _annualGoal,
-        clubs: _clubs,
-        joinedClubIds: _joinedClubIds,
-        onToggleClub: _toggleClub,
-        books: _libraryBooks,
-        statuses: widget.isGuest ? const <int, BookStatus>{} : _bookStatuses,
-        progresses: widget.isGuest ? const <int, int>{} : _bookProgresses,
-        reviews: _bookReviews,
-        favorites: _favoriteBookIds,
-        favoriteCommunityStories: _favoriteCommunityStories.values.toList(),
-        onToggleCommunityStoryFavorite: _toggleFavoriteCommunityStory,
-        onStatusChanged: _changeBookStatus,
-        onProgressChanged: _changeBookProgress,
-        onReviewSaved: _saveBookReview,
-        onToggleFavorite: _toggleFavoriteBook,
-        publishedStories: _publishedWriterStories,
-      ),
+      if (_visitingUsername != null && widget.publicProfileRepository != null)
+        PublicProfileScreen(
+          key: ValueKey('visited-profile-${_visitingUsername!}'),
+          username: _visitingUsername!,
+          repository: widget.publicProfileRepository!,
+          followRepository: widget.followRepository,
+        )
+      else
+        ProfileScreen(
+          followRepository: widget.isGuest ? null : widget.followRepository,
+          onOpenSocialProfile: _openUserProfile,
+          onReadBook: _openReading,
+          onOpenSettings: () {
+            setState(() {
+              showSettings = true;
+            });
+          },
+          name: _profileName,
+          username: _profileUsername,
+          biography: _profileBiography,
+          avatarUrl: widget.isGuest ? null : widget.profileUser?.avatarUrl,
+          createdAt: widget.isGuest ? null : widget.profileUser?.createdAt,
+          readingFormat: _readingFormat,
+          annualGoal: _annualGoal,
+          clubs: _clubs,
+          joinedClubIds: _joinedClubIds,
+          onToggleClub: _toggleClub,
+          books: _libraryBooks,
+          statuses: widget.isGuest ? const <int, BookStatus>{} : _bookStatuses,
+          progresses: widget.isGuest ? const <int, int>{} : _bookProgresses,
+          reviews: _bookReviews,
+          favorites: _favoriteBookIds,
+          favoriteCommunityStories: _favoriteCommunityStories.values.toList(),
+          onToggleCommunityStoryFavorite: _toggleFavoriteCommunityStory,
+          onStatusChanged: _changeBookStatus,
+          onProgressChanged: _changeBookProgress,
+          onReviewSaved: _saveBookReview,
+          onToggleFavorite: _toggleFavoriteBook,
+          publishedStories: _publishedWriterStories,
+        ),
     ];
   }
 
@@ -1305,6 +1401,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
             isGuest: widget.isGuest,
             onScannerTap: _openHeaderScanner,
             onGeminiTap: _openHeaderGemini,
+            onNotificationsTap: widget.isGuest ? null : _openNotifications,
+            unreadNotificationsCount: _unreadNotificationsCount,
           ),
           Expanded(
             child: NotificationListener<ScrollNotification>(

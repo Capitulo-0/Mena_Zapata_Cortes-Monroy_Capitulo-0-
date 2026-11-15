@@ -8,6 +8,7 @@ public record UserResponse(
     String biography,
     String avatarUrl,
     Integer annualReadingGoal,
+    Boolean isPrivate,
     Instant createdAt,
     Instant updatedAt
 ) {}

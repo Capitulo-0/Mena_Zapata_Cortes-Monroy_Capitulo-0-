@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -12,12 +11,14 @@ class ProfileMainCard extends StatelessWidget {
     required this.biography,
     required this.avatarUrl,
     required this.createdAt,
-    required this.moodEmoji,
-    required this.readBooksCount,
-    required this.followerCount,
-    required this.followingCount,
-    required this.onFollowersTap,
-    required this.onFollowingTap,
+    this.moodEmoji,
+    this.readBooksCount,
+    this.followerCount,
+    this.followingCount,
+    this.onFollowersTap,
+    this.onFollowingTap,
+    this.booksLabel = 'Total Leídos',
+    this.showStats = true,
   });
 
   final String name;
@@ -25,12 +26,14 @@ class ProfileMainCard extends StatelessWidget {
   final String biography;
   final String? avatarUrl;
   final DateTime? createdAt;
-  final String moodEmoji;
-  final int readBooksCount;
-  final int followerCount;
-  final int followingCount;
-  final VoidCallback onFollowersTap;
-  final VoidCallback onFollowingTap;
+  final String? moodEmoji;
+  final int? readBooksCount;
+  final int? followerCount;
+  final int? followingCount;
+  final VoidCallback? onFollowersTap;
+  final VoidCallback? onFollowingTap;
+  final String booksLabel;
+  final bool showStats;
 
   String get memberSince {
     if (createdAt == null) {
@@ -61,27 +64,52 @@ class ProfileMainCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final surfaceColor =
-        isDark ? AppColors.darkSurface : AppColors.surface;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
 
-    final textPrimaryColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
+    final textPrimaryColor = isDark
+        ? AppColors.darkTextPrimary
+        : AppColors.textPrimary;
 
-    final textSecondaryColor =
-        isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
+    final textSecondaryColor = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.textSecondary;
 
-    final headingColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.deep;
+    final headingColor = isDark ? AppColors.darkTextPrimary : AppColors.deep;
+
+    final stats = <Widget>[
+      if (readBooksCount != null)
+        _StatItem(
+          value: '$readBooksCount',
+          label: booksLabel,
+          headingColor: headingColor,
+          textSecondaryColor: textSecondaryColor,
+        ),
+      if (followerCount != null)
+        _StatItem(
+          value: '$followerCount',
+          label: 'Seguidores',
+          headingColor: headingColor,
+          textSecondaryColor: textSecondaryColor,
+          highlighted: onFollowersTap != null,
+          onTap: onFollowersTap,
+        ),
+      if (followingCount != null)
+        _StatItem(
+          value: '$followingCount',
+          label: 'Siguiendo',
+          headingColor: headingColor,
+          textSecondaryColor: textSecondaryColor,
+          highlighted: onFollowingTap != null,
+          onTap: onFollowingTap,
+        ),
+    ];
 
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.gold,
-          width: 1.3,
-        ),
+        border: Border.all(color: AppColors.gold, width: 1.3),
       ),
       child: Column(
         children: [
@@ -96,49 +124,38 @@ class ProfileMainCard extends StatelessWidget {
                     height: 64,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.gold,
-                        width: 2,
-                      ),
+                      border: Border.all(color: AppColors.gold, width: 2),
                     ),
                     child: ClipOval(
-                      child: _ProfileAvatar(
-                        avatarUrl: avatarUrl,
-                      ),
+                      child: _ProfileAvatar(avatarUrl: avatarUrl),
                     ),
                   ),
-                  Positioned(
-                    right: -5,
-                    bottom: -4,
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: surfaceColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.gold,
-                          width: 2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(
-                              alpha: 0.10,
+                  if (moodEmoji != null && moodEmoji!.isNotEmpty)
+                    Positioned(
+                      right: -5,
+                      bottom: -4,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: surfaceColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.gold, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.10),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
                             ),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        moodEmoji,
-                        style: const TextStyle(
-                          fontSize: 14,
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          moodEmoji!,
+                          style: const TextStyle(fontSize: 14),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(width: 14),
@@ -188,53 +205,22 @@ class ProfileMainCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(
-              vertical: 8,
-            ),
-            decoration: BoxDecoration(
-              border: Border.symmetric(
-                horizontal: BorderSide(
-                  color: AppColors.gold.withValues(
-                    alpha: 0.28,
+          if (showStats && stats.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.symmetric(
+                  horizontal: BorderSide(
+                    color: AppColors.gold.withValues(alpha: 0.28),
                   ),
                 ),
               ),
+              child: Row(
+                children: [for (final stat in stats) Expanded(child: stat)],
+              ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _StatItem(
-                    value: '$readBooksCount',
-                    label: 'Total Leídos',
-                    headingColor: headingColor,
-                    textSecondaryColor: textSecondaryColor,
-                  ),
-                ),
-                Expanded(
-                  child: _StatItem(
-                    value: '$followerCount',
-                    label: 'Seguidores',
-                    headingColor: headingColor,
-                    textSecondaryColor: textSecondaryColor,
-                    highlighted: true,
-                    onTap: onFollowersTap,
-                  ),
-                ),
-                Expanded(
-                  child: _StatItem(
-                    value: '$followingCount',
-                    label: 'Siguiendo',
-                    headingColor: headingColor,
-                    textSecondaryColor: textSecondaryColor,
-                    highlighted: true,
-                    onTap: onFollowingTap,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ],
         ],
       ),
     );
@@ -242,9 +228,7 @@ class ProfileMainCard extends StatelessWidget {
 }
 
 class _ProfileAvatar extends StatelessWidget {
-  const _ProfileAvatar({
-    required this.avatarUrl,
-  });
+  const _ProfileAvatar({required this.avatarUrl});
 
   final String? avatarUrl;
 
@@ -274,11 +258,7 @@ class _DefaultProfileAvatar extends StatelessWidget {
     return Container(
       color: Colors.white,
       alignment: Alignment.center,
-      child: Icon(
-        Icons.person,
-        size: 34,
-        color: Colors.grey.shade500,
-      ),
+      child: Icon(Icons.person, size: 34, color: Colors.grey.shade500),
     );
   }
 }
@@ -306,17 +286,13 @@ class _StatItem extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: 2,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: 2),
         child: Column(
           children: [
             Text(
               value,
               style: GoogleFonts.inter(
-                color: highlighted
-                    ? AppColors.accent
-                    : headingColor,
+                color: highlighted ? AppColors.accent : headingColor,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -328,9 +304,7 @@ class _StatItem extends StatelessWidget {
               style: GoogleFonts.inter(
                 color: textSecondaryColor,
                 fontSize: 7,
-                decoration: highlighted
-                    ? TextDecoration.underline
-                    : null,
+                decoration: highlighted ? TextDecoration.underline : null,
               ),
             ),
           ],

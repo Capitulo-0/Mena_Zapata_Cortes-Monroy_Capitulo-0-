@@ -7,6 +7,8 @@ import '../../../catalog/presentation/catalog_controller.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../profile/data/user_search_repository.dart';
+import '../../../profile/domain/user_search_result.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'home_network_cover.dart';
 
@@ -15,13 +17,18 @@ class HomeSearchSection extends StatefulWidget {
     super.key,
     required this.books,
     this.catalogRepository,
+    this.userSearchRepository,
     required this.onBookTap,
+    this.onUserTap,
     required this.onSearchModeChanged,
   });
 
   final CatalogRepository? catalogRepository;
+  final UserSearchRepository? userSearchRepository;
   final List<Map<String, dynamic>> books;
   final ValueChanged<Map<String, dynamic>> onBookTap;
+  // La navegación hacia otros perfiles se conectará en la fase 2.
+  final ValueChanged<String>? onUserTap;
   final ValueChanged<bool> onSearchModeChanged;
 
   @override
@@ -42,16 +49,88 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     'isbn': 'ISBN',
   };
 
-  void _queueSuggestions() {
+  // Las sugerencias también buscan usuarios; solo se muestra una categoría.
+  int _previewGeneration = 0;
+  List<UserSearchResult> _previewUsers = [];
+  String? _previewError;
+  bool _previewBooksReady = false;
+
+  void _invalidatePreview() {
+    _previewGeneration++;
     _debounce?.cancel();
+    _suggestionsPending = false;
+    _previewUsers = [];
+    _previewError = null;
+    _previewBooksReady = false;
+  }
+
+  void _queueSuggestions() {
+    _invalidatePreview();
     _suggestions?.clear();
-    _suggestionsPending = _suggestions != null && searchQuery.trim().isNotEmpty;
-    if (!_suggestionsPending || _suggestions == null) return;
+    final query = searchQuery.trim();
+    if (query.isEmpty) return;
+
+    final generation = _previewGeneration;
+    _suggestionsPending = true;
     _debounce = Timer(const Duration(milliseconds: 400), () {
-      if (!mounted) return;
-      setState(() => _suggestionsPending = false);
-      unawaited(_suggestions!.search(searchQuery.trim(), mode: _mode));
+      if (!mounted || generation != _previewGeneration || searchSubmitted) {
+        return;
+      }
+      unawaited(_loadPreview(query, generation));
     });
+  }
+
+  Future<void> _loadPreview(String query, int generation) async {
+    if (widget.userSearchRepository != null && !_bookFiltersActive) {
+      try {
+        final users = await widget.userSearchRepository!.searchUsers(query);
+        if (!mounted || generation != _previewGeneration || searchSubmitted) {
+          return;
+        }
+        if (users.isNotEmpty) {
+          setState(() {
+            _previewUsers = users;
+            _suggestionsPending = false;
+          });
+          return;
+        }
+      } catch (_) {
+        if (!mounted || generation != _previewGeneration || searchSubmitted) {
+          return;
+        }
+        setState(() {
+          _previewError = 'No pudimos buscar usuarios. Reintentar';
+          _suggestionsPending = false;
+        });
+        return;
+      }
+    }
+
+    // Sin coincidencias de usuarios o con filtros de libros: usar el catálogo.
+    try {
+      if (_suggestions != null) {
+        await _suggestions!.search(query, mode: _mode);
+      }
+      if (!mounted || generation != _previewGeneration || searchSubmitted) {
+        return;
+      }
+      setState(() {
+        _previewBooksReady = true;
+        _suggestionsPending = false;
+      });
+    } catch (_) {
+      if (!mounted || generation != _previewGeneration || searchSubmitted) {
+        return;
+      }
+      setState(() {
+        _previewError = 'No se pudieron cargar sugerencias. Reintentar';
+        _suggestionsPending = false;
+      });
+    }
+  }
+
+  void _retryPreview() {
+    setState(_queueSuggestions);
   }
 
   String _mode = 'all';
@@ -70,12 +149,145 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     if (mounted) setState(() {});
   }
 
-  void _search() {
-    _debounce?.cancel();
+  bool get _bookFiltersActive =>
+      _mode != 'all' || selectedGenres.isNotEmpty || searchFilter != 'titulo';
+
+  void _submitSearch() {
+    final query = searchController.text.trim();
+    if (query.isEmpty) {
+      _resetSearch();
+      unawaited(_flashEmptySearchError());
+      return;
+    }
+    setState(() {
+      searchQuery = query;
+      searchSubmitted = true;
+      showFilters = false;
+    });
+    widget.onSearchModeChanged(true);
+    _search();
+  }
+
+  void _resetSearch({bool resetFilters = false}) {
+    _invalidatePreview();
     _suggestions?.clear();
-    _suggestionsPending = false;
-    if (_catalog != null && searchController.text.trim().isNotEmpty) {
-      unawaited(_catalog!.search(searchController.text.trim(), mode: _mode));
+    _catalog?.clear();
+    searchController.clear();
+    setState(() {
+      _invalidateUserSearch();
+      _bookResults = [];
+      _booksLoading = false;
+      _bookError = null;
+      searchQuery = '';
+      searchSubmitted = false;
+      showFilters = false;
+      if (resetFilters) {
+        selectedGenres.clear();
+        searchFilter = 'titulo';
+        _mode = 'all';
+      }
+    });
+    widget.onSearchModeChanged(false);
+  }
+
+  void _search() {
+    _invalidatePreview();
+    _suggestions?.clear();
+    final query = searchController.text.trim();
+    _invalidateUserSearch();
+    final generation = _searchGeneration;
+    if (query.isEmpty) return;
+
+    // Los filtros de libros evitan la búsqueda de usuarios.
+    if (widget.userSearchRepository == null || _bookFiltersActive) {
+      unawaited(_searchBooks(query, generation));
+      return;
+    }
+
+    setState(() {
+      _usersLoading = true;
+      _bookResults = [];
+      _booksLoading = false;
+      _bookError = null;
+    });
+    unawaited(_searchUsersFirst(query, generation));
+  }
+
+  Future<void> _searchBooks(String query, int generation) async {
+    if (!mounted || generation != _searchGeneration) return;
+    setState(() {
+      _booksLoading = true;
+      _bookError = null;
+      _bookResults = [];
+    });
+    if (_catalog == null) {
+      if (mounted && generation == _searchGeneration) {
+        setState(() => _booksLoading = false);
+      }
+      return;
+    }
+    try {
+      await _catalog!.search(query, mode: _mode);
+      if (!mounted || generation != _searchGeneration) return;
+      setState(() {
+        _bookResults = List<Map<String, dynamic>>.of(_catalog!.items);
+        _booksLoading = false;
+      });
+    } catch (_) {
+      if (!mounted || generation != _searchGeneration) return;
+      setState(() {
+        _booksLoading = false;
+        _bookError = 'No pudimos buscar libros. Inténtalo nuevamente.';
+      });
+    }
+  }
+
+  Future<void> _loadMoreBooks() async {
+    final catalog = _catalog;
+    if (catalog == null || catalog.loading || _booksLoading) return;
+    final generation = _searchGeneration;
+    try {
+      await catalog.more();
+      if (!mounted || generation != _searchGeneration || _showUserResults) {
+        return;
+      }
+      setState(() {
+        _bookResults = List<Map<String, dynamic>>.of(catalog.items);
+      });
+    } catch (_) {
+      if (!mounted || generation != _searchGeneration) return;
+      setState(() {
+        _bookError = 'No se pudieron cargar más libros.';
+      });
+    }
+  }
+
+  Future<void> _searchUsersFirst(String query, int generation) async {
+    try {
+      final users = await widget.userSearchRepository!.searchUsers(query);
+      if (!mounted || generation != _searchGeneration) return;
+      if (users.isNotEmpty) {
+        setState(() {
+          _userResults = users;
+          _showUserResults = true;
+          _usersLoading = false;
+          _usersError = null;
+        });
+        return;
+      }
+      setState(() {
+        _usersLoading = false;
+        _showUserResults = false;
+      });
+      await _searchBooks(query, generation);
+    } catch (_) {
+      if (!mounted || generation != _searchGeneration) return;
+      setState(() {
+        _usersLoading = false;
+        _usersError =
+            'No pudimos buscar usuarios. Revisa tu conexión e inténtalo nuevamente.';
+        _showUserResults = false;
+      });
     }
   }
 
@@ -86,6 +298,27 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
   bool searchSubmitted = false;
   bool showFilters = false;
   bool showEmptySearchError = false;
+
+  List<UserSearchResult> _userResults = [];
+
+  bool _usersLoading = false;
+
+  String? _usersError;
+
+  int _searchGeneration = 0;
+
+  bool _showUserResults = false;
+  bool _booksLoading = false;
+  String? _bookError;
+  List<Map<String, dynamic>> _bookResults = [];
+
+  void _invalidateUserSearch() {
+    _searchGeneration++;
+    _userResults = [];
+    _usersLoading = false;
+    _usersError = null;
+    _showUserResults = false;
+  }
 
   Color get _background => AppColors.backgroundOf(context);
   Color get _surface => AppColors.surfaceOf(context);
@@ -99,7 +332,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
       : AppColors.background;
 
   List<Map<String, dynamic>> get books =>
-      searchSubmitted && _catalog != null ? _catalog!.items : widget.books;
+      searchSubmitted && _catalog != null ? _bookResults : widget.books;
 
   List<Map<String, dynamic>> get filteredBooks {
     final query = searchQuery.trim().toLowerCase();
@@ -140,7 +373,8 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
+    _invalidatePreview();
+    _searchGeneration++;
     _suggestions
       ?..removeListener(_changed)
       ..dispose();
@@ -241,7 +475,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                       height: 1.0,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'Buscar libros...',
+                      hintText: 'Buscar libros o usuarios...',
                       hintStyle: GoogleFonts.inter(
                         color: _textSecondary,
                         fontSize: 10,
@@ -258,16 +492,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                       suffixIcon: searchQuery.trim().isEmpty
                           ? null
                           : IconButton(
-                              onPressed: () {
-                                _catalog?.clear();
-                                searchController.clear();
-                                setState(() {
-                                  searchQuery = '';
-                                  searchSubmitted = false;
-                                  _queueSuggestions();
-                                });
-                                widget.onSearchModeChanged(false);
-                              },
+                              onPressed: () => _resetSearch(),
                               splashRadius: 14,
                               icon: Icon(
                                 Icons.close_rounded,
@@ -278,6 +503,10 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                     ),
                     onChanged: (value) {
                       setState(() {
+                        _invalidateUserSearch();
+                        _bookResults = [];
+                        _booksLoading = false;
+                        _bookError = null;
                         searchQuery = value;
                         searchSubmitted = false;
                         _catalog?.clear();
@@ -285,29 +514,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                       });
                       widget.onSearchModeChanged(false);
                     },
-                    onSubmitted: (_) {
-                      final query = searchController.text.trim();
-
-                      if (query.isEmpty) {
-                        setState(() {
-                          searchSubmitted = false;
-                          searchQuery = '';
-                          showFilters = false;
-                        });
-                        _catalog?.clear();
-                        widget.onSearchModeChanged(false);
-                        _flashEmptySearchError();
-                        return;
-                      }
-
-                      setState(() {
-                        searchQuery = query;
-                        searchSubmitted = true;
-                        showFilters = false;
-                      });
-                      widget.onSearchModeChanged(true);
-                      _search();
-                    },
+                    onSubmitted: (_) => _submitSearch(),
                   ),
                 ),
                 const SizedBox(width: 5),
@@ -348,29 +555,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                 SizedBox(
                   height: 27,
                   child: FilledButton(
-                    onPressed: () {
-                      final query = searchController.text.trim();
-
-                      if (query.isEmpty) {
-                        setState(() {
-                          searchSubmitted = false;
-                          searchQuery = '';
-                          showFilters = false;
-                        });
-                        _catalog?.clear();
-                        widget.onSearchModeChanged(false);
-                        _flashEmptySearchError();
-                        return;
-                      }
-
-                      setState(() {
-                        searchQuery = query;
-                        searchSubmitted = true;
-                        showFilters = false;
-                      });
-                      widget.onSearchModeChanged(true);
-                      _search();
-                    },
+                    onPressed: _submitSearch,
                     style: FilledButton.styleFrom(
                       backgroundColor: _accent,
                       foregroundColor: _onAccent,
@@ -566,7 +751,16 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                                 .isNotEmpty;
                           });
                           widget.onSearchModeChanged(searchSubmitted);
-                          _search();
+                          if (searchSubmitted) {
+                            _search();
+                          } else {
+                            setState(() {
+                              _invalidateUserSearch();
+                              _bookResults = [];
+                              _booksLoading = false;
+                              _bookError = null;
+                            });
+                          }
                         },
                         style: FilledButton.styleFrom(
                           backgroundColor: _accent,
@@ -742,6 +936,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                                       ..add(name);
                                   }
                                 });
+                                _queueSuggestions();
                                 setSheetState(() {});
                                 changed = true;
                               },
@@ -837,6 +1032,39 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
       return const SizedBox.shrink();
     }
 
+    if (_previewError != null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        child: TextButton(
+          onPressed: _retryPreview,
+          child: Text(_previewError!),
+        ),
+      );
+    }
+
+    if (_previewUsers.isNotEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: Text(
+                'USUARIOS',
+                style: GoogleFonts.cinzel(
+                  color: _textPrimary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            for (final user in _previewUsers) _buildUserRow(user),
+          ],
+        ),
+      );
+    }
+
     final previewResults = _suggestions != null
         ? _suggestions!.items.take(1).toList()
         : books
@@ -872,11 +1100,12 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
             ),
           ],
         ),
-        child: _suggestionsPending || _suggestions?.loading == true
+        child: _suggestionsPending ||
+                (_suggestions != null && !_previewBooksReady)
             ? const LinearProgressIndicator()
             : _suggestions?.error != null
             ? TextButton(
-                onPressed: _queueSuggestions,
+                onPressed: _retryPreview,
                 child: const Text(
                   'No se pudieron cargar sugerencias. Reintentar',
                 ),
@@ -996,6 +1225,150 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     );
   }
 
+  Widget _buildUserResults() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 25),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: () => _resetSearch(resetFilters: true),
+              icon: Icon(Icons.arrow_back_rounded, size: 15, color: _gold),
+              label: const Text('Volver'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _textPrimary,
+                backgroundColor: _surface,
+                side: BorderSide(color: _gold.withValues(alpha: 0.55)),
+                minimumSize: const Size(0, 34),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 13),
+          Text(
+            'USUARIOS',
+            style: GoogleFonts.cinzel(
+              color: _textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            '${_userResults.length} ${_userResults.length == 1 ? 'usuario encontrado' : 'usuarios encontrados'}',
+            style: GoogleFonts.inter(color: _textSecondary, fontSize: 8.5),
+          ),
+          const SizedBox(height: 12),
+          for (final user in _userResults) _buildUserRow(user),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserRow(UserSearchResult user) {
+    final displayName = user.displayName?.trim();
+    final name = displayName == null || displayName.isEmpty
+        ? user.username
+        : displayName;
+    final avatarUrl = user.avatarUrl?.trim();
+    final hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
+    final initial = name.isEmpty ? '?' : name[0].toUpperCase();
+
+    return InkWell(
+      // El perfil visitante se implementará en la siguiente fase.
+      onTap: widget.onUserTap == null
+          ? null
+          : () => widget.onUserTap!(user.username),
+      borderRadius: BorderRadius.circular(15),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: _surface,
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: _gold.withValues(alpha: 0.38)),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: _gold.withValues(alpha: 0.13),
+              foregroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
+              child: Text(
+                initial,
+                style: GoogleFonts.cinzel(
+                  color: _textPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.merriweather(
+                      color: _textPrimary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '@${user.username}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.inter(
+                      color: _textSecondary,
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUniversalResults() {
+    if (_usersLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: LinearProgressIndicator(),
+      );
+    }
+    if (_usersError != null) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 25),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () => _resetSearch(resetFilters: true),
+              icon: const Icon(Icons.arrow_back_rounded),
+              label: const Text('Volver'),
+            ),
+            const SizedBox(height: 12),
+            Text(_usersError!, style: GoogleFonts.inter(color: _textPrimary)),
+            TextButton(onPressed: _submitSearch, child: const Text('Reintentar')),
+          ],
+        ),
+      );
+    }
+    if (_showUserResults) return _buildUserResults();
+    return _buildSearchResults();
+  }
+
   Widget _buildSearchResults() {
     final results = filteredBooks;
 
@@ -1007,23 +1380,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
           Align(
             alignment: Alignment.centerLeft,
             child: OutlinedButton.icon(
-              onPressed: () {
-                _catalog?.clear();
-                searchController.clear();
-                _debounce?.cancel();
-                _suggestions?.clear();
-                _suggestionsPending = false;
-
-                setState(() {
-                  searchQuery = '';
-                  searchSubmitted = false;
-                  showFilters = false;
-                  selectedGenres.clear();
-                  searchFilter = 'titulo';
-                });
-                _catalog?.clear();
-                widget.onSearchModeChanged(false);
-              },
+              onPressed: () => _resetSearch(resetFilters: true),
               style: OutlinedButton.styleFrom(
                 foregroundColor: _textPrimary,
                 backgroundColor: _surface,
@@ -1052,7 +1409,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
           Text(
             _mode == 'author'
                 ? 'LIBROS DEL AUTOR: ${searchController.text.trim()}'
-                : 'RESULTADOS',
+                : 'LIBROS',
             style: GoogleFonts.cinzel(
               color: _textPrimary,
               fontSize: 16,
@@ -1094,17 +1451,20 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
             ),
           ],
           const SizedBox(height: 12),
-          if (_catalog?.loading == true) const LinearProgressIndicator(),
-          if (_catalog?.error != null)
+          if (_booksLoading) const LinearProgressIndicator(),
+          if (_bookError != null || _catalog?.error != null)
             TextButton(
-              onPressed: () => _catalog!.retry(),
-              child: Text('No se pudo buscar. Reintentar'),
+              onPressed: _submitSearch,
+              child: Text(_bookError ?? 'No se pudo buscar. Reintentar'),
             ),
-          if (results.isEmpty &&
-              _catalog?.loading != true &&
-              _catalog?.error == null)
+          if (!_booksLoading &&
+              _bookError == null &&
+              _catalog?.error == null &&
+              results.isEmpty)
             _emptySearch()
-          else
+          else if (!_booksLoading &&
+              _bookError == null &&
+              _catalog?.error == null)
             ...results.asMap().entries.map((entry) {
               return TweenAnimationBuilder<double>(
                 tween: Tween<double>(begin: 0.97, end: 1),
@@ -1319,10 +1679,15 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     return Column(
       children: [
         _buildSearch(),
-        if (searchSubmitted) _buildSearchResults() else _buildSearchPreview(),
-        if (searchSubmitted && _catalog?.next != null)
+        if (searchSubmitted) _buildUniversalResults() else _buildSearchPreview(),
+        if (searchSubmitted &&
+            !_usersLoading &&
+            _usersError == null &&
+            !_showUserResults &&
+            !_booksLoading &&
+            _catalog?.next != null)
           TextButton(
-            onPressed: _catalog!.loading ? null : () => _catalog!.more(),
+            onPressed: _catalog!.loading ? null : _loadMoreBooks,
             child: const Text('Más resultados'),
           ),
       ],

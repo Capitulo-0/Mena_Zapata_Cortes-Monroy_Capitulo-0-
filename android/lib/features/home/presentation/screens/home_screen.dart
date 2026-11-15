@@ -1,11 +1,14 @@
 import 'dart:async';
+
 import '../../../catalog/data/catalog_repository.dart';
 import '../../../catalog/presentation/catalog_controller.dart';
+
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../profile/data/user_search_repository.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/home_demo_data.dart';
 import '../dialogs/home_gemini_assistant_sheet.dart';
@@ -31,6 +34,7 @@ class HomeScreen extends StatefulWidget {
     this.onReadBook,
     this.catalogBooks,
     this.catalogRepository,
+    this.userSearchRepository,
     this.progresses = const {},
     this.statuses = const {},
     this.onBookStatusChanged,
@@ -42,6 +46,7 @@ class HomeScreen extends StatefulWidget {
     required this.onOpenWriter,
     required this.onOpenPoints,
     required this.onOpenProfile,
+    this.onOpenUserProfile,
     required this.currentName,
     required this.currentUsername,
     required this.reviews,
@@ -59,11 +64,13 @@ class HomeScreen extends StatefulWidget {
   });
 
   final CatalogRepository? catalogRepository;
+  final UserSearchRepository? userSearchRepository;
   final List<Map<String, dynamic>>? catalogBooks;
   final Future<int?> Function(BuildContext context, int bookId)? onReadBook;
   final Map<int, int> progresses;
   final Map<int, BookStatus> statuses;
-  final FutureOr<void> Function(int bookId, BookStatus status)? onBookStatusChanged;
+  final FutureOr<void> Function(int bookId, BookStatus status)?
+  onBookStatusChanged;
   final String? finishedReadingTitle;
   final FutureOr<void> Function(Map<String, dynamic>)? onAddBook;
 
@@ -73,6 +80,7 @@ class HomeScreen extends StatefulWidget {
   final VoidCallback onOpenWriter;
   final VoidCallback onOpenPoints;
   final VoidCallback onOpenProfile;
+  final ValueChanged<String>? onOpenUserProfile;
   final String currentName;
   final String currentUsername;
   final Map<int, BookReview> reviews;
@@ -91,7 +99,7 @@ class HomeScreen extends StatefulWidget {
   final LibraryBook? continueReadingBook;
   final int continueReadingProgress;
   final FutureOr<void> Function(int bookId, int progress)
-      onContinueReadingProgressChanged;
+  onContinueReadingProgressChanged;
 
   @override
   State<HomeScreen> createState() => HomeScreenState();
@@ -105,24 +113,23 @@ class HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     if (widget.catalogRepository != null) {
-      _recommendations = CatalogController(widget.catalogRepository!)..addListener(_catalogChanged);
+      _recommendations = CatalogController(widget.catalogRepository!)
+        ..addListener(_catalogChanged);
       unawaited(_recommendations!.search('subject:fiction'));
     }
   }
-  void _catalogChanged() { if (mounted) setState(() {}); }
-  @override
-  void dispose() {
-    _recommendations?..removeListener(_catalogChanged)..dispose();
-    super.dispose();
+
+  void _catalogChanged() {
+    if (mounted) setState(() {});
   }
 
-
-
-
-
-
-
-
+  @override
+  void dispose() {
+    _recommendations
+      ?..removeListener(_catalogChanged)
+      ..dispose();
+    super.dispose();
+  }
 
   int carouselOffset = 0;
 
@@ -141,13 +148,18 @@ class HomeScreenState extends State<HomeScreen> {
       ? AppColors.darkTextPrimary
       : AppColors.background;
 
-  final List<Map<String, String>> quotes =
-      HomeDemoData.quotes.map(Map<String, String>.from).toList();
+  final List<Map<String, String>> quotes = HomeDemoData.quotes
+      .map(Map<String, String>.from)
+      .toList();
 
-  List<Map<String, dynamic>> get books => _recommendations?.items ?? widget.catalogBooks ?? HomeDemoData.books.map(Map<String, dynamic>.from).toList();
+  List<Map<String, dynamic>> get books =>
+      _recommendations?.items ??
+      widget.catalogBooks ??
+      HomeDemoData.books.map(Map<String, dynamic>.from).toList();
 
-  final List<Map<String, String>> stories =
-      HomeDemoData.stories.map(Map<String, String>.from).toList();
+  final List<Map<String, String>> stories = HomeDemoData.stories
+      .map(Map<String, String>.from)
+      .toList();
 
   ButtonStyle _accentButtonStyle({double height = 31}) {
     return FilledButton.styleFrom(
@@ -174,8 +186,10 @@ class HomeScreenState extends State<HomeScreen> {
             HomeSearchSection(
               key: const ValueKey('home-search'),
               catalogRepository: widget.catalogRepository,
+              userSearchRepository: widget.userSearchRepository,
               books: books,
               onBookTap: _showBookDetails,
+              onUserTap: widget.onOpenUserProfile,
               onSearchModeChanged: (submitted) {
                 if (!mounted || searchSubmitted == submitted) {
                   return;
@@ -189,14 +203,22 @@ class HomeScreenState extends State<HomeScreen> {
             if (!searchSubmitted) ...[
               HomeQuoteSection(quotes: quotes),
               _buildContinueReading(),
-              if (_recommendations?.loading == true) const LinearProgressIndicator(),
-              if (_recommendations?.error != null) TextButton(
-                onPressed: () => _recommendations!.retry(),
-                child: Text('Google Books: no disponible. Reintentar')),
+              if (_recommendations?.loading == true)
+                const LinearProgressIndicator(),
+              if (_recommendations?.error != null)
+                TextButton(
+                  onPressed: () => _recommendations!.retry(),
+                  child: Text('Google Books: no disponible. Reintentar'),
+                ),
               _buildRecommendedBooks(),
-              if (widget.catalogRepository != null) const Padding(
-                padding: EdgeInsets.symmetric(horizontal:16),
-                child: Text('Recomendaciones generales · Fuente: Google Books', style:TextStyle(fontSize:10))),
+              if (widget.catalogRepository != null)
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'Recomendaciones generales · Fuente: Google Books',
+                    style: TextStyle(fontSize: 10),
+                  ),
+                ),
 
               _buildReadingClubs(),
               _buildCommunityStories(),
@@ -222,9 +244,14 @@ class HomeScreenState extends State<HomeScreen> {
       progress: widget.continueReadingProgress,
       finishedReadingTitle: widget.finishedReadingTitle,
       isGuest: widget.isGuest,
-      onContinue: () { if (book != null) widget.onReadBook?.call(context, book.id); },
+      onContinue: () {
+        if (book != null) widget.onReadBook?.call(context, book.id);
+      },
       onFinish: () {
-        if (widget.isGuest) { _guestMessage('progreso de lectura'); return; }
+        if (widget.isGuest) {
+          _guestMessage('progreso de lectura');
+          return;
+        }
         if (book != null) widget.onContinueReadingProgressChanged(book.id, 100);
       },
       onOpenLibrary: widget.onOpenLibrary,
@@ -251,7 +278,6 @@ class HomeScreenState extends State<HomeScreen> {
       onBookTap: _showBookDetails,
     );
   }
-
 
   Widget _buildReadingClubs() {
     return ReadingClubsSection(
@@ -284,9 +310,7 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildNearbyReadingPoint() {
-    return NearbyReadingPointSection(
-      onOpenPoints: widget.onOpenPoints,
-    );
+    return NearbyReadingPointSection(onOpenPoints: widget.onOpenPoints);
   }
 
   Future<void> _showBookDetails(Map<String, dynamic> book) async {
@@ -294,16 +318,28 @@ class HomeScreenState extends State<HomeScreen> {
     if (book['googleVolumeId'] is String && widget.catalogRepository != null) {
       setState(() => _openingBook = true);
       try {
-        final detail = await widget.catalogRepository!.detail(book['googleVolumeId'] as String);
+        final detail = await widget.catalogRepository!.detail(
+          book['googleVolumeId'] as String,
+        );
         // Keep an existing internal identity; fetching metadata must never import.
-        final matches = (widget.catalogBooks ?? <Map<String,dynamic>>[])
-          .where((saved) => saved['googleVolumeId'] == book['googleVolumeId']);
-        book = {...book, ...detail,
-          if (book['id'] is int) 'id': book['id']
-          else if (matches.isNotEmpty) 'id': matches.first['id']};
+        final matches = (widget.catalogBooks ?? <Map<String, dynamic>>[]).where(
+          (saved) => saved['googleVolumeId'] == book['googleVolumeId'],
+        );
+        book = {
+          ...book,
+          ...detail,
+          if (book['id'] is int)
+            'id': book['id']
+          else if (matches.isNotEmpty)
+            'id': matches.first['id'],
+        };
       } catch (_) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('No pudimos cargar la ficha. Vuelve a intentarlo.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No pudimos cargar la ficha. Vuelve a intentarlo.'),
+          ),
+        );
         return;
       } finally {
         if (mounted) setState(() => _openingBook = false);
@@ -318,25 +354,38 @@ class HomeScreenState extends State<HomeScreen> {
           initialProgress: widget.progresses[book['id']] ?? 0,
           readStatus: () => widget.statuses[book['id']],
           readProgress: () => widget.progresses[book['id']] ?? 0,
-          onStatusChanged: widget.onBookStatusChanged == null ? null
-            : (status) async { if (book['id'] is int) await widget.onBookStatusChanged!(book['id'] as int, status); },
+          onStatusChanged: widget.onBookStatusChanged == null
+              ? null
+              : (status) async {
+                  if (book['id'] is int) {
+                    await widget.onBookStatusChanged!(
+                      book['id'] as int,
+                      status,
+                    );
+                  }
+                },
           onRead: () async {
             if (widget.isGuest) {
               widget.onGuestRestrictedAction();
               return Future<int?>.value();
             }
             await widget.onAddBook?.call(book);
-            if (!mounted || (widget.onAddBook != null && !widget.statuses.containsKey(book['id']))) return null;
+            if (!mounted ||
+                (widget.onAddBook != null &&
+                    !widget.statuses.containsKey(book['id']))) {
+              return null;
+            }
             return widget.onReadBook?.call(context, book['id'] as int) ??
                 Future<int?>.value();
           },
           currentUsername: widget.currentUsername,
           initialReview: widget.reviews[book['id']],
           onReviewSaved: widget.onReviewSaved,
-          initiallyFavorite:
-              widget.favoriteBookIds.contains(book['id']),
+          initiallyFavorite: widget.favoriteBookIds.contains(book['id']),
           onToggleFavorite: () {
-            if (book['id'] is int) widget.onToggleFavoriteBook(book['id'] as int);
+            if (book['id'] is int) {
+              widget.onToggleFavoriteBook(book['id'] as int);
+            }
           },
           onOpenOwnProfile: () {
             Navigator.of(context).pop();
@@ -674,10 +723,7 @@ class HomeScreenState extends State<HomeScreen> {
                               decoration: BoxDecoration(
                                 color: _surface,
                                 borderRadius: BorderRadius.circular(13),
-                                border: Border.all(
-                                  color: _gold,
-                                  width: 1,
-                                ),
+                                border: Border.all(color: _gold, width: 1),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -791,12 +837,7 @@ class HomeScreenState extends State<HomeScreen> {
                             const SizedBox(height: 11),
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.fromLTRB(
-                                13,
-                                12,
-                                13,
-                                8,
-                              ),
+                              padding: const EdgeInsets.fromLTRB(13, 12, 13, 8),
                               decoration: BoxDecoration(
                                 color: _surface,
                                 borderRadius: BorderRadius.circular(13),
@@ -846,9 +887,7 @@ class HomeScreenState extends State<HomeScreen> {
                       decoration: BoxDecoration(
                         color: _background,
                         border: Border(
-                          top: BorderSide(
-                            color: _gold.withValues(alpha: 0.16),
-                          ),
+                          top: BorderSide(color: _gold.withValues(alpha: 0.16)),
                         ),
                       ),
                       child: SizedBox(
@@ -865,10 +904,8 @@ class HomeScreenState extends State<HomeScreen> {
                             setSheetState(() {});
                           },
                           style: FilledButton.styleFrom(
-                            backgroundColor:
-                                joined ? _surfaceSoft : _accent,
-                            foregroundColor:
-                                joined ? _textPrimary : _onAccent,
+                            backgroundColor: joined ? _surfaceSoft : _accent,
+                            foregroundColor: joined ? _textPrimary : _onAccent,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
@@ -907,18 +944,11 @@ class HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: _textSecondary,
-            size: 13,
-          ),
+          Icon(icon, color: _textSecondary, size: 13),
           const SizedBox(width: 8),
           Text(
             label,
-            style: GoogleFonts.inter(
-              color: _textSecondary,
-              fontSize: 8,
-            ),
+            style: GoogleFonts.inter(color: _textSecondary, fontSize: 8),
           ),
           const SizedBox(width: 4),
           Expanded(
@@ -938,10 +968,7 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _clubSocialDivider() {
-    return Divider(
-      height: 1,
-      color: _gold.withValues(alpha: 0.14),
-    );
+    return Divider(height: 1, color: _gold.withValues(alpha: 0.14));
   }
 
   void _showAllClubs() {
@@ -967,9 +994,7 @@ class HomeScreenState extends State<HomeScreen> {
                       top: Radius.circular(28),
                     ),
                     border: Border(
-                      top: BorderSide(
-                        color: _gold.withValues(alpha: 0.34),
-                      ),
+                      top: BorderSide(color: _gold.withValues(alpha: 0.34)),
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -1038,8 +1063,7 @@ class HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             IconButton(
-                              onPressed: () =>
-                                  Navigator.of(sheetContext).pop(),
+                              onPressed: () => Navigator.of(sheetContext).pop(),
                               splashRadius: 18,
                               icon: Icon(
                                 Icons.close_rounded,
@@ -1050,10 +1074,7 @@ class HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                       ),
-                      Divider(
-                        height: 1,
-                        color: _gold.withValues(alpha: 0.15),
-                      ),
+                      Divider(height: 1, color: _gold.withValues(alpha: 0.15)),
                       Expanded(
                         child: ListView.separated(
                           controller: scrollController,
@@ -1064,8 +1085,7 @@ class HomeScreenState extends State<HomeScreen> {
                           itemBuilder: (context, index) {
                             final club = widget.clubs[index];
                             final id = club.id;
-                            final joined =
-                                widget.joinedClubIds.contains(id);
+                            final joined = widget.joinedClubIds.contains(id);
                             final isOnline =
                                 club.modality.toLowerCase() == 'online';
 
@@ -1077,8 +1097,10 @@ class HomeScreenState extends State<HomeScreen> {
                               curve: Curves.easeOutBack,
                               builder: (context, value, child) {
                                 return Opacity(
-                                  opacity: ((value - 0.96) / 0.04)
-                                      .clamp(0.0, 1.0),
+                                  opacity: ((value - 0.96) / 0.04).clamp(
+                                    0.0,
+                                    1.0,
+                                  ),
                                   child: Transform.scale(
                                     scale: value,
                                     alignment: Alignment.topCenter,
@@ -1124,8 +1146,9 @@ class HomeScreenState extends State<HomeScreen> {
                                           alignment: Alignment.center,
                                           decoration: BoxDecoration(
                                             color: _deepSurface,
-                                            borderRadius:
-                                                BorderRadius.circular(11),
+                                            borderRadius: BorderRadius.circular(
+                                              11,
+                                            ),
                                             border: Border.all(
                                               color: _gold.withValues(
                                                 alpha: 0.28,
@@ -1154,40 +1177,42 @@ class HomeScreenState extends State<HomeScreen> {
                                                           TextOverflow.ellipsis,
                                                       style:
                                                           GoogleFonts.merriweather(
-                                                        color: _textPrimary,
-                                                        fontSize: 10.8,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                      ),
+                                                            color: _textPrimary,
+                                                            fontSize: 10.8,
+                                                            fontWeight:
+                                                                FontWeight.w700,
+                                                          ),
                                                     ),
                                                   ),
                                                   if (joined)
                                                     Container(
                                                       padding:
-                                                          const EdgeInsets
-                                                              .symmetric(
-                                                        horizontal: 7,
-                                                        vertical: 3,
-                                                      ),
-                                                      decoration:
-                                                          BoxDecoration(
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 7,
+                                                            vertical: 3,
+                                                          ),
+                                                      decoration: BoxDecoration(
                                                         color: _gold.withValues(
                                                           alpha: 0.16,
                                                         ),
                                                         borderRadius:
-                                                            BorderRadius
-                                                                .circular(99),
+                                                            BorderRadius.circular(
+                                                              99,
+                                                            ),
                                                       ),
                                                       child: Text(
                                                         'UNIDO',
                                                         style:
                                                             GoogleFonts.inter(
-                                                          color: _deepSurface,
-                                                          fontSize: 6.5,
-                                                          fontWeight:
-                                                              FontWeight.w800,
-                                                          letterSpacing: 0.45,
-                                                        ),
+                                                              color:
+                                                                  _deepSurface,
+                                                              fontSize: 6.5,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w800,
+                                                              letterSpacing:
+                                                                  0.45,
+                                                            ),
                                                       ),
                                                     ),
                                                 ],
@@ -1196,8 +1221,7 @@ class HomeScreenState extends State<HomeScreen> {
                                               Text(
                                                 'Leyendo: ${club.book}',
                                                 maxLines: 1,
-                                                overflow:
-                                                    TextOverflow.ellipsis,
+                                                overflow: TextOverflow.ellipsis,
                                                 style: GoogleFonts.inter(
                                                   color: _textSecondary,
                                                   fontSize: 8,
@@ -1310,9 +1334,7 @@ class HomeScreenState extends State<HomeScreen> {
                                                   milliseconds: 180,
                                                 ),
                                                 child: Text(
-                                                  joined
-                                                      ? 'Unido ✓'
-                                                      : 'Unirme',
+                                                  joined ? 'Unido ✓' : 'Unirme',
                                                   key: ValueKey(joined),
                                                   style: GoogleFonts.inter(
                                                     fontSize: 8.5,
@@ -1343,27 +1365,18 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _allClubsInfoChip({
-    required IconData icon,
-    required String text,
-  }) {
+  Widget _allClubsInfoChip({required IconData icon, required String text}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: _gold.withValues(alpha: 0.09),
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(
-          color: _gold.withValues(alpha: 0.22),
-        ),
+        border: Border.all(color: _gold.withValues(alpha: 0.22)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: 12,
-            color: _gold,
-          ),
+          Icon(icon, size: 12, color: _gold),
           const SizedBox(width: 4),
           Text(
             text,
@@ -1387,8 +1400,9 @@ class HomeScreenState extends State<HomeScreen> {
           story: publishedStory,
           currentUsername: widget.currentUsername,
           authorUsername: story['user'],
-          initiallyFavorite:
-              widget.favoriteCommunityStoryIds.contains(publishedStory.id),
+          initiallyFavorite: widget.favoriteCommunityStoryIds.contains(
+            publishedStory.id,
+          ),
           onToggleFavorite: () {
             widget.onToggleCommunityStoryFavorite(publishedStory);
           },
@@ -1399,16 +1413,13 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  WriterStory _communityStoryToWriterStory(
-    Map<String, String> story,
-  ) {
+  WriterStory _communityStoryToWriterStory(Map<String, String> story) {
     final title = story['title']?.trim() ?? '';
     final synopsis = story['extract']?.trim() ?? '';
     final fullText = story['full']?.trim() ?? '';
     final author = story['user']?.trim() ?? '@autor';
 
-    final storyId =
-        'community_${_stableCommunityId('$author|$title')}';
+    final storyId = 'community_${_stableCommunityId('$author|$title')}';
 
     final now = DateTime.now();
 
@@ -1479,20 +1490,16 @@ class HomeScreenState extends State<HomeScreen> {
           ? matches[index + 1].start
           : fullText.length;
 
-      var content = fullText
-          .substring(match.end, nextStart)
-          .trim();
+      var content = fullText.substring(match.end, nextStart).trim();
 
       if (content.isEmpty) {
         content = 'Capítulo sin contenido.';
       }
 
-      final number =
-          int.tryParse(match.group(1) ?? '') ?? index + 1;
-      final chapterTitle =
-          match.group(2)?.trim().isNotEmpty == true
-              ? match.group(2)!.trim()
-              : 'Capítulo $number';
+      final number = int.tryParse(match.group(1) ?? '') ?? index + 1;
+      final chapterTitle = match.group(2)?.trim().isNotEmpty == true
+          ? match.group(2)!.trim()
+          : 'Capítulo $number';
 
       chapters.add(
         WriterChapter(

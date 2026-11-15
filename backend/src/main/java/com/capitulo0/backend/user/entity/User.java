@@ -21,6 +21,8 @@ public class User {
     private String avatarUrl;
     @Column(name = "annual_reading_goal", nullable = false)
     private Integer annualReadingGoal = 25;
+    @Column(name = "is_private", nullable = false)
+    private Boolean isPrivate = false;
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
     @Column(name = "updated_at", nullable = false)
@@ -87,5 +89,13 @@ public class User {
     }
     public void setAnnualReadingGoal(Integer annualReadingGoal) {
         this.annualReadingGoal = annualReadingGoal;
+    }
+
+    public Boolean getIsPrivate() {
+        return isPrivate;
+    }
+
+    public void setIsPrivate(Boolean isPrivate){
+        this.isPrivate = isPrivate;
     }
 }

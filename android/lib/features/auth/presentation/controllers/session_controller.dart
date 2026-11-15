@@ -7,6 +7,7 @@ import '../../data/account_repository.dart';
 import '../../data/pending_username_store.dart';
 import '../../domain/auth_repository.dart';
 import '../../domain/domain_user.dart';
+import '../../../profile/presentation/widgets/profile_privacy_store.dart';
 
 enum SessionPhase {
   signedOut,
@@ -39,6 +40,11 @@ class SessionController extends ChangeNotifier {
   String? _preparedUid;
 
   String? get uid => auth.currentUser?.uid;
+
+  void _syncPrivacy() {
+    ProfilePrivacyStore.isPrivate.value =
+        phase == SessionPhase.ready && user != null ? user!.isPrivate : false;
+  }
 
   void start() {
     _subscription ??= auth.authStateChanges().listen(
@@ -379,7 +385,9 @@ class SessionController extends ChangeNotifier {
   }
 
   void _notify() {
-    if (!_disposed) notifyListeners();
+    if (_disposed) return;
+    _syncPrivacy();
+    notifyListeners();
   }
 
   @override

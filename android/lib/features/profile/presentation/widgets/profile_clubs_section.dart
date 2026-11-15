@@ -98,7 +98,7 @@ extension _ProfileClubsSection on _ProfileScreenState {
                               child: const Text('Ver'),
                             ),
                             TextButton(
-                              onPressed: () => widget.onToggleClub(club.id),
+                              onPressed: widget.readOnly ? null : () => widget.onToggleClub(club.id),
                           style: TextButton.styleFrom(
                             foregroundColor: AppColors.accent,
                             padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -422,7 +422,7 @@ extension _ProfileClubsSection on _ProfileScreenState {
                         height: 42,
                         child: FilledButton(
                           onPressed: () {
-                            widget.onToggleClub(id);
+                            if (!widget.readOnly) widget.onToggleClub(id);
                             setSheetState(() {});
                           },
                           style: FilledButton.styleFrom(

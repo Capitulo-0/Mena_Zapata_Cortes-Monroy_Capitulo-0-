@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
+
 import 'core/network/api_client.dart';
 import 'core/session/local_account_scope.dart';
 import 'features/auth/data/account_repository.dart';
@@ -9,10 +10,13 @@ import 'features/library/data/library_repository.dart';
 import 'features/auth/presentation/controllers/session_controller.dart';
 import 'features/auth/presentation/screens/auth_screen.dart';
 import 'features/auth/presentation/screens/splash_screen.dart';
+import 'features/profile/data/user_search_repository.dart';
+import 'features/profile/data/public_profile_repository.dart';
+import 'features/notifications/data/notification_repository.dart';
+import 'features/follow/data/follow_repository.dart';
 import 'features/auth/presentation/screens/session_preparation_screen.dart';
 import 'features/home/presentation/screens/main_shell_screen.dart';
 import 'features/library/presentation/widgets/book_interaction_store.dart';
-import 'features/profile/presentation/widgets/profile_privacy_store.dart';
 import 'features/profile/presentation/widgets/profile_gender_preference.dart';
 import 'features/profile/presentation/widgets/profile_blocked_users_store.dart';
 
@@ -61,6 +65,10 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
   late final _accountApi = ApiClient(auth: widget.session.auth);
   late final _accountRepository = ApiAccountRepository(_accountApi);
   late final _catalog = ApiCatalogRepository(_catalogApi);
+  late final _userSearchRepository = ApiUserSearchRepository(_accountApi);
+  late final _publicProfileRepository = ApiPublicProfileRepository(_accountApi);
+  late final _notificationRepository = ApiNotificationRepository(_accountApi);
+  late final _followRepository = ApiFollowRepository(_accountApi);
 
   final _navigatorKey = GlobalKey<NavigatorState>();
   final _messengerKey = GlobalKey<ScaffoldMessengerState>();
@@ -93,12 +101,8 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
       _navigatorKey.currentState?.popUntil((route) => route.isFirst);
 
       BookInteractionStore.clear();
-
-      ProfilePrivacyStore.isPrivate.value = false;
-
       ProfileGenderStore.value = ProfileGender.preferNotToSay;
       ProfileGenderStore.customGender = null;
-
       ProfileBlockedUsersStore.blockedUsers.value = [];
     }
 
@@ -202,6 +206,10 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
             isGuest: guest,
             profileUser: widget.session.user,
             accountRepository: guest ? null : _accountRepository,
+            userSearchRepository: guest ? null : _userSearchRepository,
+            publicProfileRepository: guest ? null : _publicProfileRepository,
+            notificationRepository: guest ? null : _notificationRepository,
+            followRepository: guest ? null : _followRepository,
             onProfileUpdated: (updatedUser) {
               final currentUid = widget.session.uid;
 
