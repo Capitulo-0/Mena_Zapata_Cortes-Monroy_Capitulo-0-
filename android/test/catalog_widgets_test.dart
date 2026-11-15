@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'package:android/features/profile/data/user_search_repository.dart';
+import 'package:android/features/profile/domain/user_search_result.dart';
 import 'package:android/features/home/presentation/widgets/nearby_reading_point_section.dart';
 import 'package:android/features/home/presentation/widgets/community_stories_section.dart';
 import 'package:android/features/home/presentation/widgets/reading_clubs_section.dart';
@@ -68,6 +71,37 @@ class _Library extends MemoryLibraryRepository {
     });
   }
 }
+
+
+class _SearchCatalog extends CatalogFake {
+  final calls = <({String query, String mode, int start,
+    Completer<CatalogPage> response})>[];
+
+  @override
+  Future<CatalogPage> search(String query, {String mode = 'all', int start = 0}) {
+    final response = Completer<CatalogPage>();
+    calls.add((query: query, mode: mode, start: start, response: response));
+    return response.future;
+  }
+}
+
+class _SearchUsers implements UserSearchRepository {
+  final calls = <({String query, Completer<List<UserSearchResult>> response})>[];
+
+  @override
+  Future<List<UserSearchResult>> searchUsers(String query) {
+    final response = Completer<List<UserSearchResult>>();
+    calls.add((query: query, response: response));
+    return response.future;
+  }
+}
+
+const _reader = UserSearchResult(displayName: 'Lector fixture', username: 'lector');
+
+CatalogPage _page(String id, {int? next}) => CatalogPage([
+  {...ApiCatalogRepository.presentation(metadata(id)), 'cover': ''},
+], next);
+
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -388,4 +422,336 @@ void main() {
     expect(find.text('Real fixture rec'), findsNothing);
     expect(library.store, isEmpty);
   });
+  group('independent book and user searches', () {
+    late _SearchCatalog books;
+    late _SearchUsers users;
+    late List<String> opened;
+    late List<bool> searchModes;
+
+    Future<void> mount(WidgetTester tester, {bool local = false}) async {
+      tester.view.physicalSize = const Size(1000, 2000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      books = _SearchCatalog();
+      users = _SearchUsers();
+      opened = [];
+      searchModes = [];
+      await tester.pumpWidget(MaterialApp(
+        theme: AppTheme.light,
+        home: Scaffold(body: SingleChildScrollView(child: HomeSearchSection(
+          books: local ? _page('local').items : const [],
+          catalogRepository: local ? null : books,
+          userSearchRepository: users,
+          onBookTap: (book) => opened.add('book:${book['googleVolumeId']}'),
+          onUserTap: (username) => opened.add('user:$username'),
+          onSearchModeChanged: searchModes.add,
+        ))),
+      ));
+    }
+
+    Future<void> submit(WidgetTester tester, [String query = 'consulta']) async {
+      await tester.enterText(find.byType(TextField), query);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+    }
+
+    Future<void> tap(WidgetTester tester, Finder finder) async {
+      await tester.ensureVisible(finder);
+      await tester.tap(finder);
+      await tester.pump();
+    }
+
+    for (final usersFirst in [true, false]) {
+      testWidgets('both categories render independently usersFirst=$usersFirst',
+          (tester) async {
+        await mount(tester);
+        await submit(tester);
+        expect(books.calls.single.query, 'consulta');
+        expect(users.calls.single.query, 'consulta');
+        expect(find.text('0 usuarios encontrados'), findsNothing);
+        expect(find.text('No encontramos resultados'), findsNothing);
+        if (usersFirst) {
+          users.calls.single.response.complete([_reader]);
+        } else {
+          books.calls.single.response.complete(_page('found'));
+        }
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.text(usersFirst ? 'Lector fixture' : 'Real fixture found'),
+          findsOneWidget);
+        expect(find.text('No encontramos resultados'), findsNothing);
+        if (usersFirst) {
+          books.calls.single.response.complete(_page('found'));
+        } else {
+          users.calls.single.response.complete([_reader]);
+        }
+        await tester.pumpAndSettle();
+        expect(find.text('Real fixture found'), findsOneWidget);
+        expect(find.text('Lector fixture'), findsOneWidget);
+        expect(find.text('Volver'), findsOneWidget);
+        await tap(tester, find.text('Real fixture found'));
+        await tap(tester, find.text('Lector fixture'));
+        expect(opened, ['book:found', 'user:lector']);
+        await tap(tester, find.text('Volver'));
+        await tester.pumpAndSettle();
+        expect(searchModes.last, false);
+        expect(find.text('Real fixture found'), findsNothing);
+        expect(find.text('Lector fixture'), findsNothing);
+      });
+    }
+
+    for (final failUsers in [true, false]) {
+      testWidgets('failure and retry isolated failUsers=$failUsers', (tester) async {
+        await mount(tester);
+        await submit(tester);
+        if (failUsers) {
+          users.calls.single.response.completeError(StateError('users failed'));
+          books.calls.single.response.complete(_page('valid'));
+        } else {
+          books.calls.single.response.completeError(StateError('books failed'));
+          users.calls.single.response.complete([_reader]);
+        }
+        await tester.pumpAndSettle();
+        final valid = find.text(failUsers ? 'Real fixture valid' : 'Lector fixture');
+        expect(valid, findsOneWidget);
+        expect(find.text('No encontramos resultados'), findsNothing);
+        await tap(tester, find.byKey(ValueKey(failUsers ? 'retry-users' : 'retry-books')));
+        expect(valid, findsOneWidget);
+        expect(failUsers ? books.calls.length : users.calls.length, 1);
+        if (failUsers) {
+          users.calls.last.response.complete([_reader]);
+        } else {
+          books.calls.last.response.complete(_page('recovered'));
+        }
+        await tester.pumpAndSettle();
+        expect(find.text('Lector fixture'), findsOneWidget);
+        expect(find.text(failUsers ? 'Real fixture valid' : 'Real fixture recovered'),
+          findsOneWidget);
+      });
+    }
+
+    for (final userState in ['visible', 'loading', 'failed']) {
+      testWidgets('pagination and page retry with users $userState', (tester) async {
+        await mount(tester);
+        await submit(tester);
+        books.calls.single.response.complete(_page('first', next: 20));
+        if (userState == 'visible') {
+          users.calls.single.response.complete([_reader]);
+        } else if (userState == 'failed') {
+          users.calls.single.response.completeError(StateError('users failed'));
+        }
+        await tester.pump(const Duration(milliseconds: 600));
+        await tap(tester, find.text('Más resultados'));
+        expect(books.calls.last.start, 20);
+        books.calls.last.response.completeError(StateError('page failed'));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(find.text('Real fixture first'), findsOneWidget);
+        await tap(tester, find.byKey(const ValueKey('retry-books')));
+        expect(books.calls.last.start, 20);
+        books.calls.last.response.complete(CatalogPage([
+          ..._page('first').items, ..._page('second').items,
+        ], null));
+        if (userState == 'loading') {
+          users.calls.single.response.complete([_reader]);
+        }
+        await tester.pumpAndSettle();
+        expect(find.text('Real fixture first'), findsOneWidget);
+        expect(find.text('Real fixture second'), findsOneWidget);
+        expect(users.calls, hasLength(1));
+        expect(find.text('Más resultados'), findsNothing);
+      });
+    }
+
+    testWidgets('simultaneous suggestions keep debounce and navigation', (tester) async {
+      await mount(tester);
+      await tester.enterText(find.byType(TextField), 'con');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.enterText(find.byType(TextField), 'consulta');
+      await tester.pump(const Duration(milliseconds: 399));
+      expect(books.calls, isEmpty);
+      expect(users.calls, isEmpty);
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(books.calls.single.query, 'consulta');
+      expect(users.calls.single.query, 'consulta');
+      books.calls.single.response.complete(_page('suggestion'));
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('Real fixture suggestion'), findsOneWidget);
+      expect(find.text('No se encontraron usuarios.'), findsNothing);
+      users.calls.single.response.complete([_reader]);
+      await tester.pumpAndSettle();
+      expect(find.text('SUGERENCIA'), findsOneWidget);
+      await tap(tester, find.text('Real fixture suggestion'));
+      await tap(tester, find.text('Lector fixture'));
+      expect(opened, ['book:suggestion', 'user:lector']);
+    });
+
+    for (final failUsers in [true, false]) {
+      testWidgets('suggestion retry isolated failUsers=$failUsers', (tester) async {
+        await mount(tester);
+        await tester.enterText(find.byType(TextField), 'consulta');
+        await tester.pump(const Duration(milliseconds: 400));
+        if (failUsers) {
+          users.calls.single.response.completeError(StateError('users'));
+          books.calls.single.response.complete(_page('suggestion'));
+        } else {
+          books.calls.single.response.completeError(StateError('books'));
+          users.calls.single.response.complete([_reader]);
+        }
+        await tester.pumpAndSettle();
+        expect(find.text(failUsers ? 'Real fixture suggestion' : 'Lector fixture'),
+          findsOneWidget);
+        await tap(tester, failUsers
+          ? find.byKey(const ValueKey('retry-user-preview'))
+          : find.text('No se pudieron cargar sugerencias. Reintentar'));
+        expect(failUsers ? books.calls.length : users.calls.length, 1);
+        if (failUsers) {
+          users.calls.last.response.complete([_reader]);
+        } else {
+          books.calls.last.response.complete(_page('recovered'));
+        }
+        await tester.pumpAndSettle();
+        expect(find.text('Lector fixture'), findsOneWidget);
+        expect(find.text(failUsers ? 'Real fixture suggestion' : 'Real fixture recovered'),
+          findsOneWidget);
+      });
+    }
+
+    for (final lateError in [true, false]) {
+      testWidgets('old results and previews discarded lateError=$lateError', (tester) async {
+        await mount(tester);
+        await submit(tester, 'old submitted');
+        await tester.enterText(find.byType(TextField), 'old preview');
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.enterText(find.byType(TextField), 'new');
+        await tester.pump(const Duration(milliseconds: 400));
+        books.calls.last.response.complete(_page('new'));
+        users.calls.last.response.complete([_reader]);
+        await tester.pumpAndSettle();
+        for (final call in books.calls.take(2)) {
+          if (lateError) {
+            call.response.completeError(StateError('obsolete'));
+          } else {
+            call.response.complete(_page('obsolete'));
+          }
+        }
+        for (final call in users.calls.take(2)) {
+          if (lateError) {
+            call.response.completeError(StateError('obsolete'));
+          } else {
+            call.response.complete([
+              const UserSearchResult(displayName: 'Obsoleto', username: 'obsolete'),
+            ]);
+          }
+        }
+        await tester.pumpAndSettle();
+        expect(find.text('Real fixture new'), findsOneWidget);
+        expect(find.text('Lector fixture'), findsOneWidget);
+        expect(find.text('Real fixture obsolete'), findsNothing);
+        expect(find.text('Obsoleto'), findsNothing);
+        expect(find.textContaining('Reintentar'), findsNothing);
+      });
+    }
+
+    testWidgets('old page cannot enter a new submitted query', (tester) async {
+      await mount(tester);
+      await submit(tester, 'old');
+      books.calls.single.response.complete(_page('old', next: 20));
+      users.calls.single.response.complete([]);
+      await tester.pumpAndSettle();
+      await tap(tester, find.text('Más resultados'));
+      final oldPage = books.calls.last.response;
+      await submit(tester, 'new');
+      books.calls.last.response.complete(_page('new'));
+      users.calls.last.response.complete([_reader]);
+      await tester.pumpAndSettle();
+      oldPage.complete(_page('obsolete'));
+      await tester.pumpAndSettle();
+      expect(find.text('Real fixture new'), findsOneWidget);
+      expect(find.text('Real fixture obsolete'), findsNothing);
+    });
+
+    for (final entry in {'Título': 'title', 'Autor': 'author', 'ISBN': 'isbn',
+      'Gótico': 'all', 'Más recientes': 'all'}.entries) {
+      testWidgets('literary mode/filter excludes users: ${entry.key}', (tester) async {
+        await mount(tester);
+        await tap(tester, find.text('Filtrar'));
+        await tester.pumpAndSettle();
+        if (entry.key == 'Gótico') {
+          await tap(tester, find.text('Géneros'));
+          await tester.pumpAndSettle();
+          await tap(tester, find.text('Gótico'));
+          await tester.pumpAndSettle();
+          await tap(tester, find.byIcon(Icons.arrow_back_rounded).last);
+        } else {
+          await tap(tester, find.text(
+            entry.key == 'Más recientes' ? 'Orden' : entry.key,
+          ).last);
+        }
+        await tester.pumpAndSettle();
+        await tap(tester, find.byIcon(Icons.close_rounded).last);
+        await tester.pumpAndSettle();
+        await submit(tester);
+        expect(users.calls, isEmpty);
+        expect(books.calls.single.mode, entry.value);
+        final items = [
+          {..._page('older').items.single, 'genre': 'Gótico', 'year': 2000},
+          {..._page('newer').items.single, 'genre': 'Gótico', 'year': 2026},
+          {..._page('other').items.single, 'genre': 'Romance', 'year': 2025},
+        ];
+        books.calls.single.response.complete(CatalogPage(items, null));
+        await tester.pumpAndSettle();
+        expect(find.text('Real fixture newer'), findsOneWidget);
+        if (entry.key == 'Gótico') {
+          expect(find.text('Real fixture other'), findsNothing);
+        }
+        if (entry.key == 'Más recientes') {
+          expect(tester.getTopLeft(find.text('Real fixture newer')).dy,
+            lessThan(tester.getTopLeft(find.text('Real fixture older')).dy));
+        }
+      });
+    }
+
+    testWidgets('empty categories appear only after each valid response', (tester) async {
+      await mount(tester);
+      await submit(tester);
+      users.calls.single.response.complete([]);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text('0 usuarios encontrados'), findsOneWidget);
+      expect(find.text('No encontramos resultados'), findsNothing);
+      books.calls.single.response.complete(const CatalogPage([], null));
+      await tester.pumpAndSettle();
+      expect(find.text('No encontramos resultados'), findsOneWidget);
+      expect(find.text('0 usuarios encontrados'), findsOneWidget);
+    });
+
+    testWidgets('Volver invalidates both pending categories', (tester) async {
+      await mount(tester);
+      await submit(tester);
+      await tap(tester, find.text('Volver'));
+      books.calls.single.response.complete(_page('obsolete'));
+      users.calls.single.response.complete([_reader]);
+      await tester.pumpAndSettle();
+      expect(find.text('Real fixture obsolete'), findsNothing);
+      expect(find.text('Lector fixture'), findsNothing);
+      expect(searchModes.last, false);
+    });
+
+    testWidgets('local fallback coexists with user suggestions and results', (tester) async {
+      await mount(tester, local: true);
+      await tester.enterText(find.byType(TextField), 'local');
+      await tester.pump(const Duration(milliseconds: 400));
+      users.calls.single.response.complete([_reader]);
+      await tester.pumpAndSettle();
+      expect(find.text('Real fixture local'), findsOneWidget);
+      expect(find.text('Lector fixture'), findsOneWidget);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      users.calls.last.response.complete([_reader]);
+      await tester.pumpAndSettle();
+      expect(books.calls, isEmpty);
+      expect(find.text('Real fixture local'), findsOneWidget);
+      expect(find.text('Lector fixture'), findsOneWidget);
+    });
+  });
+
 }

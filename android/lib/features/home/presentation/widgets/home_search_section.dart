@@ -49,10 +49,11 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     'isbn': 'ISBN',
   };
 
-  // Las sugerencias también buscan usuarios; solo se muestra una categoría.
+  // Cada categoría conserva su carga, resultados y error independientes.
   int _previewGeneration = 0;
   List<UserSearchResult> _previewUsers = [];
   String? _previewError;
+  bool _previewUsersLoading = false;
   bool _previewBooksReady = false;
 
   void _invalidatePreview() {
@@ -61,6 +62,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     _suggestionsPending = false;
     _previewUsers = [];
     _previewError = null;
+    _previewUsersLoading = false;
     _previewBooksReady = false;
   }
 
@@ -72,6 +74,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
 
     final generation = _previewGeneration;
     _suggestionsPending = true;
+    _previewUsersLoading = _searchesUsers;
     _debounce = Timer(const Duration(milliseconds: 400), () {
       if (!mounted || generation != _previewGeneration || searchSubmitted) {
         return;
@@ -81,56 +84,48 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
   }
 
   Future<void> _loadPreview(String query, int generation) async {
-    if (widget.userSearchRepository != null && !_bookFiltersActive) {
-      try {
-        final users = await widget.userSearchRepository!.searchUsers(query);
-        if (!mounted || generation != _previewGeneration || searchSubmitted) {
-          return;
-        }
-        if (users.isNotEmpty) {
-          setState(() {
-            _previewUsers = users;
-            _suggestionsPending = false;
-          });
-          return;
-        }
-      } catch (_) {
-        if (!mounted || generation != _previewGeneration || searchSubmitted) {
-          return;
-        }
-        setState(() {
-          _previewError = 'No pudimos buscar usuarios. Reintentar';
-          _suggestionsPending = false;
-        });
-        return;
-      }
-    }
-
-    // Sin coincidencias de usuarios o con filtros de libros: usar el catálogo.
-    try {
-      if (_suggestions != null) {
-        await _suggestions!.search(query, mode: _mode);
-      }
-      if (!mounted || generation != _previewGeneration || searchSubmitted) {
-        return;
-      }
-      setState(() {
-        _previewBooksReady = true;
-        _suggestionsPending = false;
-      });
-    } catch (_) {
-      if (!mounted || generation != _previewGeneration || searchSubmitted) {
-        return;
-      }
-      setState(() {
-        _previewError = 'No se pudieron cargar sugerencias. Reintentar';
-        _suggestionsPending = false;
-      });
+    unawaited(_loadBookPreview(query, generation));
+    if (_searchesUsers) {
+      unawaited(_loadUserPreview(query, generation));
     }
   }
 
+  Future<void> _loadUserPreview(String query, int generation) async {
+    if (!mounted || generation != _previewGeneration || searchSubmitted) return;
+    setState(() {
+      _previewUsersLoading = true;
+      _previewError = null;
+    });
+    try {
+      final users = await widget.userSearchRepository!.searchUsers(query);
+      if (!mounted || generation != _previewGeneration || searchSubmitted) return;
+      setState(() => _previewUsers = users);
+    } catch (_) {
+      if (!mounted || generation != _previewGeneration || searchSubmitted) return;
+      setState(() => _previewError = 'No pudimos buscar usuarios. Reintentar');
+    } finally {
+      if (mounted && generation == _previewGeneration && !searchSubmitted) {
+        setState(() => _previewUsersLoading = false);
+      }
+    }
+  }
+
+  Future<void> _loadBookPreview(String query, int generation) async {
+    if (!mounted || generation != _previewGeneration || searchSubmitted) return;
+    setState(() {
+      _suggestionsPending = true;
+      _previewBooksReady = false;
+    });
+    await _suggestions?.search(query, mode: _mode);
+    if (!mounted || generation != _previewGeneration || searchSubmitted) return;
+    setState(() {
+      _previewBooksReady = true;
+      _suggestionsPending = false;
+    });
+  }
+
   void _retryPreview() {
-    setState(_queueSuggestions);
+    unawaited(_loadBookPreview(searchQuery.trim(), _previewGeneration));
   }
 
   String _mode = 'all';
@@ -151,6 +146,9 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
 
   bool get _bookFiltersActive =>
       _mode != 'all' || selectedGenres.isNotEmpty || searchFilter != 'titulo';
+
+  bool get _searchesUsers =>
+      widget.userSearchRepository != null && !_bookFiltersActive;
 
   void _submitSearch() {
     final query = searchController.text.trim();
@@ -198,19 +196,10 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     final generation = _searchGeneration;
     if (query.isEmpty) return;
 
-    // Los filtros de libros evitan la búsqueda de usuarios.
-    if (widget.userSearchRepository == null || _bookFiltersActive) {
-      unawaited(_searchBooks(query, generation));
-      return;
+    unawaited(_searchBooks(query, generation));
+    if (_searchesUsers) {
+      unawaited(_searchUsers(query, generation));
     }
-
-    setState(() {
-      _usersLoading = true;
-      _bookResults = [];
-      _booksLoading = false;
-      _bookError = null;
-    });
-    unawaited(_searchUsersFirst(query, generation));
   }
 
   Future<void> _searchBooks(String query, int generation) async {
@@ -232,6 +221,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
       setState(() {
         _bookResults = List<Map<String, dynamic>>.of(_catalog!.items);
         _booksLoading = false;
+        _bookError = _catalog!.error;
       });
     } catch (_) {
       if (!mounted || generation != _searchGeneration) return;
@@ -248,11 +238,12 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     final generation = _searchGeneration;
     try {
       await catalog.more();
-      if (!mounted || generation != _searchGeneration || _showUserResults) {
+      if (!mounted || generation != _searchGeneration) {
         return;
       }
       setState(() {
         _bookResults = List<Map<String, dynamic>>.of(catalog.items);
+        _bookError = catalog.error;
       });
     } catch (_) {
       if (!mounted || generation != _searchGeneration) return;
@@ -262,32 +253,34 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     }
   }
 
-  Future<void> _searchUsersFirst(String query, int generation) async {
+  Future<void> _searchUsers(String query, int generation) async {
+    if (!mounted || generation != _searchGeneration) return;
+    setState(() {
+      _usersLoading = true;
+      _usersError = null;
+    });
     try {
       final users = await widget.userSearchRepository!.searchUsers(query);
       if (!mounted || generation != _searchGeneration) return;
-      if (users.isNotEmpty) {
-        setState(() {
-          _userResults = users;
-          _showUserResults = true;
-          _usersLoading = false;
-          _usersError = null;
-        });
-        return;
-      }
-      setState(() {
-        _usersLoading = false;
-        _showUserResults = false;
-      });
-      await _searchBooks(query, generation);
+      setState(() => _userResults = users);
     } catch (_) {
       if (!mounted || generation != _searchGeneration) return;
       setState(() {
-        _usersLoading = false;
         _usersError =
             'No pudimos buscar usuarios. Revisa tu conexión e inténtalo nuevamente.';
-        _showUserResults = false;
       });
+    } finally {
+      if (mounted && generation == _searchGeneration) {
+        setState(() => _usersLoading = false);
+      }
+    }
+  }
+
+  void _retryBooks() {
+    if (_catalog?.next != null) {
+      unawaited(_loadMoreBooks());
+    } else {
+      unawaited(_searchBooks(searchQuery.trim(), _searchGeneration));
     }
   }
 
@@ -307,7 +300,6 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
 
   int _searchGeneration = 0;
 
-  bool _showUserResults = false;
   bool _booksLoading = false;
   String? _bookError;
   List<Map<String, dynamic>> _bookResults = [];
@@ -317,7 +309,6 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     _userResults = [];
     _usersLoading = false;
     _usersError = null;
-    _showUserResults = false;
   }
 
   Color get _background => AppColors.backgroundOf(context);
@@ -1032,39 +1023,39 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
       return const SizedBox.shrink();
     }
 
-    if (_previewError != null) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-        child: TextButton(
-          onPressed: _retryPreview,
-          child: Text(_previewError!),
-        ),
-      );
-    }
-
-    if (_previewUsers.isNotEmpty) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(bottom: 9),
-              child: Text(
-                'USUARIOS',
-                style: GoogleFonts.cinzel(
-                  color: _textPrimary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+    return Column(
+      children: [
+        _buildBookPreview(query),
+        if (_searchesUsers)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('USUARIOS', style: GoogleFonts.cinzel(
+                  color: _textPrimary, fontSize: 11, fontWeight: FontWeight.w700,
+                )),
+                if (_previewUsersLoading) const LinearProgressIndicator(),
+                if (_previewError != null)
+                  TextButton(
+                    key: const ValueKey('retry-user-preview'),
+                    onPressed: () => unawaited(_loadUserPreview(
+                      searchQuery.trim(), _previewGeneration,
+                    )),
+                    child: Text(_previewError!),
+                  ),
+                if (!_previewUsersLoading && _previewError == null &&
+                    _previewUsers.isEmpty)
+                  const Text('No se encontraron usuarios.'),
+                for (final user in _previewUsers) _buildUserRow(user),
+              ],
             ),
-            for (final user in _previewUsers) _buildUserRow(user),
-          ],
-        ),
-      );
-    }
+          ),
+      ],
+    );
+  }
 
+  Widget _buildBookPreview(String query) {
     final previewResults = _suggestions != null
         ? _suggestions!.items.take(1).toList()
         : books
@@ -1129,7 +1120,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'No se encontró nada relacionado con “${searchQuery.trim()}”.',
+                      'No se encontraron libros relacionados con “${searchQuery.trim()}”.',
                       style: GoogleFonts.inter(
                         color: _textSecondary,
                         fontSize: 8.3,
@@ -1231,24 +1222,6 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: OutlinedButton.icon(
-              onPressed: () => _resetSearch(resetFilters: true),
-              icon: Icon(Icons.arrow_back_rounded, size: 15, color: _gold),
-              label: const Text('Volver'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _textPrimary,
-                backgroundColor: _surface,
-                side: BorderSide(color: _gold.withValues(alpha: 0.55)),
-                minimumSize: const Size(0, 34),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 13),
           Text(
             'USUARIOS',
             style: GoogleFonts.cinzel(
@@ -1258,10 +1231,22 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            '${_userResults.length} ${_userResults.length == 1 ? 'usuario encontrado' : 'usuarios encontrados'}',
-            style: GoogleFonts.inter(color: _textSecondary, fontSize: 8.5),
-          ),
+          if (_usersLoading) const LinearProgressIndicator(),
+          if (_usersError != null) ...[
+            Text(_usersError!, style: GoogleFonts.inter(color: _textPrimary)),
+            TextButton(
+              key: const ValueKey('retry-users'),
+              onPressed: () => unawaited(_searchUsers(
+                searchQuery.trim(), _searchGeneration,
+              )),
+              child: const Text('Reintentar usuarios'),
+            ),
+          ],
+          if (!_usersLoading && _usersError == null)
+            Text(
+              '${_userResults.length} ${_userResults.length == 1 ? 'usuario encontrado' : 'usuarios encontrados'}',
+              style: GoogleFonts.inter(color: _textSecondary, fontSize: 8.5),
+            ),
           const SizedBox(height: 12),
           for (final user in _userResults) _buildUserRow(user),
         ],
@@ -1341,32 +1326,12 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
   }
 
   Widget _buildUniversalResults() {
-    if (_usersLoading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: LinearProgressIndicator(),
-      );
-    }
-    if (_usersError != null) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 25),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            OutlinedButton.icon(
-              onPressed: () => _resetSearch(resetFilters: true),
-              icon: const Icon(Icons.arrow_back_rounded),
-              label: const Text('Volver'),
-            ),
-            const SizedBox(height: 12),
-            Text(_usersError!, style: GoogleFonts.inter(color: _textPrimary)),
-            TextButton(onPressed: _submitSearch, child: const Text('Reintentar')),
-          ],
-        ),
-      );
-    }
-    if (_showUserResults) return _buildUserResults();
-    return _buildSearchResults();
+    return Column(
+      children: [
+        _buildSearchResults(),
+        if (_searchesUsers) _buildUserResults(),
+      ],
+    );
   }
 
   Widget _buildSearchResults() {
@@ -1418,10 +1383,11 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            '${results.length} ${results.length == 1 ? 'obra encontrada' : 'obras encontradas'}',
-            style: GoogleFonts.inter(color: _textSecondary, fontSize: 8.5),
-          ),
+          if (!_booksLoading && _bookError == null && _catalog?.error == null)
+            Text(
+              '${results.length} ${results.length == 1 ? 'obra encontrada' : 'obras encontradas'}',
+              style: GoogleFonts.inter(color: _textSecondary, fontSize: 8.5),
+            ),
           if (selectedGenres.isNotEmpty) ...[
             const SizedBox(height: 8),
             Wrap(
@@ -1454,17 +1420,16 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
           if (_booksLoading) const LinearProgressIndicator(),
           if (_bookError != null || _catalog?.error != null)
             TextButton(
-              onPressed: _submitSearch,
-              child: Text(_bookError ?? 'No se pudo buscar. Reintentar'),
+              key: const ValueKey('retry-books'),
+              onPressed: _catalog?.loading == true ? null : _retryBooks,
+              child: Text('${_bookError ?? _catalog?.error} Reintentar libros'),
             ),
           if (!_booksLoading &&
               _bookError == null &&
               _catalog?.error == null &&
               results.isEmpty)
-            _emptySearch()
-          else if (!_booksLoading &&
-              _bookError == null &&
-              _catalog?.error == null)
+            _emptySearch(),
+          if (!_booksLoading)
             ...results.asMap().entries.map((entry) {
               return TweenAnimationBuilder<double>(
                 tween: Tween<double>(begin: 0.97, end: 1),
@@ -1681,9 +1646,6 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
         _buildSearch(),
         if (searchSubmitted) _buildUniversalResults() else _buildSearchPreview(),
         if (searchSubmitted &&
-            !_usersLoading &&
-            _usersError == null &&
-            !_showUserResults &&
             !_booksLoading &&
             _catalog?.next != null)
           TextButton(
