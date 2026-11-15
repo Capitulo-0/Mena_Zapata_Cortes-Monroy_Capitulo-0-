@@ -157,6 +157,7 @@ extension _ProfileTabsFavoritesSection on _ProfileScreenState {
   }
 
   void _openFavoriteCommunityStory(WriterStory story) {
+    if (widget.readOnly) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => PublishedStoryScreen(

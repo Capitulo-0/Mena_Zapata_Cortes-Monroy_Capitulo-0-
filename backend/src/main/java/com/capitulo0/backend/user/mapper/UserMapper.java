@@ -2,6 +2,7 @@ package com.capitulo0.backend.user.mapper;
 import com.capitulo0.backend.user.dto.UserResponse;
 import com.capitulo0.backend.user.entity.User;
 public final class UserMapper {
+
     private UserMapper() {}
     public static UserResponse toResponse(User user) {
         return new UserResponse(
@@ -12,6 +13,7 @@ public final class UserMapper {
             user.getBiography(),
             user.getAvatarUrl(),
             user.getAnnualReadingGoal(),
+            user.getIsPrivate(),
             user.getCreatedAt(),
             user.getUpdatedAt()
         );

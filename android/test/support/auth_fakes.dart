@@ -9,6 +9,7 @@ const fixtureIdentity = AuthIdentity(
   email: 'reader@example.test',
   emailVerified: true,
 );
+
 const fixtureUser = DomainUser(
   id: 42,
   email: 'reader@example.test',
@@ -18,14 +19,19 @@ const fixtureUser = DomainUser(
 class FakeAuth implements AuthRepository {
   AuthIdentity? identity;
   Object? loginFailure;
+
   final events = StreamController<AuthIdentity?>.broadcast(sync: true);
   final refreshes = <bool>[];
+
   int logoutCalls = 0;
   int resetCalls = 0;
   int verificationCalls = 0;
+
   bool verifyOnReload = false;
+
   @override
   AuthIdentity? get currentUser => identity;
+
   @override
   Stream<AuthIdentity?> authStateChanges() async* {
     yield identity;
@@ -39,18 +45,31 @@ class FakeAuth implements AuthRepository {
 
   @override
   Future<void> login(String email, String password) async {
-    if (loginFailure != null) throw loginFailure!;
+    if (loginFailure != null) {
+      throw loginFailure!;
+    }
     emit(fixtureIdentity);
   }
 
   @override
-  Future<void> register(String name, String email, String password) async {
-    emit(AuthIdentity(uid: 'fixture-user', email: email, emailVerified: false));
+  Future<void> register(
+    String name,
+    String email,
+    String password,
+  ) async {
+    emit(
+      AuthIdentity(
+        uid: 'fixture-user',
+        email: email,
+        emailVerified: false,
+      ),
+    );
     verificationCalls++;
   }
 
   @override
   Future<void> signInWithGoogle() => login('', '');
+
   @override
   Future<void> sendPasswordResetEmail(String email) async {
     resetCalls++;
@@ -75,11 +94,12 @@ class FakeAuth implements AuthRepository {
   @override
   Future<String?> getIdToken({bool forceRefresh = false}) async {
     refreshes.add(forceRefresh);
+
     return identity == null
         ? null
         : forceRefresh
-        ? 'refreshed-fixture-token'
-        : 'fixture-token';
+            ? 'refreshed-fixture-token'
+            : 'fixture-token';
   }
 
   @override
@@ -95,11 +115,44 @@ class FakeAccounts implements AccountRepository {
   Object? failure;
   int calls = 0;
   Future<DomainUser> Function()? handler;
+
   @override
   Future<DomainUser> provisionAndLoad({String? username}) async {
     calls++;
-    if (handler != null) return handler!();
-    if (failure != null) throw failure!;
+
+    if (handler != null) {
+      return handler!();
+    }
+
+    if (failure != null) {
+      throw failure!;
+    }
+
+    return fixtureUser;
+  }
+
+  @override
+  Future<DomainUser> updateProfile({
+    required String displayName,
+    required String username,
+    required String biography,
+    required int annualReadingGoal,
+  }) async {
+    if (failure != null) {
+      throw failure!;
+    }
+
+    return fixtureUser;
+  }
+
+  @override
+  Future<DomainUser> updatePrivacy({
+    required bool isPrivate,
+  }) async {
+    if (failure != null) {
+      throw failure!;
+    }
+
     return fixtureUser;
   }
 }

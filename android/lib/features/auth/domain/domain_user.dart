@@ -1,4 +1,3 @@
-
 class DomainUser {
   const DomainUser({
     required this.id,
@@ -8,6 +7,7 @@ class DomainUser {
     this.biography,
     this.avatarUrl,
     this.annualReadingGoal,
+    this.isPrivate = false,
     this.createdAt,
   });
 
@@ -18,6 +18,7 @@ class DomainUser {
   final String? biography;
   final String? avatarUrl;
   final int? annualReadingGoal;
+  final bool isPrivate;
   final DateTime? createdAt;
 
   factory DomainUser.fromJson(Map<String, dynamic> data) {
@@ -30,6 +31,7 @@ class DomainUser {
         (data['annualReadingGoal'] != null &&
             (data['annualReadingGoal'] is! int ||
                 (data['annualReadingGoal'] as int) < 1)) ||
+        (data['isPrivate'] != null && data['isPrivate'] is! bool) ||
         (data['createdAt'] != null && data['createdAt'] is! String)) {
       throw const FormatException('Invalid user response');
     }
@@ -53,6 +55,7 @@ class DomainUser {
       biography: data['biography'] as String?,
       avatarUrl: data['avatarUrl'] as String?,
       annualReadingGoal: data['annualReadingGoal'] as int?,
+      isPrivate: data['isPrivate'] as bool? ?? false,
       createdAt: createdAt,
     );
   }

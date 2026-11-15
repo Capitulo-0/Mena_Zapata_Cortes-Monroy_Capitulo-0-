@@ -1,19 +1,20 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../follow/data/follow_repository.dart';
+import '../../../follow/presentation/screens/follow_lists_screen.dart';
 import '../../data/profile_demo_data.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/profile_main_card.dart';
-import '../widgets/profile_blocked_users_store.dart';
 import '../../../home/presentation/screens/home_book_detail_screen.dart';
 import '../../../clubs/models/reading_club.dart';
 import '../../../library/presentation/screens/library_screen.dart';
 import '../../../writer/models/writer_story.dart';
 import '../../../writer/presentation/screens/published_story_screen.dart';
-
 
 part '../widgets/profile_mood_section.dart';
 part '../widgets/profile_clubs_section.dart';
@@ -24,10 +25,17 @@ part '../widgets/profile_reviews_reading_section.dart';
 part '../widgets/profile_works_badges_section.dart';
 
 class ProfileScreen extends StatefulWidget {
-
   const ProfileScreen({
     super.key,
     this.onReadBook,
+    this.followRepository,
+    this.onOpenSocialProfile,
+    this.readOnly = false,
+    this.visitorIsPrivate = false,
+    this.visitorAction,
+    this.visitorHeader,
+    this.visitorFollowersCount,
+    this.visitorFollowingCount,
     required this.onOpenSettings,
     required this.name,
     required this.username,
@@ -54,6 +62,17 @@ class ProfileScreen extends StatefulWidget {
   });
 
   final Future<int?> Function(BuildContext context, int bookId)? onReadBook;
+
+  final FollowRepository? followRepository;
+  final ValueChanged<String>? onOpenSocialProfile;
+
+  /// Vista compartida de otro lector: todas las operaciones son de consulta.
+  final bool readOnly;
+  final bool visitorIsPrivate;
+  final Widget? visitorAction;
+  final Widget? visitorHeader;
+  final int? visitorFollowersCount;
+  final int? visitorFollowingCount;
 
   final VoidCallback onOpenSettings;
 
@@ -90,6 +109,80 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  FollowCounts? _socialCounts;
+  bool _socialCountsLoading = false;
+  String? _socialCountsError;
+  int _socialRequestGeneration = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.readOnly) _loadSocialCounts();
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.username != oldWidget.username ||
+        widget.followRepository != oldWidget.followRepository ||
+        widget.readOnly != oldWidget.readOnly) {
+      _socialRequestGeneration++;
+      _socialCounts = null;
+      _socialCountsError = null;
+      _socialCountsLoading = false;
+      if (!widget.readOnly) _loadSocialCounts();
+    }
+  }
+
+  @override
+  void dispose() {
+    _socialRequestGeneration++;
+    super.dispose();
+  }
+
+  Future<void> _loadSocialCounts() async {
+    final repository = widget.followRepository;
+    if (widget.readOnly || repository == null || _socialCountsLoading) return;
+    final request = ++_socialRequestGeneration;
+    setState(() {
+      _socialCountsLoading = true;
+      _socialCountsError = null;
+    });
+    try {
+      final counts = await repository.getCounts(widget.username);
+      if (!mounted || request != _socialRequestGeneration) return;
+      setState(() => _socialCounts = counts);
+    } catch (_) {
+      if (!mounted || request != _socialRequestGeneration) return;
+      setState(
+        () => _socialCountsError = 'No se pudieron cargar los seguidores.',
+      );
+    } finally {
+      if (mounted && request == _socialRequestGeneration) {
+        setState(() => _socialCountsLoading = false);
+      }
+    }
+  }
+
+  Future<void> _openSocialList(int initialTab) async {
+    final repository = widget.followRepository;
+    if (repository == null) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => FollowListsScreen(
+          username: widget.username,
+          repository: repository,
+          initialTab: initialTab,
+          onOpenProfile: (username) {
+            Navigator.of(context).pop();
+            widget.onOpenSocialProfile?.call(username);
+          },
+        ),
+      ),
+    );
+    if (mounted) await _loadSocialCounts();
+  }
+
   void _updateState(VoidCallback callback) {
     setState(callback);
   }
@@ -114,8 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Color get _deepSurfaceColor =>
       _isDarkMode ? AppColors.darkDeep : AppColors.deep;
 
-  Color get _goldColor =>
-      _isDarkMode ? AppColors.darkGold : AppColors.gold;
+  Color get _goldColor => _isDarkMode ? AppColors.darkGold : AppColors.gold;
 
   Color get _accentColor =>
       _isDarkMode ? AppColors.darkAccent : AppColors.accent;
@@ -127,20 +219,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _customMoodLabel = 'Mi propio estado';
   String _customMoodDetail = 'Una lectura a mi manera';
 
-
   List<Map<String, String>> get _favoriteQuotes =>
       ProfileDemoData.favoriteQuotes;
 
-  List<Map<String, String>> get _baseMoods =>
-      ProfileDemoData.baseMoods;
-
-  List<Map<String, String>> get _followers =>
-      ProfileDemoData.followers;
-
-  List<Map<String, String>> get _following =>
-      ProfileDemoData.following;
-
-  Set<String> get _blockedUsers => ProfileBlockedUsersStore.usernames;
+  List<Map<String, String>> get _baseMoods => ProfileDemoData.baseMoods;
 
   List<Map<String, String>> get _moods => [
     ..._baseMoods,
@@ -162,22 +244,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       widget.books.where((book) => widget.favorites.contains(book.id)).toList();
 
   List<Object> get _favoriteShelfItems => <Object>[
-        ..._favoriteBooks,
-        ...widget.favoriteCommunityStories,
-      ];
+    ..._favoriteBooks,
+    ...widget.favoriteCommunityStories,
+  ];
 
   int get _favoriteCount => _favoriteShelfItems.length;
 
   List<ReadingClub> get _joinedClubs => widget.clubs
       .where((club) => widget.joinedClubIds.contains(club.id))
       .toList();
-
-  int get _followerCount => _followers
-      .where((user) => !_blockedUsers.contains(user['user']))
-      .length;
-  int get _followingCount => _following
-      .where((user) => !_blockedUsers.contains(user['user']))
-      .length;
 
   int get _booksReadThisYear => _readBooks.length;
 
@@ -207,6 +282,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _buildHeader(),
             const SizedBox(height: 12),
             _buildMainProfileCard(),
+            if (widget.visitorAction != null) ...[
+              const SizedBox(height: 12),
+              widget.visitorAction!,
+            ],
+            if (_socialCountsLoading || _socialCountsError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 7),
+                child: Row(
+                  children: [
+                    if (_socialCountsLoading)
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    if (_socialCountsLoading) const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _socialCountsLoading
+                            ? 'Actualizando seguidores…'
+                            : _socialCountsError!,
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: _textSecondaryColor,
+                        ),
+                      ),
+                    ),
+                    if (_socialCountsError != null)
+                      TextButton(
+                        onPressed: _loadSocialCounts,
+                        child: const Text('Reintentar'),
+                      ),
+                  ],
+                ),
+              ),
             const SizedBox(height: 12),
             _buildReaderMoodCard(),
             const SizedBox(height: 12),
@@ -228,33 +338,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildHeader() {
-    return ProfileHeader(
-      onOpenSettings: widget.onOpenSettings,
-    );
+    if (widget.readOnly && widget.visitorHeader != null) {
+      return widget.visitorHeader!;
+    }
+    if (widget.readOnly) {
+      return Row(
+        children: [
+          Expanded(
+            child: Text(
+              'PERFIL LITERARIO',
+              style: GoogleFonts.cinzel(
+                color: _headingColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          Icon(
+            widget.visitorIsPrivate
+                ? Icons.lock_rounded
+                : Icons.lock_open_rounded,
+            size: 16,
+            color: _textSecondaryColor,
+          ),
+          const SizedBox(width: 16),
+        ],
+      );
+    }
+    return ProfileHeader(onOpenSettings: widget.onOpenSettings);
   }
 
-  Widget _buildMainProfileCard(){
+  Widget _buildMainProfileCard() {
     return ProfileMainCard(
       name: widget.name,
-      username: widget.username,
+      username: widget.readOnly
+          ? '@${widget.username.replaceFirst(RegExp(r'^@'), '')}'
+          : widget.username,
       biography: widget.biography,
       avatarUrl: widget.avatarUrl,
       createdAt: widget.createdAt,
-      moodEmoji: _currentMood['emoji']!,
-      readBooksCount: _readBooks.length,
-      followerCount: _followerCount,
-      followingCount: _followingCount,
-      onFollowersTap: () => _showSocialList(
-        'Seguidores',
-        _followers,
-      ),
-      onFollowingTap: () => _showSocialList(
-        'Siguiendo',
-        _following,
-      ),
+      moodEmoji: widget.readOnly ? null : _currentMood['emoji']!,
+      readBooksCount: widget.readOnly ? null : _readBooks.length,
+      // Nunca presentamos contadores ficticios mientras se consulta Neon.
+      followerCount: widget.readOnly ? widget.visitorFollowersCount : _socialCounts?.followersCount,
+      followingCount: widget.readOnly ? widget.visitorFollowingCount : _socialCounts?.followingCount,
+      onFollowersTap: widget.followRepository == null
+          ? null
+          : () => _openSocialList(0),
+      onFollowingTap: widget.followRepository == null
+          ? null
+          : () => _openSocialList(1),
     );
   }
-
 }
 
 class _ProfileBookDetailScreen extends StatefulWidget {

@@ -2,6 +2,34 @@ part of '../screens/profile_screen.dart';
 
 extension _ProfileMoodSection on _ProfileScreenState {
   Widget _buildReaderMoodCard() {
+    if (widget.readOnly) {
+      return _sectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('ESTADO LECTOR', style: GoogleFonts.cinzel(
+              color: _headingColor, fontSize: 10, fontWeight: FontWeight.w700,
+            )),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 14),
+              decoration: BoxDecoration(
+                color: _backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.gold.withValues(alpha: 0.35)),
+              ),
+              child: Text('Estado lector no disponible.',
+                style: GoogleFonts.merriweather(
+                  color: _textSecondaryColor, fontSize: 9,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return _sectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

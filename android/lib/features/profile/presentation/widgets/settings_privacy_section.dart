@@ -81,9 +81,9 @@ extension _SettingsPrivacySection on _SettingsScreenState {
 
         final description = makePrivate
             ? 'Tu cuenta será privada. Solo las personas que apruebes podrán '
-                'ver tu actividad completa y el contenido que decidas compartir.'
+                  'ver tu actividad completa y el contenido que decidas compartir.'
             : 'Tu cuenta será pública. Otras personas podrán ver la información '
-                'y actividad que tengas habilitada como visible en tu perfil.';
+                  'y actividad que tengas habilitada como visible en tu perfil.';
 
         final icon = makePrivate
             ? Icons.lock_outline_rounded
@@ -98,9 +98,7 @@ extension _SettingsPrivacySection on _SettingsScreenState {
             decoration: BoxDecoration(
               color: _background,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: _gold.withValues(alpha: 0.42),
-              ),
+              border: Border.all(color: _gold.withValues(alpha: 0.42)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.20),
@@ -118,15 +116,9 @@ extension _SettingsPrivacySection on _SettingsScreenState {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: _gold.withValues(alpha: 0.12),
-                    border: Border.all(
-                      color: _gold.withValues(alpha: 0.38),
-                    ),
+                    border: Border.all(color: _gold.withValues(alpha: 0.38)),
                   ),
-                  child: Icon(
-                    icon,
-                    color: _gold,
-                    size: 22,
-                  ),
+                  child: Icon(icon, color: _gold, size: 22),
                 ),
                 const SizedBox(height: 13),
                 Text(
@@ -163,8 +155,7 @@ extension _SettingsPrivacySection on _SettingsScreenState {
                             side: BorderSide(
                               color: _gold.withValues(alpha: 0.38),
                             ),
-                            backgroundColor:
-                                _surface.withValues(alpha: 0.48),
+                            backgroundColor: _surface.withValues(alpha: 0.48),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -218,20 +209,65 @@ extension _SettingsPrivacySection on _SettingsScreenState {
       return;
     }
 
-    ProfilePrivacyStore.isPrivate.value = makePrivate;
+    final repository = widget.accountRepository;
+
+    if (repository == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No pudimos conectar con el servicio de privacidad.'),
+        ),
+      );
+      return;
+    }
 
     _updateState(() {
       _privacyUpdating = true;
     });
 
-    await Future<void>.delayed(const Duration(seconds: 2));
+    try {
+      final updatedUser = await repository.updatePrivacy(
+        isPrivate: makePrivate,
+      );
 
-    if (!mounted) {
-      return;
+      if (!mounted) {
+        return;
+      }
+
+      // Actualizamos el estado visual solo cuando el backend confirma.
+      ProfilePrivacyStore.isPrivate.value = updatedUser.isPrivate;
+
+      // Sincronizamos el usuario actualizado con la sesión principal.
+      widget.onProfileUpdated?.call(updatedUser);
+
+      _updateState(() {
+        _privacyUpdating = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            updatedUser.isPrivate
+                ? 'Tu cuenta ahora es privada.'
+                : 'Tu cuenta ahora es pública.',
+          ),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      _updateState(() {
+        _privacyUpdating = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No pudimos actualizar la privacidad. Inténtalo nuevamente.',
+          ),
+        ),
+      );
     }
-
-    _updateState(() {
-      _privacyUpdating = false;
-    });
   }
 }
