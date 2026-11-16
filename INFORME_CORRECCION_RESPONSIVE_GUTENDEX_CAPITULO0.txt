@@ -1,0 +1,148 @@
+CAPÍTULO 0 — CORRECCIÓN RESPONSIVE CONTROLADA DE GUTENDEX
+Fecha: 2026-11-15
+Rama confirmada: feature/integraciones-biblioteca-perfil
+HEAD confirmado: 19225ab
+Estado: dos ajustes autorizados aplicados; pruebas locales sin fallos.
+
+1. INSPECCIÓN Y ESTADO PREVIO
+Se confirmó rama y HEAD y se ejecutó git status --short antes de editar.
+Ya existía una modificación versionada en home_screen.dart: la entrada visual
+de Gutenberg desarrollada en la intervención anterior. Se conservó intacta.
+Elementos no versionados preexistentes preservados:
+- ANALISIS_BUSQUEDA_LIBROS_USUARIOS_CAPITULO0.txt
+- AUDITORIA_CONTINUIDAD_CAPITULO0_POST_PR63.txt
+- INFORME_BLOQUE_4_1_GUTENDEX_CAPITULO0.txt
+- INFORME_INTEGRACION_NAVEGACION_GUTENDEX_CAPITULO0.txt
+- android/config/firebase_web.local.json.bak
+- android/lib/features/gutendex/
+- android/test/gutendex/
+- android/test/home_gutendex_navigation_test.dart
+- respaldos/
+No se leyeron credenciales ni contenidos de respaldos.
+Se leyó el último informe y se inspeccionaron ambos widgets y sus usos.
+Se registraron hashes SHA-256 de 18 archivos relevantes para comparar cambios.
+
+2. DIAGNÓSTICO DEL SELECTOR GUTENDEX
+DropdownButtonFormField<GutendexLanguage> no usaba isExpanded.
+Su contenido interno podía exigir más ancho que el disponible a 360 px;
+el diagnóstico previo identificó un overflow horizontal de 4,5 px.
+El selector contiene todos los elementos del menú, incluida la opción más larga.
+El ancho intrínseco de esos elementos no estaba adaptado al ancho del campo.
+
+Cambio mínimo:
+android/lib/features/gutendex/presentation/screens/gutendex_catalog_screen.dart
+Se añadió únicamente isExpanded: true al selector de idioma.
+Se mantuvieron opciones, etiquetas, estado, onChanged, búsqueda, idioma inicial,
+cancelación del debounce y reinicio de paginación. No se tocó controlador o cliente.
+Se verificó por hash que, al retirar esa única línea, el archivo coincide
+exactamente con su contenido anterior a esta intervención.
+
+3. DIAGNÓSTICO DEL TÍTULO COMPARTIDO
+HomeSectionTitle tenía un Text no flexible dentro de un Row, con softWrap=false
+y TextOverflow.visible, seguido por un espacio fijo de 9 px y un Expanded
+con separador, espacio de 5 px y estrella de 8 px.
+El Text podía ocupar su ancho intrínseco sin límite, superando el ancho del
+componente cuando la sección compartía una fila con un botón de acción.
+El diagnóstico previo registró un exceso de 59 px en ese Row.
+
+Usos comprobados mediante búsqueda del código:
+- Tu lectura, en ContinueReadingSection.
+- Lecturas Recomendadas, junto a controles de recomendaciones.
+- Clubes de Lectura Activos, junto a Ver todos.
+- Historias de la Comunidad, junto a Escribir.
+- Puntos Lectores Cercanos, en su sección de Inicio.
+No se encontraron usos adicionales en otras pantallas fuera de esos componentes.
+No se modificaron esos componentes consumidores, clubes ni Maps.
+
+Cambio:
+android/lib/features/home/presentation/widgets/home_section_title.dart
+Se añadió LayoutBuilder y un ConstrainedBox que limita el ancho máximo del Text
+al disponible menos los 22 px de espacios/estrella que ya existían (9 + 5 + 8).
+Se cambió TextOverflow.visible por TextOverflow.ellipsis.
+El texto conserva su ancho natural si cabe; no se le asigna una proporción fija
+del Row que lo recortaría innecesariamente en pantallas anchas.
+La elipsis solo actúa si el título supera el espacio máximo disponible.
+El resto sigue siendo el mismo Row con separador expandido y estrella.
+No cambiaron tipografía Cinzel, tamaño 11, peso, colores, márgenes, espacios,
+icono ni etiquetas. La reindentación del diff corresponde a los dos envoltorios;
+no se realizó una refactorización ni un formateo general del proyecto.
+
+4. CUATRO PRUEBAS DE NAVEGACIÓN — PRIMERA EJECUCIÓN REQUERIDA
+Comando: flutter test --no-pub test/home_gutendex_navigation_test.dart
+Resultado: 4 aprobadas, cero fallos, salida 0.
+Usuario simulado, 800x1000: aprobada.
+Usuario simulado, 360x640: aprobada.
+Invitado, 800x1000: aprobada.
+Invitado, 360x640: aprobada.
+Los recorridos existentes verifican entrada única, apertura, búsqueda Gutendex,
+ficha individual, regreso, buscador original y consulta Google Books posterior.
+Usan HTTP/JSON simulado y CatalogFake; no certifican servicios reales.
+No se modificaron las pruebas, sus expectativas ni los datos de los fixtures.
+No se añadió FlutterError.onError ni se suprimieron errores de renderizado.
+
+5. SUITE FLUTTER COMPLETA
+Comando: flutter test --no-pub
+Resultado real: 200 aprobadas, 1 omitida, cero fallos, salida 0.
+Los dos casos pequeños que antes fallaban ahora pasan sin cambiar tests.
+No hubo fallos de compilación ni fallos intermedios nuevos en esta intervención.
+La omitida es firebase_web_auth_test.dart, condicionada por skip: !kIsWeb.
+La suite incluye los filtros Gutendex español/inglés/todos, navegación, catálogo,
+paginación, errores, Google Books, buscador simultáneo, Biblioteca, Perfil
+sincronizado, registro lector, LEÍDO automático y autenticación con dobles.
+La prueba existente debounced search and language reset comprueba los cambios
+de idioma con el texto actual y el reinicio del cursor; no fue modificada.
+No se ampliaron ni relajaron las pruebas para obtener estos resultados.
+
+6. ANÁLISIS ESTÁTICO
+Comando: flutter analyze --no-pub
+Resultado: No issues found! (ran in 11.2s), salida 0.
+No se instalaron ni actualizaron dependencias.
+
+7. DIFF Y PRESERVACIÓN
+git diff --check: sin observaciones, salida 0.
+Se revisó el diff completo del título y el cambio de una línea del selector.
+El selector sigue sin seguimiento por ser parte del módulo creado anteriormente;
+por eso no aparece en el diff normal de archivos versionados.
+También se comprobó con git diff --no-index --check frente a /dev/null:
+sin diagnósticos de espacios. En ese modo salida 1 representa archivo nuevo.
+
+git diff --stat al cierre de código:
+home_screen.dart: 20 inserciones preexistentes, no modificadas aquí.
+home_section_title.dart: 39 inserciones y 29 eliminaciones.
+Total versionado: 2 archivos, 59 inserciones y 29 eliminaciones.
+La única diferencia NUEVA de esta tarea en archivos versionados es el título.
+La otra diferencia nueva es isExpanded en el catálogo sin seguimiento.
+El único archivo creado en esta intervención es este informe TXT.
+
+Comparación de los 18 hashes iniciales: exactamente dos archivos cambiados,
+los dos autorizados. Los otros 16 permanecieron idénticos, incluyendo HomeScreen,
+todas las pruebas Gutendex, el test de navegación y los cuatro informes previos.
+No se sobrescribió ningún informe anterior.
+
+8. CONFIRMACIÓN DE ALCANCE
+Se preservaron Google Books, sus modos/filtros/importación y el buscador simultáneo.
+Se preservaron Biblioteca, progreso, LEÍDO automático y sincronización con Perfil.
+No se modificaron Firebase Authentication, registro, username, perfiles,
+seguidores, privacidad, solicitudes, notificaciones, Maps, Writer o clubes.
+El cambio compartido se limita al título autorizado; no a sus consumidores.
+HomeScreen y la navegación Inicio -> Gutendex -> Inicio permanecen intactos.
+No se modificaron app.dart, main_shell_screen.dart, backend, Java, DTO, SQL,
+Flyway, Neon, Firebase, pubspec, lockfile ni configuraciones Android/Web.
+No se iniciaron servicios, migraciones ni conexiones a datos reales.
+No hubo commit, push, PR, cambio de rama, reset, clean ni eliminación de archivos.
+
+9. RIESGOS RESTANTES Y VALIDACIÓN MANUAL
+Las cuatro resoluciones/roles de navegación están comprobados con widgets,
+sin sustituir una revisión visual en dispositivos reales.
+Quedan pendientes Chrome, Android real, fuentes reales, claro/oscuro, teclado,
+escalado de texto y anchos extremos diferentes de los probados.
+En espacio insuficiente los títulos largos ahora terminan en elipsis: es el
+comportamiento responsive deliberado, sin cambiar el texto fuente ni su estilo.
+No se realizó comparación de capturas o prueba visual exhaustiva de cada título.
+Conectividad Gutendex, CORS y portadas reales siguen sin certificarse.
+No se implementaron lector, descarga, importación o persistencia Gutendex.
+No se inició Bloque 4.2.
+
+CRITERIO DE ACEPTACIÓN LOCAL CUMPLIDO: 4/4 pruebas de navegación aprobadas,
+incluidas 360x640, y suite completa sin regresiones ejecutadas.
+INTERVENCIÓN FINALIZADA. No realizar otras mejoras sin nueva autorización.

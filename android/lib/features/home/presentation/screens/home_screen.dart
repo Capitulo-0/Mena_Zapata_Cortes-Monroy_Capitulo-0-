@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../../catalog/data/catalog_repository.dart';
 import '../../../catalog/presentation/catalog_controller.dart';
+import '../../../gutendex/presentation/screens/gutendex_catalog_screen.dart';
 
 import 'dart:math';
 
@@ -201,6 +202,25 @@ class HomeScreenState extends State<HomeScreen> {
               },
             ),
             if (!searchSubmitted) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: OutlinedButton.icon(
+                  key: const ValueKey('home-gutendex-entry'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _textPrimary,
+                    backgroundColor: _surface,
+                    side: BorderSide(color: _gold.withValues(alpha: .55)),
+                    minimumSize: const Size(0, 44),
+                  ),
+                  icon: Icon(Icons.public, color: _gold),
+                  label: const Text('Catálogo Project Gutenberg'),
+                  onPressed: () => Navigator.of(context).push<void>(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const GutendexCatalogScreen(),
+                    ),
+                  ),
+                ),
+              ),
               HomeQuoteSection(quotes: quotes),
               _buildContinueReading(),
               if (_recommendations?.loading == true)
