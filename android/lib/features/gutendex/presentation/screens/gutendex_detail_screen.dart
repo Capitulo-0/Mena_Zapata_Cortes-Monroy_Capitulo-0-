@@ -237,6 +237,13 @@ class _GutendexDetailScreenState extends State<GutendexDetailScreen> {
                 ? 'Este libro no tiene una sinopsis disponible.'
                 : book.summaries.join('\n\n'), style: GoogleFonts.inter(
                   color: AppColors.textPrimaryOf(context), fontSize: 14, height: 1.7)),
+              if (book.summaries.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('Sinopsis original del proveedor; puede estar en otro idioma.',
+                  key: const ValueKey('gutendex-summary-language-note'),
+                  style: GoogleFonts.inter(
+                    color: AppColors.textSecondaryOf(context), fontSize: 12, height: 1.5)),
+              ],
               OutlinedButton.icon(
                 key: const ValueKey('gutendex-read-txt'),
                 onPressed: _openingTxt ? null : _openTxt,
