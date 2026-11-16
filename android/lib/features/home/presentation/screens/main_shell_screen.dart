@@ -113,6 +113,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   final GlobalKey<HomeScreenState> _homeKey = GlobalKey<HomeScreenState>();
   bool _headerCompact = false;
+
   int _unreadNotificationsCount = 0;
 
   Future<void> _refreshUnreadNotifications() async {
@@ -1401,6 +1402,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             isGuest: widget.isGuest,
             onScannerTap: _openHeaderScanner,
             onGeminiTap: _openHeaderGemini,
+
             onNotificationsTap: widget.isGuest ? null : _openNotifications,
             unreadNotificationsCount: _unreadNotificationsCount,
           ),
