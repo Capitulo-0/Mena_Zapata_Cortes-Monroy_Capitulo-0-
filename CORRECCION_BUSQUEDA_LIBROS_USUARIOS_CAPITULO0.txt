@@ -1,0 +1,196 @@
+CAPÍTULO 0 — CORRECCIÓN DE BÚSQUEDA DE LIBROS Y USUARIOS
+Fecha: 2026-11-15
+Rama: feature/integraciones-biblioteca-perfil
+Commit de partida y de cierre: 4e0b28a
+Título: fix: autocompletar progreso al marcar libros como leidos
+Estado: corrección implementada localmente, sin commit ni push.
+
+1. COMPROBACIONES ANTES DE EDITAR
+
+Se confirmó rama y commit esperados y se ejecutó git status --short.
+No había archivos versionados modificados.
+Archivos locales no versionados existentes:
+- ANALISIS_BUSQUEDA_LIBROS_USUARIOS_CAPITULO0.txt, raíz.
+- AUDITORIA_CONTINUIDAD_CAPITULO0_POST_PR63.txt, raíz.
+- android/config/firebase_web.local.json.bak.
+- respaldos/, raíz.
+
+Se preservaron todos. No se abrieron configuración privada ni respaldos.
+Se leyó el informe de análisis y se inspeccionaron el widget real, sus pruebas, CatalogController, CatalogFake y el modelo UserSearchResult para verificar compatibilidad.
+No se repitió una auditoría general ni se inició ningún servicio.
+
+2. CAUSA ORIGINAL
+
+home_search_section.dart buscaba usuarios antes que libros.
+_searchUsersFirst solo iniciaba Google Books cuando usuarios devolvía una lista vacía. Una coincidencia de usuario o un fallo de ese servicio impedía consultar libros.
+_buildUniversalResults elegía una sola categoría; las cargas y errores de usuarios también reemplazaban el contenido literario.
+Las sugerencias repetían el mismo patrón excluyente en _loadPreview y _buildSearchPreview.
+El botón Más resultados y _loadMoreBooks dependían del estado de usuarios.
+El renderizado de libros ocultaba resultados previamente cargados si había error de paginación.
+CatalogController captura los fallos y los guarda en .error; no basta con capturar excepciones en el widget.
+
+3. ARCHIVOS MODIFICADOS
+
+Único archivo de producción:
+android/lib/features/home/presentation/widgets/home_search_section.dart
+
+Pruebas:
+android/test/catalog_widgets_test.dart
+
+Único archivo adicional creado:
+CORRECCION_BUSQUEDA_LIBROS_USUARIOS_CAPITULO0.txt, raíz del repositorio.
+
+No se cambiaron interfaces públicas, repositorios, controladores, APIs ni contratos de datos.
+
+4. SOLUCIÓN EXACTA
+
+Búsqueda general:
+- _search inicia libros y usuarios de forma independiente, sin esperar que termine uno para iniciar el otro.
+- Se reemplaza _searchUsersFirst por una consulta de usuarios que solo administra sus propios datos, carga y error.
+- _buildUniversalResults compone la sección de libros y la de usuarios; no selecciona una para ocultar la otra.
+- Se conserva el botón Volver de libros y se retira el duplicado de la sección de usuarios.
+- Se conservan filas de usuario, tarjetas literarias, estilos existentes y callbacks de navegación.
+
+Filtros:
+- _searchesUsers aplica el criterio actual de repositorio disponible y ausencia de filtros literarios.
+- Texto libre general consulta ambos servicios.
+- Título, autor, ISBN, género y orden literario mantienen búsqueda exclusivamente de libros.
+- No se modificaron la construcción de consultas, el filtrado local ni el ordenamiento.
+
+Errores y reintentos:
+- Usuarios tiene su indicador, error y reintento propio.
+- Libros interpreta también CatalogController.error.
+- Reintentar usuarios no consulta ni limpia libros.
+- Reintentar libros no consulta ni limpia usuarios.
+- No se muestran contadores vacíos durante carga ni después de un error como si fuera una respuesta válida.
+- Los errores se presentan dentro de la sección correspondiente.
+
+Sugerencias:
+- Se mantiene el temporizador de 400 ms.
+- Al vencer el debounce se inicia la consulta de libros y, en búsqueda general, la de usuarios de forma independiente.
+- Se conserva una tarjeta de sugerencia literaria y se permite mostrar al mismo tiempo las filas de usuarios.
+- La carga y el error de sugerencias de usuarios se separan del catálogo de sugerencias.
+- Los reintentos consultan solo el servicio fallido.
+- El texto de vacío de sugerencias literarias menciona libros para no comunicar un vacío global mientras usuarios tiene resultados.
+
+Paginación:
+- Más resultados y _loadMoreBooks ya no dependen de carga, error o coincidencias de usuarios.
+- Se conserva CatalogController.more(), su cursor y deduplicación por Google Volume ID.
+- Si una página adicional falla, las tarjetas ya cargadas permanecen visibles.
+- El reintento usa more() mientras exista cursor; si falló la consulta inicial, repite esa búsqueda de libros.
+- No se mezcla el catálogo de sugerencias con el cursor de resultados.
+
+Respuestas obsoletas:
+- Se conservan generaciones independientes de resultados y sugerencias, además de las del controlador existente.
+- Éxito, error y finalización de carga comprueban mounted y generación vigente.
+- Cambiar texto, limpiar o volver invalida las consultas anteriores.
+- Los reintentos operan sobre el contexto de búsqueda vigente.
+- No se introdujo cancelación HTTP; se descartan lógicamente respuestas antiguas.
+
+Búsqueda local:
+- Sin repositorio remoto de catálogo se conserva el filtrado local y la sugerencia local.
+- Puede convivir con consulta de usuarios, sin impedir mostrar libros locales.
+
+5. PRUEBAS NUEVAS
+
+Se añadieron 21 pruebas parametrizadas y auxiliares con repositorios falsos y Completer, dentro del archivo autorizado, sin modificar los tests anteriores.
+
+Cobertura:
+- Usuarios y libros simultáneos en ambos órdenes de llegada.
+- Resultados visibles mientras la otra categoría todavía carga.
+- Error de usuarios con libros válidos y caso inverso.
+- Reintentos independientes: se comprueba que la categoría exitosa no se vuelve a consultar ni desaparece.
+- Paginación con usuarios visibles, cargando y fallidos.
+- Error de página que conserva libros; reintento con el mismo cursor y deduplicación.
+- Sugerencias de ambas categorías, debounce 399/400 ms y callbacks de libro/perfil.
+- Error y reintento independientes en sugerencias, en ambos sentidos.
+- Resultados y errores tardíos de búsquedas y sugerencias descartados al escribir otra consulta.
+- Página antigua descartada después de una búsqueda nueva.
+- Título, autor e ISBN conservan parámetros y excluyen usuarios.
+- Género filtra libros y excluye usuarios; orden por fecha conserva orden y excluye usuarios.
+- Vacíos solo después de cada respuesta válida.
+- Volver invalida ambas consultas pendientes y conserva el callback de salida.
+- Búsqueda y sugerencias locales conviven con usuarios.
+- Los tests anteriores siguen verificando ficha, importación, recuperación de Inicio, filtros y fallos existentes.
+
+La navegación nueva se verifica mediante callbacks; las pruebas anteriores de ficha/importación permanecen ejecutadas. No se declara una prueba nueva de extremo a extremo contra perfiles reales.
+
+6. EJECUCIONES Y RESULTADOS REALES
+
+Intentos previos registrados:
+- El primer intento de escritura se detuvo antes de escribir porque el transporte PowerShell alteró acentos. Se reintentó con UTF-8 explícito; no se modificó configuración del proyecto.
+- Primera ejecución de catálogo: fallo de compilación por un separador faltante en una lista de widgets del cambio nuevo. Corregido dentro del widget autorizado.
+- Siguiente ejecución: 37 aprobadas, 2 fallidas. Los dos tests nuevos de género/orden intentaban pulsar opciones sin abrir el submenú o control correspondiente. Se corrigió la interacción de las pruebas, sin cambiar los filtros de producción.
+No se ocultaron ni omitieron esos fallos.
+
+Ejecución final de catálogo:
+flutter test --no-pub test/catalog_widgets_test.dart test/catalog_test.dart
+Resultado: 41 pruebas aprobadas, cero fallos, salida 0.
+
+Regresión completa:
+flutter test --no-pub
+Resultado: 150 aprobadas, 1 omitida, cero fallos, salida 0.
+La omitida es firebase_web_auth_test.dart, condicionada por skip: !kIsWeb.
+La suite ejecutó las pruebas existentes de autenticación con dobles, biblioteca, repositorios, flujo lector, sincronización con Perfil, portadas, catálogo y corrección de LEÍDO automático.
+Esto acredita la suite local, no todos los servicios ni todas las funcionalidades sociales.
+
+Análisis:
+flutter analyze --no-pub
+Resultado: No issues found! (ran in 9.6s), salida 0.
+
+No se instalaron ni actualizaron dependencias.
+No se iniciaron Spring Boot, Firebase ni Neon. No se ejecutaron migraciones ni se utilizaron datos reales.
+
+7. DIFF Y CONTROL DE ALCANCE
+
+Se inspeccionaron el diff de producción y el diff completo de pruebas.
+git diff --check: sin observaciones, salida 0.
+
+git diff --stat:
+home_search_section.dart | 296 líneas afectadas
+catalog_widgets_test.dart | 366 inserciones
+Total: 2 archivos, 495 inserciones y 167 eliminaciones.
+El TXT nuevo no aparece en el diff de archivos versionados mientras siga sin seguimiento.
+
+git diff --name-only mostró únicamente:
+android/lib/features/home/presentation/widgets/home_search_section.dart
+android/test/catalog_widgets_test.dart
+
+Rama y commit permanecen en feature/integraciones-biblioteca-perfil y 4e0b28a.
+No se hizo git add, commit, push, merge, PR, cambio de rama ni operación destructiva.
+No se formatearon indiscriminadamente archivos completos.
+
+8. FUNCIONALIDADES PROTEGIDAS
+
+No se modificaron autenticación, registro, verificación, usernames, perfil propio/externo, privacidad, seguidores, solicitudes, notificaciones, biblioteca, estado lector ni corrección de LEÍDO.
+Tampoco Java, SQL, Flyway, Firebase, Neon, repositorios Google Books, Maps, Writer, clubes, dependencias ni configuraciones Android/Web.
+El único cambio de producto es la orquestación y presentación del buscador autorizado.
+Los tests de regresión no presentaron fallos finales; esto no sustituye una validación manual exhaustiva de cada módulo protegido.
+
+9. COMPROBACIONES MANUALES PENDIENTES
+
+En un entorno autorizado posteriormente:
+- Buscar un término que coincida con libros y usernames; comprobar ambas secciones.
+- Simular lentitud o fallo de cada servicio por separado y verificar resultados/reintentos.
+- Revisar sugerencias de libros/usuarios y navegación real a ficha/perfil.
+- Revisar texto, título, autor, ISBN, género, orden y Más resultados.
+- Cambiar rápidamente consulta, limpiar, volver y comprobar recuperación de Inicio.
+- Revisar composición visual, teclado, scroll, claro/oscuro y tamaños pequeños Android/Web.
+- Validar búsqueda con servicios reales y cuotas, sin confundir los dobles con conectividad externa.
+
+No se ejecutó build, navegador real ni dispositivo Android. La prueba Web omitida no se ejecutó en Chrome.
+
+10. RIESGOS Y LIMITACIONES CONOCIDAS
+
+- La búsqueda general ahora realiza dos consultas independientes: revisar latencia/cuotas en validación real.
+- Las peticiones antiguas se descartan al responder, pero no se cancelan en la red.
+- Género y orden siguen trabajando sobre libros cargados, sin convertirse en filtros globales del proveedor.
+- La búsqueda de usuarios conserva el límite y comportamiento del repositorio/backend actual; no se añadió paginación de usuarios.
+- Mostrar ambas categorías añade contenido vertical usando componentes existentes; falta revisar scroll y teclado reales.
+- El reporte de pruebas no acredita el estado de Neon, Firebase ni Google Books en producción.
+
+CRITERIO DE ACEPTACIÓN LOCAL
+Los tests verifican que libros y usuarios se consultan y aparecen independientemente en búsqueda general, con errores/reintentos separados, sugerencias simultáneas y paginación conservada.
+Validación manual externa pendiente.
+
+TAREA FINALIZADA. No iniciar otros bloques o correcciones sin nueva autorización.

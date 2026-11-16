@@ -1,0 +1,290 @@
+CAPÍTULO 0 — BLOQUE 4.2A: BASE DEL LECTOR REAL INDEPENDIENTE
+Fecha: 2026-11-15
+Rama inicial y final: feature/integraciones-biblioteca-perfil
+HEAD inicial y final: 76b82b6750a4de954797f4c937ed41e5de5c4d29
+
+1. ESTADO INICIAL Y RECUPERACIÓN
+Antes de editar se comprobaron rama, commit y git status --short.
+HEAD coincide con 76b82b6; no había modificaciones versionadas.
+Elementos no versionados preexistentes preservados:
+- ANALISIS_BUSQUEDA_LIBROS_USUARIOS_CAPITULO0.txt
+- AUDITORIA_CONTINUIDAD_CAPITULO0_POST_PR63.txt
+- android/config/firebase_web.local.json.bak
+- respaldos/
+No se abrieron configuración privada ni respaldos.
+La búsqueda de AGENTS.md en el repositorio no devolvió archivos.
+
+Documentos consultados prioritariamente:
+- INFORME_OPTIMIZACION_GUTENDEX_CAPITULO0.txt
+- INFORME_AJUSTE_VISUAL_GUTENDEX_CAPITULO0.txt
+- INFORME_BLOQUE_4_1_GUTENDEX_CAPITULO0.txt
+- AUDITORIA_CONTINUIDAD_CAPITULO0_POST_PR63.txt
+Sus resultados históricos se trataron como antecedentes, no como pruebas nuevas.
+
+Inspección específica: SimulatedReaderScreen, módulo/modelos Gutendex,
+LibraryBook, BookStatus, ReadingRecord, AppColors, pubspec.yaml y el soporte
+existente de fuentes locales para pruebas. No se rehízo Gutendex ni se amplió
+la auditoría a otros módulos.
+El lector simulado conserva sus cuatro páginas y sus callbacks originales.
+El nuevo lector no lo utiliza ni lo sustituye.
+Las dependencias disponibles incluyen Flutter, Google Fonts, HTTP y
+SharedPreferences. Solo se reutilizan Flutter y Google Fonts para este módulo;
+no se agregan paquetes.
+
+2. ARQUITECTURA
+Módulo independiente: android/lib/features/reader/
+ReaderSource recibe texto String o bytes UTF-8 suministrados por el llamador,
+con título/autor opcionales. No recibe URL ni descarga contenido.
+ReaderDocument valida y divide el texto en bloques técnicos contiguos,
+con offsets originales. No crea capítulos ni páginas editoriales.
+ReaderLayout mide bloques mediante TextPainter en lotes cortos y conserva
+alturas y offsets para el scroll y los anclajes.
+TextReaderScreen organiza la lectura con ListView.builder, elementos de
+altura medida, tipografía Merriweather, cabecera Cinzel, AppColors adaptativos,
+controles de tamaño, posición local y regreso mediante Navigator.
+
+API mínima preparada para un llamador FUTURO autorizado:
+TextReaderScreen(
+  source: ReaderSource.text(contenidoAutorizado, title: titulo, author: autor),
+)
+O bien:
+ReaderSource.utf8(bytesAutorizados, title: titulo, author: autor)
+
+No hay entrada desde Inicio, Biblioteca ni Gutendex en esta etapa.
+El módulo está ejercitado directamente por sus pruebas, sin cambiar app.dart.
+
+3. ARCHIVOS CREADOS
+Producción:
+- android/lib/features/reader/models/reader_document.dart
+- android/lib/features/reader/presentation/reader_layout.dart
+- android/lib/features/reader/presentation/screens/text_reader_screen.dart
+Pruebas:
+- android/test/reader/reader_document_test.dart
+- android/test/reader/reader_layout_test.dart
+- android/test/reader/text_reader_screen_test.dart
+Informe:
+- INFORME_BLOQUE_4_2A_LECTOR_CAPITULO0.txt
+Ningún archivo previo fue modificado o sobrescrito.
+
+4. FUNCIONALIDADES IMPLEMENTADAS
+- Representación del contenido textual completo recibido, dentro de los límites.
+- Título y autor opcionales; si no hay título, encabezado neutro Lectura.
+- Scroll vertical real sobre el texto recibido.
+- Tamaño de letra entre 14 y 30, incrementos de 2 y botones acotados.
+- Crema/café/dorado y tema oscuro mediante AppColors existentes.
+- Respeto del escalado de texto de accesibilidad.
+- Posición temporal dentro de la ruta; se mantiene al cubrir y volver a la ruta.
+- Reanclaje textual al cambiar tamaño, ancho, dirección o escala de texto.
+- Cambio de contenido reinicia posición y ajustes locales.
+- Regreso a la pantalla anterior; cerrar y reabrir empieza desde el inicio.
+- Mensajes comprensibles para vacío, Unicode/UTF-8 inválido, exceso de tamaño
+  y problemas de preparación/disposición, con reintento.
+- Cancelación cooperativa y descarte de tareas anteriores al cambiar contenido
+  o eliminar la pantalla.
+No se incorporaron textos de muestra a producción: los textos sintéticos
+existen exclusivamente en test/reader/.
+
+5. FORMATOS, MEMORIA Y LIMITACIONES
+Soportado: texto plano String Unicode válido o bytes UTF-8 estrictos.
+Se preservan texto, espacios y saltos de línea, sin recortes, traducción,
+eliminación automática de cabeceras ni sustitución de bytes inválidos.
+El decodificador UTF-8 estándar reconoce el BOM inicial.
+No se interpretan HTML, EPUB, PDF, imágenes, scripts ni recursos externos.
+Si se pasa markup como String se muestra literalmente, no como un documento HTML.
+
+Límites de esta versión:
+- Entrada de bytes: máximo 8 MiB (8.388.608 bytes).
+- Texto decodificado/String: máximo 2.097.152 unidades UTF-16.
+- Bloques de hasta 1.200 unidades, prefiriendo fronteras de espacios y
+  evitando partir pares sustitutos Unicode.
+- Validación y decodificación por lotes; disposición cada cuatro bloques
+  devuelve el control al bucle de eventos.
+- Widgets de texto solo para la zona visible y su caché próxima.
+Se evita un único Text gigante y una Column de toda la obra.
+El texto y sus bloques residen en memoria, además de métricas de disposición;
+no es un lector de streaming de tamaño ilimitado.
+ReaderSource.utf8 toma una copia inmutable de los bytes del llamador antes
+de prepararlos: el límite no impide que el llamador ya haya creado un buffer grande.
+Un archivo extenso puede necesitar espera inicial de preparación y recálculo
+al cambiar letra. No se midió FPS ni memoria en dispositivos reales.
+Un bloque técnico puede cortar una palabra excepcionalmente larga o un grupo
+de grafemas complejo; no elimina datos y nunca parte un par sustituto.
+
+Merriweather/Cinzel utilizan el mecanismo Google Fonts que ya tiene la app.
+Se espera su disponibilidad antes de medir el cuerpo para mantener coherencia
+entre medidas y renderizado. No se añadió un sistema de fuentes offline.
+Las pruebas usan fuentes locales del SDK con el helper existente, no descargas.
+
+6. REPRESENTACIÓN DE POSICIÓN
+La interfaz muestra Posición: N de L.
+L es la longitud real del texto suministrado en unidades UTF-16, incluyendo
+espacios y saltos de línea. N es 1 + el offset del inicio de la línea que
+intersecta la parte superior del área de lectura, obtenido mediante TextPainter.
+No representa número de página, capítulo, grafema ni carácter visible individual.
+La ubicación se actualiza al desplazarse, puede avanzar o retroceder y no
+equivale a comprensión o lectura completada. No se usa porcentaje.
+Al final del scroll puede seguir indicando el inicio de la última zona visible,
+en lugar de fingir que el usuario completó todo el texto.
+La restauración conserva ese anclaje textual, con ajuste a una línea según
+la nueva disposición y al máximo desplazamiento permitido cerca del final.
+No hay conversión a páginas editoriales, BookStatus ni ReadingRecord.
+No se marca LEIDO ni se modifica el progreso de Biblioteca.
+
+7. PRUEBAS EJECUTADAS — RESULTADOS REALES
+Se añadieron 24 pruebas, sin modificar ninguna prueba anterior.
+
+ReaderDocument (10):
+- Texto suministrado íntegro, español, tildes, ñ, ü, signos, saltos y emoji.
+- UTF-8 con un punto de código que cruza el límite de un lote.
+- Copia inmutable de bytes.
+- Vacío y solo espacios.
+- UTF-8 inválido/truncado y sustitutos UTF-16 inválidos.
+- Texto largo sin espacios, reconstrucción completa y pares Unicode intactos.
+- Límites de tamaño y cancelación cooperativa.
+
+ReaderLayout (2):
+- Anclaje textual entre anchos 260/660 y letras 14/30 con escala 2.
+- Cancelación de la medición por lotes.
+
+TextReaderScreen (12):
+- Texto recibido, título/autor y metadatos ausentes.
+- Bytes UTF-8 y errores visibles con reintento.
+- Aproximadamente 100.000 unidades de texto sintético; pocas instancias Text,
+  scroll hasta un marcador final real y ajuste de letra sin volver al inicio.
+- Tamaño mínimo/máximo y disminución.
+- Claro/oscuro en 360x640 y 800x1000, escala de texto 2 y títulos/autores largos.
+- Ausencia de overflow en esos casos.
+- Sustitución de documento y eliminación de trabajo pendiente.
+- Regreso, ruta cubierta y reabierta, conservación y descarte de posición.
+
+Secuencia de ejecuciones:
+A) flutter test --no-pub test/reader:
+   20 aprobadas, 2 fallidas. Fallos de interacción en tests nuevos: selector
+   tooltip/IconButton y pantalla superpuesta del test sin AppBar de regreso.
+   Se corrigieron ambos tests, sin ocultar errores de producción.
+B) Mismo comando:
+   22 aprobadas, 0 fallos.
+C) Se añadieron dos pruebas ReaderLayout y se corrigió un aviso de estilo del test.
+   Primera suite completa flutter test --no-pub:
+   232 aprobadas, 1 omitida, 1 fallida.
+   El fallo nuevo reveló un offset de caret negativo por métricas de fuente
+   al inicio del bloque. Se acotó el offset al bloque en ReaderLayout.
+D) flutter test --no-pub test/reader/reader_layout_test.dart:
+   2 aprobadas, 0 fallos.
+E) SUITE COMPLETA FINAL flutter test --no-pub:
+   233 aprobadas, 1 omitida, 0 fallos, salida 0. All tests passed.
+   Incluye las 209 existentes y las 24 nuevas.
+Omitida: firebase_web_auth_test.dart, condicionada por skip: !kIsWeb.
+No se modificó esa condición ni se ejecutó la prueba omitida en Chrome.
+
+No existe almacenamiento asociado a una cuenta: no se añade estado estático,
+SharedPreferences ni repositorio de sesión. El requisito condicional de limpieza
+de datos por logout no se implementa en Firebase ni en el shell protegido.
+Se verifica destrucción de ruta y apertura fresca; no se afirma que una futura
+integración ya cierre el lector al cambiar de cuenta.
+El llamador futuro deberá cerrar la ruta y descartar su fuente al terminar
+la sesión si incorpora contenido privado. No hay borrado seguro de memoria.
+
+8. FLUTTER ANALYZE
+Primera ejecución: un aviso prefer_interpolation_to_compose_strings en un test
+nuevo. Corregido sin cambiar dependencias o código ajeno.
+Ejecución intermedia: No issues found! (7.3s), salida 0.
+Ejecución FINAL: flutter analyze --no-pub
+No issues found! (ran in 8.1s), salida 0.
+
+9. CONTROL DE CAMBIOS Y AUSENCIA DE REGRESIONES
+git diff --check: sin observaciones, salida 0.
+git diff --name-only y git diff --stat: vacíos, porque solo hay archivos nuevos.
+También se comprobó cada Dart nuevo mediante git diff --no-index --check
+contra /dev/null, sin diagnósticos de espacios; salida 1 indica archivo nuevo.
+Se inventariaron los seis Dart nuevos y este TXT.
+La comparación SHA-256 de los archivos versionados y los informes previos
+capturados al comienzo confirmó que permanecen idénticos.
+El inventario de estado inicial se conserva, con las dos carpetas nuevas y el TXT.
+No se realizó git add, commit, push, PR, cambio de rama, pull, merge, reset o clean.
+No se eliminaron archivos ni respaldos.
+
+La suite final conserva Google Books, buscador simultáneo, Gutendex, filtros,
+paginación, fichas, reintentos y navegación desde Inicio en ambos tamaños.
+Conserva Biblioteca, progreso, LEIDO automático, registro lector, aislamiento
+por cuenta y sincronización existente con Perfil mediante dobles.
+Esto acredita las regresiones automatizadas, no servicios externos reales.
+
+10. PROPUESTA CONCRETA DE CONEXIÓN A GUTENDEX — NO APLICADA
+Archivo existente que requeriría autorización posterior:
+android/lib/features/gutendex/presentation/screens/gutendex_detail_screen.dart
+
+Cambio mínimo propuesto, solo cuando exista contenido autorizado:
+- Importar ReaderSource y TextReaderScreen.
+- Añadir un parámetro opcional ReaderSource? readingSource a la ficha.
+- Mostrar un botón Leer texto únicamente cuando readingSource no sea null.
+- En su callback ejecutar Navigator.push con TextReaderScreen(source: readingSource).
+- Añadir prueba ficha -> lector -> ficha conservando metadatos y estado.
+El contrato del llamador debe asegurar que readingSource corresponde a la misma
+obra/edición y que los derechos y la procedencia fueron verificados.
+La ficha actual NO tiene tal parámetro ni botón; no se modificó.
+Obtener readingSource desde un archivo o servicio requiere una tarea autorizada
+separada. Pasar solo la sinopsis no constituye contenido completo.
+No se propone tocar Inicio, shell, Biblioteca o backend para esta primera conexión.
+
+11. FUENTE RECOMENDADA Y CONDICIONES — SOLO PROPUESTA
+Primera fuente recomendada: un .txt UTF-8 suministrado por el titular del texto,
+con autorización expresa de lectura en la app, o una obra propia cuyo titular
+autorice esta utilización. Confirmar licencia, atribución, edición y alcance
+antes de incorporarla. No se incluye una obra concreta ni un archivo literario
+externo en esta entrega. No requiere una biblioteca nueva para renderizarlo;
+la forma de seleccionar/cargar archivos aún no está implementada.
+
+Como opción futura ligada al catálogo: evaluar texto plano UTF-8 de una obra
+Project Gutenberg con autorización y derechos verificados por obra/territorio.
+Documentación oficial consultada, sin descargar libros:
+https://www.gutenberg.org/policy/permission.html
+https://www.gutenberg.org/policy/robot_access.html
+
+La documentación de permisos distingue dominio público estadounidense de
+otros territorios y señala condiciones en cada obra y para el uso de su marca.
+Recomienda enlaces a la ficha de la obra, no asumir enlaces profundos estables.
+La política de acceso automatizado limita robots y documenta excepciones
+específicas; no constituye autorización general para descargar desde la app.
+Por ello, la propuesta técnica inicial es contenido suministrado legítimamente,
+sin scraping, WebView, evasión de bloqueos ni descargas automáticas.
+Antes de cualquier conector: autorización explícita del alcance y comprobación
+de licencia, método de acceso permitido, UTF-8, tamaño, MIME, HTTPS y CORS Web.
+No se resolvieron ni alteraron HTTP 522, timeout o CORS de Gutenberg/Gutendex.
+
+12. PENDIENTES PARA OBRAS COMPLETAS REALES
+- Elegir una fuente y una obra/edición con derechos documentados.
+- Autorizar y construir el mecanismo de suministro de contenido.
+- Verificar codificación y tamaño, conservar avisos/licencia y metadatos.
+- Autorizar conexión mínima con ficha y validar identidad de edición.
+- Probar archivos completos reales en Chrome/Android y medir memoria/fluidez.
+- Revisar casos extremos de texto bidireccional, grafemas, selección,
+  anotaciones e imágenes si se solicitan en otra etapa.
+- HTML/EPUB requieren revisión de sanitización/renderizado y dependencias.
+No se implementó lector EPUB, descarga, importación ni almacenamiento offline.
+
+13. REQUISITOS FUTUROS PARA PROGRESO EN NEON
+Definir identidad estable de obra/proveedor y edición/hash de contenido.
+Definir versión del texto, anclaje textual y política ante cambios de edición,
+aislamiento por cuenta, permisos, conflictos y sincronización.
+Separar posición textual de páginas editoriales y de estados de Biblioteca.
+Aprobar contrato backend, API, pruebas, migración nueva y cambios Flutter
+antes de implementarlos. No se propone reutilizar automáticamente el 100%
+de scroll como LEIDO ni modificar ahora el contrato ReadingRecord.
+Nada se guardó en Neon y no se realizaron conexiones externas de cuenta.
+
+14. CONFIRMACIÓN DE ALCANCE Y CIERRE
+Se preservaron lector simulado, Inicio, main_shell_screen.dart, app.dart,
+Google Books, buscador simultáneo, Biblioteca y repositorios, LEIDO automático,
+Gutendex Repository/Controller/modelos/pantallas, Perfil, Firebase, módulos
+sociales, Maps, Writer, clubes, Spring Boot, Neon, Flyway y configuraciones.
+Sin nuevas dependencias, permisos Android, cambios de CORS ni seguridad.
+No se iniciaron servicios, instalaron bibliotecas ni ejecutaron migraciones.
+Las pruebas del nuevo lector usan texto sintético creado exclusivamente para tests.
+No se ejecutó un build, navegador real o dispositivo Android; la compatibilidad
+se apoya en APIs Flutter multiplataforma y pruebas locales, sin certificación
+de rendimiento o empaquetado en plataformas reales.
+
+ENTREGA: lector independiente funcional con texto de entrada y pruebas aprobadas.
+NO permite todavía abrir obras completas desde Gutendex: faltan fuente autorizada
+e integración. No se continuó con etapas adicionales.

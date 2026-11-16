@@ -1,0 +1,181 @@
+CAPÍTULO 0 — OPTIMIZACIÓN CONTROLADA DE GUTENDEX
+Fecha: 2026-11-15
+Rama: feature/integraciones-biblioteca-perfil
+HEAD inicial confirmado: 19225abd7a476cbc9984d3f56ee176e2accadf58
+Sin commit, push, PR ni inicio del Bloque 4.2.
+
+1. CONTEXTO Y ESTADO INICIAL
+Se leyó primero INFORME_AJUSTE_VISUAL_GUTENDEX_CAPITULO0.txt y se comprobaron
+rama, HEAD y git status --short antes de editar. Coinciden con lo esperado.
+Se inspeccionaron catálogo, ficha, modelos, repositorio y pruebas Gutendex,
+además de las expectativas del test de navegación desde Inicio (solo lectura).
+El diseño literario y el ajuste isExpanded: true ya existían y se conservaron.
+
+Cambios versionados preexistentes, no modificados aquí:
+- android/lib/features/home/presentation/screens/home_screen.dart
+- android/lib/features/home/presentation/widgets/home_section_title.dart
+
+Sin seguimiento preexistente, preservado:
+- ANALISIS_BUSQUEDA_LIBROS_USUARIOS_CAPITULO0.txt
+- AUDITORIA_CONTINUIDAD_CAPITULO0_POST_PR63.txt
+- INFORME_AJUSTE_VISUAL_GUTENDEX_CAPITULO0.txt
+- INFORME_BLOQUE_4_1_GUTENDEX_CAPITULO0.txt
+- INFORME_CORRECCION_RESPONSIVE_GUTENDEX_CAPITULO0.txt
+- INFORME_INTEGRACION_NAVEGACION_GUTENDEX_CAPITULO0.txt
+- android/config/firebase_web.local.json.bak
+- android/lib/features/gutendex/
+- android/test/gutendex/
+- android/test/home_gutendex_navigation_test.dart
+- respaldos/
+No se abrieron credenciales ni respaldos ni se sobrescribieron informes.
+
+2. DIAGNÓSTICO
+El catálogo ya deserializa cada resultado como GutendexBook con título, autores,
+idiomas, sinopsis, formatos y otros metadatos cuando el proveedor los entrega.
+Sin embargo, al abrir la ficha solo pasaba bookId y repository.
+La ficha iniciaba detail(bookId) en initState y un FutureBuilder sustituía
+todo el contenido por un indicador hasta que terminaba la segunda solicitud.
+Un fallo mostraba únicamente error y reintento, perdiendo visualmente datos
+que ya estaban disponibles en el catálogo.
+El repositorio conserva timeout de 15 segundos y validación de ID/URLs.
+No se atribuye HTTP 522 a Flutter ni se declara corregida la red externa.
+
+3. ARCHIVOS DE ESTA INTERVENCIÓN
+Modificados:
+- android/lib/features/gutendex/presentation/screens/gutendex_catalog_screen.dart
+- android/lib/features/gutendex/presentation/screens/gutendex_detail_screen.dart
+- android/test/gutendex/gutendex_widgets_test.dart
+
+Nuevos:
+- android/test/gutendex/gutendex_detail_optimization_test.dart
+- INFORME_OPTIMIZACION_GUTENDEX_CAPITULO0.txt (este informe).
+
+No se modificaron modelos, controlador ni repositorio HTTP.
+
+4. SOLUCIÓN IMPLEMENTADA
+El catálogo pasa initialBook: book junto al ID del libro seleccionado.
+La ficha acepta ese parámetro opcional y solo lo utiliza si coincide su ID.
+Desde el primer renderizado dispone de los metadatos del catálogo, conservando
+portada, autores, sinopsis y formatos mediante los mismos widgets existentes.
+Esto no evita que una portada remota tarde o falle: su carga de imagen sigue igual.
+
+La ficha mantiene una actualización inicial por ID, ahora en segundo plano.
+Se conserva para revalidar/completar metadatos sin inferir que el catálogo está
+actualizado o que un campo ausente necesariamente existe en el detalle.
+No se eliminó esa solicitud ni se redujo globalmente el número de consultas:
+la mejora es sacar la espera de la ruta de presentación de los datos disponibles.
+Un indicador lineal acompaña la actualización sin sustituir el contenido.
+Si no hay datos previos, se conserva la apertura directa por ID con carga,
+error y reintento.
+
+Una actualización válida del mismo ID reemplaza los campos presentes.
+Los campos vacíos/ausentes conservan los datos previos del mismo libro.
+Los formatos se combinan por clave MIME, dando prioridad al valor nuevo.
+Se conservan cero descargas y copyright=false como valores válidos, no como vacíos.
+Las URLs continúan pasando por los validadores existentes del modelo.
+No se inventan textos, autores, traducciones ni formatos.
+
+Si falla la actualización, se mantienen los metadatos disponibles y se muestra
+un aviso con el error y Reintentar ficha. También hay Actualizar ficha.
+Mientras existe una consulta en curso, el botón queda deshabilitado y el
+método rechaza otro inicio. Reconstruir la misma ficha no lanza otra consulta.
+Un cambio de ID o repositorio inicia un contexto nuevo y descarta respuestas
+anteriores por generación. Éxitos y errores posteriores a dispose se ignoran.
+También se verifica el ID recibido dentro de la ficha, aunque el repositorio
+HTTP ya dispone de su validación propia.
+No existe reintento automático en bucle ni caché persistente.
+
+5. IDIOMA DE SINOPSIS
+Se mantienen exactamente los textos originales del proveedor.
+El modelo informa idiomas de la obra, pero no idioma de cada sinopsis.
+No se incorporó detección heurística, etiqueta de idioma ni traducción.
+Una prueba comprueba una sinopsis en inglés con libro en español sin alterarla.
+
+6. PRUEBAS Y CAMBIOS DE EXPECTATIVAS
+Nuevo archivo: nueve pruebas widgets con repositorio falso y Completer.
+Verifican:
+- Datos inmediatos, demora simulada de 30 segundos y actualización exitosa.
+- Formatos presentes antes de completar la actualización.
+- Fallo HTTP 522 simulado, conservación de datos y reintento sin duplicados.
+- Apertura directa por ID sin datos iniciales y recuperación de error.
+- Rechazo de datos iniciales y respuestas con otro ID.
+- Respuesta exitosa obsoleta al cambiar ID.
+- Error obsoleto al cambiar ID.
+- Actualización incompleta, conservación de sinopsis original y formatos,
+  y actualización correcta de cero descargas/copyright.
+- Reconstrucción de la misma ficha sin duplicar la consulta.
+- Error tardío tras dispose.
+Los dos escenarios de respuestas obsoletas se parametrizan; total nueve pruebas.
+
+En gutendex_widgets_test.dart se adaptaron dos casos al comportamiento nuevo:
+- Una respuesta incompleta ya no borra la sinopsis válida del catálogo.
+- Durante la actualización se exige ausencia de spinner bloqueante, presencia
+  del indicador lineal y de la sinopsis inicial.
+Se conservaron las comprobaciones de ID, navegación, regreso, reintentos,
+paginación, idiomas, errores y tamaños. No se relajaron pruebas ajenas.
+
+Primera ejecución:
+flutter test --no-pub test/gutendex
+Resultado: 52 aprobadas, 2 fallidas, salida 1.
+Causa: las pruebas nuevas usaban un selector Scrollable ambiguo por los
+controles internos de SelectableText. Se corrigió solo el selector de prueba
+para apuntar al ListView, sin ocultar errores de producción.
+
+Segunda ejecución:
+flutter test --no-pub test/gutendex
+Resultado: 54 aprobadas, 0 fallos, salida 0.
+Después se reforzó la protección ante reconstrucción con el mismo ID y se
+añadió su prueba; la suite completa siguiente verifica esa versión final.
+
+Ejecución final:
+flutter test --no-pub
+Resultado real: 209 aprobadas, 1 omitida, 0 fallos, salida 0.
+Incluye las nueve nuevas y las 200 existentes.
+Se ejecutaron búsqueda, idiomas y paginación Gutendex, fichas, navegación
+Inicio -> Gutendex -> Inicio para usuario e invitado en 360x640 y 800x1000,
+pantalla pequeña oscura, Google Books, buscador simultáneo, Biblioteca,
+progreso, LEIDO automático y las regresiones existentes con dobles.
+La omitida es firebase_web_auth_test.dart, condicionada por skip: !kIsWeb.
+No se ejecutó esa prueba en Chrome ni se modificó su condición.
+
+7. ANÁLISIS Y DIFF
+flutter analyze --no-pub:
+No issues found! (ran in 8.2s), salida 0.
+git diff --check: sin observaciones, salida 0.
+Se revisaron los cambios de producción y pruebas.
+Se comprobó además cada Dart intervenido con git diff --no-index --check
+contra /dev/null: sin diagnósticos de espacios. Salida 1 significa que un
+archivo nuevo difiere del vacío, no un fallo de formato.
+
+git diff --name-only y --stat siguen mostrando solo los dos archivos Home
+preexistentes: 2 archivos, 59 inserciones y 29 eliminaciones.
+Gutendex y sus tests siguen sin seguimiento, por lo que no aparecen en el diff
+versionado normal; sus cambios se registran expresamente en la sección 3.
+Se capturaron hashes de código, pruebas e informes al inicio y se compararon
+después. Solo cambiaron las dos pantallas y el test Gutendex existentes,
+más el nuevo test. Este informe se añade al inventario final.
+No se hizo git add ni se preparó commit.
+
+8. PRESERVACIÓN DE ALCANCE
+Sin cambios en Inicio, tema global, Google Books, Biblioteca, Perfil,
+autenticación, Firebase, Neon, Spring Boot, Maps, Writer, clubes ni módulos sociales.
+Sin cambios en configuraciones, dependencias, CORS, timeout o seguridad de red.
+No se instalaron dependencias, ejecutaron migraciones o iniciaron servicios.
+Sin cambio de rama, pull, merge, reset, clean, borrados, commit, push ni PR.
+Todos los cambios locales anteriores se conservaron.
+
+9. LIMITACIONES Y PENDIENTES
+- Las pruebas usan datos simulados: no certifican disponibilidad real ni latencia.
+- HTTP 522, timeout y CORS de imágenes siguen siendo posibles.
+- Sin metadatos previos la apertura depende de la solicitud por ID.
+- No hay caché persistente, TTL ni deduplicación global entre fichas independientes.
+  Cada apertura inicia una revalidación; dentro de la ficha no hay duplicados.
+- Las solicitudes obsoletas se ignoran al responder; no se cancelan en la red.
+- La combinación conserva valores previos cuando el proveedor devuelve campos
+  vacíos: no distingue una ausencia temporal de una eliminación intencional.
+- La actualización permanece en la ficha, no se propaga al catálogo ni a Neon.
+- No hubo medición en Chrome/Android real, build ni prueba con servicios reales.
+Pendiente revisar manualmente apertura con red lenta, error/reintento, portadas,
+scroll y acabado visual en ambos tamaños, claro/oscuro y dispositivo real.
+
+INTERVENCIÓN FINALIZADA. No se inicia Bloque 4.2 ni persistencia Gutendex.

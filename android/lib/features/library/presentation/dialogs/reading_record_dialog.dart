@@ -62,6 +62,16 @@ class _ReadingRecordDialogState extends State<_ReadingRecordDialog> {
     );
     _format = record?.format ?? 'Físico';
     _status = record?.status ?? widget.status;
+    _syncStatusPage();
+  }
+
+  void _syncStatusPage() {
+    final total = int.tryParse(_total.text) ?? 0;
+    if (_status == BookStatus.porLeer) {
+      _page.text = '0';
+    } else if (_status == BookStatus.leido && total > 0) {
+      _page.text = '$total';
+    }
   }
 
   @override
@@ -106,6 +116,7 @@ class _ReadingRecordDialogState extends State<_ReadingRecordDialog> {
   );
 
   void _save() {
+    _syncStatusPage();
     if (!_form.currentState!.validate()) return;
     Navigator.pop(
       context,
@@ -191,7 +202,7 @@ class _ReadingRecordDialogState extends State<_ReadingRecordDialog> {
                             style: const TextStyle(fontSize: 14),
                             keyboardType: TextInputType.number,
                             decoration: _decoration('Total de páginas'),
-                            onChanged: (_) => setState(() {}),
+                            onChanged: (_) => setState(_syncStatusPage),
                             validator: (v) => widget.allowUnknownTotal && (v ?? '').trim().isEmpty ? null : (int.tryParse(v ?? '') ?? 0) <= 0
                                 ? 'Ingresa un total mayor que cero.'
                                 : null,
@@ -268,7 +279,10 @@ class _ReadingRecordDialogState extends State<_ReadingRecordDialog> {
                               ),
                             ],
                             onChanged: (value) =>
-                                setState(() => _status = value!),
+                                setState(() {
+                                  _status = value!;
+                                  _syncStatusPage();
+                                }),
                           ),
                         ]),
                       ],
