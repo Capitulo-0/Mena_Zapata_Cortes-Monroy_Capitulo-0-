@@ -4,16 +4,21 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../reader/data/local_txt_importer.dart';
+import '../../../reader/data/local_txt_picker.dart';
+import '../../../reader/models/reader_document.dart';
+import '../../../reader/presentation/screens/text_reader_screen.dart';
 import '../../data/gutendex_repository.dart';
 import '../../models/gutendex_models.dart';
 import '../widgets/gutendex_cover.dart';
 
 class GutendexDetailScreen extends StatefulWidget {
   const GutendexDetailScreen({super.key, required this.repository, required this.bookId,
-    this.initialBook});
+    this.initialBook, this.txtPicker});
   final GutendexRepository repository;
   final int bookId;
   final GutendexBook? initialBook;
+  final LocalTxtPicker? txtPicker;
 
   @override
   State<GutendexDetailScreen> createState() => _GutendexDetailScreenState();
@@ -24,6 +29,9 @@ class _GutendexDetailScreenState extends State<GutendexDetailScreen> {
   Object? _error;
   bool _loading = false;
   int _generation = 0;
+  bool _openingTxt = false;
+  String? _txtError;
+  TxtImportCancellation? _txtCancellation;
 
   @override
   void initState() {
@@ -41,12 +49,54 @@ class _GutendexDetailScreenState extends State<GutendexDetailScreen> {
   }
 
   void _reset() {
+    _cancelTxt();
     _generation++;
     final initial = widget.initialBook;
     _book = initial != null && initial.id == widget.bookId ? initial : null;
     _loading = false;
     _error = null;
     _refresh();
+  }
+
+  void _cancelTxt() {
+    _txtCancellation?.cancel();
+    _txtCancellation = null;
+    _openingTxt = false;
+    _txtError = null;
+  }
+
+  Future<void> _openTxt() async {
+    if (_openingTxt) return;
+    final cancellation = TxtImportCancellation();
+    _txtCancellation = cancellation;
+    setState(() {
+      _openingTxt = true;
+      _txtError = null;
+    });
+    try {
+      final source = await LocalTxtImporter(
+        widget.txtPicker ?? const SystemLocalTxtPicker()).select(cancellation);
+      if (!mounted || cancellation.isCancelled || _txtCancellation != cancellation) return;
+      if (source != null) {
+        await Navigator.of(context).push<void>(MaterialPageRoute(
+          builder: (_) => TextReaderScreen(source: source)));
+      }
+    } on ReaderCancelled {
+      // The detail route or its book changed while the native picker was open.
+    } catch (error) {
+      if (mounted && !cancellation.isCancelled && _txtCancellation == cancellation) {
+        setState(() => _txtError = error is ReaderFailure
+          ? error.message : 'No se pudo abrir el archivo local.');
+      }
+    } finally {
+      if (mounted && _txtCancellation == cancellation) {
+        setState(() {
+          _openingTxt = false;
+          _txtCancellation = null;
+        });
+      }
+      cancellation.cancel();
+    }
   }
 
   void _refresh() {
@@ -102,6 +152,7 @@ class _GutendexDetailScreenState extends State<GutendexDetailScreen> {
   @override
   void dispose() {
     _generation++;
+    _cancelTxt();
     super.dispose();
   }
 
@@ -186,6 +237,21 @@ class _GutendexDetailScreenState extends State<GutendexDetailScreen> {
                 ? 'Este libro no tiene una sinopsis disponible.'
                 : book.summaries.join('\n\n'), style: GoogleFonts.inter(
                   color: AppColors.textPrimaryOf(context), fontSize: 14, height: 1.7)),
+              OutlinedButton.icon(
+                key: const ValueKey('gutendex-read-txt'),
+                onPressed: _openingTxt ? null : _openTxt,
+                icon: const Icon(Icons.upload_file_outlined),
+                label: Text(_openingTxt ? 'Preparando archivo…' : 'Leer archivo TXT'),
+              ),
+              if (_openingTxt) const LinearProgressIndicator(color: AppColors.gold),
+              const SizedBox(height: 8),
+              Text('Elige un TXT local. No se verifica que corresponda a esta obra.',
+                style: GoogleFonts.inter(color: AppColors.textSecondaryOf(context), fontSize: 12)),
+              if (_txtError != null) ...[
+                const SizedBox(height: 8),
+                Text(_txtError!, key: const ValueKey('gutendex-txt-error'),
+                  style: GoogleFonts.inter(color: AppColors.textPrimaryOf(context))),
+              ],
               const SizedBox(height: 20),
               Divider(color: AppColors.goldOf(context).withValues(alpha: .35)),
               const SizedBox(height: 12),
