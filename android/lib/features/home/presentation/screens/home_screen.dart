@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import '../../../catalog/data/catalog_repository.dart';
-import '../../../catalog/presentation/catalog_controller.dart';
+import '../../data/home_recommendation_repository.dart';
+import '../home_recommendation_controller.dart';
 import '../../../gutendex/presentation/screens/gutendex_catalog_screen.dart';
 
 import 'dart:math';
@@ -12,8 +14,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../profile/data/user_search_repository.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/home_demo_data.dart';
-import '../dialogs/home_gemini_assistant_sheet.dart';
+
 import '../dialogs/home_isbn_scanner_dialog.dart';
+import '../dialogs/home_gemini_selection_dialog.dart';
 import '../widgets/home_quote_section.dart';
 import '../widgets/home_search_section.dart';
 import 'home_book_detail_screen.dart';
@@ -22,6 +25,7 @@ import '../widgets/continue_reading_section.dart';
 import '../widgets/home_welcome_section.dart';
 import '../widgets/nearby_reading_point_section.dart';
 import '../widgets/reading_clubs_section.dart';
+import '../widgets/library_recommendations_section.dart';
 import '../widgets/recommended_books_section.dart';
 import '../../../clubs/models/reading_club.dart';
 import '../../../library/presentation/screens/library_screen.dart';
@@ -35,6 +39,8 @@ class HomeScreen extends StatefulWidget {
     this.onReadBook,
     this.catalogBooks,
     this.catalogRepository,
+    this.recommendationRepository,
+
     this.userSearchRepository,
     this.progresses = const {},
     this.statuses = const {},
@@ -65,6 +71,8 @@ class HomeScreen extends StatefulWidget {
   });
 
   final CatalogRepository? catalogRepository;
+  final HomeRecommendationRepository? recommendationRepository;
+
   final UserSearchRepository? userSearchRepository;
   final List<Map<String, dynamic>>? catalogBooks;
   final Future<int?> Function(BuildContext context, int bookId)? onReadBook;
@@ -109,14 +117,56 @@ class HomeScreen extends StatefulWidget {
 class HomeScreenState extends State<HomeScreen> {
   bool searchSubmitted = false;
   bool _openingBook = false;
-  CatalogController? _recommendations;
+  late HomeRecommendationController _recommendations;
+  String _recommendationRevision = '';
+  String? _recommendationExplanation;
+
+  bool _geminiDialogOpen = false;
+  BuildContext? _geminiDialogContext;
+  int carouselOffset = 0;
+
   @override
   void initState() {
     super.initState();
-    if (widget.catalogRepository != null) {
-      _recommendations = CatalogController(widget.catalogRepository!)
-        ..addListener(_catalogChanged);
-      unawaited(_recommendations!.search('subject:fiction'));
+    _bindRecommendations();
+  }
+
+  String _revision() {
+    final catalog = widget.catalogRepository;
+    final scope = widget.isGuest ? 'guest'
+        : catalog is ApiCatalogRepository ? catalog.api.auth.currentUser?.uid ?? ''
+        : widget.currentUsername;
+    final personal = !widget.isGuest &&
+        (catalog is ApiCatalogRepository || widget.recommendationRepository != null);
+    return jsonEncode([
+      scope,
+      if (personal) widget.catalogBooks,
+      if (personal) widget.statuses.map((key, value) => MapEntry('$key', value.name)),
+    ]);
+  }
+
+  void _bindRecommendations() {
+    _recommendationExplanation = null;
+    _recommendationRevision = _revision();
+    final catalog = widget.catalogRepository;
+    final uid = catalog is ApiCatalogRepository ? catalog.api.auth.currentUser?.uid : null;
+    final repository = widget.recommendationRepository ??
+        (!widget.isGuest && catalog is ApiCatalogRepository && uid != null
+            ? ApiHomeRecommendationRepository(catalog.api, uid)
+            : ExplorationRecommendationRepository(catalog, widget.isGuest ? 'guest' : widget.currentUsername));
+    _recommendations = HomeRecommendationController(repository)..addListener(_catalogChanged);
+    unawaited(_recommendations.load());
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_recommendationRevision != _revision() ||
+        oldWidget.catalogRepository != widget.catalogRepository ||
+        oldWidget.recommendationRepository != widget.recommendationRepository) {
+      _dismissGeminiDialog();
+      _recommendations..removeListener(_catalogChanged)..dispose();
+      _bindRecommendations();
     }
   }
 
@@ -124,15 +174,23 @@ class HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() {});
   }
 
-  @override
-  void dispose() {
-    _recommendations
-      ?..removeListener(_catalogChanged)
-      ..dispose();
-    super.dispose();
+  void _dismissGeminiDialog() {
+    final dialogContext = _geminiDialogContext;
+    _geminiDialogContext = null;
+    if (dialogContext == null || !dialogContext.mounted) return;
+    final route = ModalRoute.of(dialogContext);
+    final navigator = Navigator.of(dialogContext);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (navigator.mounted && route != null && route.isActive) navigator.removeRoute(route);
+    });
   }
 
-  int carouselOffset = 0;
+  @override
+  void dispose() {
+    _dismissGeminiDialog();
+    _recommendations..removeListener(_catalogChanged)..dispose();
+    super.dispose();
+  }
 
   // Colores adaptativos al tema global.
   Color get _background => AppColors.backgroundOf(context);
@@ -154,7 +212,7 @@ class HomeScreenState extends State<HomeScreen> {
       .toList();
 
   List<Map<String, dynamic>> get books =>
-      _recommendations?.items ??
+      (widget.catalogRepository == null ? null : _recommendations.data?.items) ??
       widget.catalogBooks ??
       HomeDemoData.books.map(Map<String, dynamic>.from).toList();
 
@@ -207,12 +265,14 @@ class HomeScreenState extends State<HomeScreen> {
                 child: OutlinedButton.icon(
                   key: const ValueKey('home-gutendex-entry'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: _textPrimary,
-                    backgroundColor: _surface,
-                    side: BorderSide(color: _gold.withValues(alpha: .55)),
-                    minimumSize: const Size(0, 44),
+                    foregroundColor: AppColors.background,
+                    backgroundColor: _deepSurface,
+                    side: BorderSide(color: _gold.withValues(alpha: .65)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    minimumSize: const Size(0, 48),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                   ),
-                  icon: Icon(Icons.public, color: _gold),
+                  icon: Icon(Icons.menu_book_rounded, color: _gold),
                   label: const Text('Catálogo Project Gutenberg'),
                   onPressed: () => Navigator.of(context).push<void>(
                     MaterialPageRoute<void>(
@@ -223,23 +283,17 @@ class HomeScreenState extends State<HomeScreen> {
               ),
               HomeQuoteSection(quotes: quotes),
               _buildContinueReading(),
-              if (_recommendations?.loading == true)
-                const LinearProgressIndicator(),
-              if (_recommendations?.error != null)
-                TextButton(
-                  onPressed: () => _recommendations!.retry(),
-                  child: Text('Google Books: no disponible. Reintentar'),
-                ),
               _buildRecommendedBooks(),
-              if (widget.catalogRepository != null)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'Recomendaciones generales · Fuente: Google Books',
-                    style: TextStyle(fontSize: 10),
-                  ),
-                ),
+              LibraryRecommendationsSection(
+                controller: _recommendations,
+                onBookTap: _showBookDetails,
 
+                showBooks: false,
+                explanation: _recommendationExplanation,
+                onShowExplanation: _showRecommendationExplanation,
+                onCloseExplanation: () => setState(() => _recommendationExplanation = null),
+                carouselOffset: carouselOffset,
+              ),
               _buildReadingClubs(),
               _buildCommunityStories(),
               _buildNearbyReadingPoint(),
@@ -279,23 +333,22 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildRecommendedBooks() {
-    final maxOffset = max(0, books.length - 3);
+  void _showRecommendationExplanation(String message) {
+    setState(() => _recommendationExplanation = message);
+  }
 
+  Widget _buildRecommendedBooks() {
+    final items = _recommendations.data?.items ?? <Map<String, dynamic>>[];
+    final maxOffset = max(0, items.length - 3);
+    final start = min(carouselOffset, maxOffset);
     return RecommendedBooksSection(
-      books: books,
-      carouselOffset: carouselOffset,
-      onPrevious: () {
-        setState(() {
-          carouselOffset = max(0, carouselOffset - 1);
-        });
-      },
-      onNext: () {
-        setState(() {
-          carouselOffset = min(maxOffset, carouselOffset + 1);
-        });
-      },
+      heading: _recommendations.data?.personalized == true ? 'Recomendado para ti' : 'Exploración general',
+      books: items,
+      carouselOffset: start,
+      onPrevious: () => setState(() { carouselOffset = max(0, start - 1); _recommendationExplanation = null; }),
+      onNext: () => setState(() { carouselOffset = min(maxOffset, start + 1); _recommendationExplanation = null; }),
       onBookTap: _showBookDetails,
+      onShowExplanation: _showRecommendationExplanation,
     );
   }
 
@@ -439,7 +492,28 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   void showGeminiAssistant() {
-    showHomeGeminiAssistantSheet(context: context);
+    unawaited(_confirmGemini());
+  }
+
+  Future<void> _confirmGemini() async {
+    if (_geminiDialogOpen || !mounted) return;
+    final controller = _recommendations;
+    _geminiDialogOpen = true;
+    try {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          _geminiDialogContext = dialogContext;
+          return HomeGeminiSelectionDialog(
+            controller: controller,
+            isCurrent: () => mounted && identical(controller, _recommendations),
+          );
+        },
+      );
+    } finally {
+      _geminiDialogContext = null;
+      _geminiDialogOpen = false;
+    }
   }
 
   void _showAuthorProfile(Map<String, String> story) {

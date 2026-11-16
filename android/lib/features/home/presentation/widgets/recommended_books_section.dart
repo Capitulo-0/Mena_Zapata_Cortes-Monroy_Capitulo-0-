@@ -6,22 +6,27 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'home_network_cover.dart';
 import 'home_section_title.dart';
+import 'recommendation_explanation.dart';
 
 class RecommendedBooksSection extends StatelessWidget {
   const RecommendedBooksSection({
     super.key,
     required this.books,
+    this.heading = 'Lecturas Recomendadas',
     required this.carouselOffset,
     required this.onPrevious,
     required this.onNext,
     required this.onBookTap,
+    required this.onShowExplanation,
   });
 
+  final String heading;
   final List<Map<String, dynamic>> books;
   final int carouselOffset;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final ValueChanged<Map<String, dynamic>> onBookTap;
+  final ValueChanged<String> onShowExplanation;
 
   @override
   Widget build(BuildContext context) {
@@ -36,9 +41,7 @@ class RecommendedBooksSection extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
               children: [
-                const Expanded(
-                  child: HomeSectionTitle('Lecturas Recomendadas'),
-                ),
+                Expanded(child: HomeSectionTitle(heading)),
                 _CarouselButton(
                   icon: Icons.chevron_left_rounded,
                   enabled: carouselOffset > 0,
@@ -56,24 +59,36 @@ class RecommendedBooksSection extends StatelessWidget {
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: List.generate(visible.length, (index) {
-                return Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      right: index < visible.length - 1 ? 7 : 0,
-                    ),
-                    child: SizedBox(
-                      height: 226,
-                      child: _RecommendedBookCard(
-                        book: visible[index],
-                        onTap: () => onBookTap(visible[index]),
-                      ),
-                    ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                if (visible.isEmpty) return const SizedBox.shrink();
+                const columns = 3;
+                const spacing = 7.0;
+                // Width follows the design grid, never the current result count.
+                final cardWidth = max(
+                  0.0,
+                  (constraints.maxWidth - spacing * (columns - 1)) / columns,
+                );
+                return IntrinsicHeight(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (var index = 0; index < visible.length; index++) ...[
+                        if (index > 0) const SizedBox(width: spacing),
+                        SizedBox(
+                          width: cardWidth,
+                          child: _RecommendedBookCard(
+                            book: visible[index],
+                            onShowExplanation: onShowExplanation,
+                            onTap: () => onBookTap(visible[index]),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 );
-              }),
+              },
             ),
           ),
         ],
@@ -124,9 +139,11 @@ class _RecommendedBookCard extends StatelessWidget {
   const _RecommendedBookCard({
     required this.book,
     required this.onTap,
+    required this.onShowExplanation,
   });
 
   final Map<String, dynamic> book;
+  final ValueChanged<String> onShowExplanation;
   final VoidCallback onTap;
 
   @override
@@ -137,21 +154,19 @@ class _RecommendedBookCard extends StatelessWidget {
     final gold = AppColors.goldOf(context);
     final accent = AppColors.accentOf(context);
 
-    final author = book['author'] as String;
+    final author = (book['author'] as String?)?.trim().isNotEmpty == true
+        ? book['author'] as String
+        : 'Autor no disponible';
     final isUserAuthor = author.startsWith('@');
 
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(15),
       child: Container(
-        height: double.infinity,
         decoration: BoxDecoration(
           color: surface,
           borderRadius: BorderRadius.circular(15),
-          border: Border.all(
-            color: gold.withValues(alpha: 0.72),
-            width: 1,
-          ),
+          border: Border.all(color: gold.withValues(alpha: 0.72), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.055),
@@ -170,11 +185,28 @@ class _RecommendedBookCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   HomeNetworkCover(
-                    url: book['cover'] as String,
+                    url: book['cover'] as String? ?? '',
                     width: double.infinity,
                     height: 122,
                     radius: 0,
                   ),
+                  if ((book['recommendationReason'] as String? ?? '')
+                      .isNotEmpty)
+                    Positioned(
+                      right: 2,
+                      top: 2,
+                      child: Material(
+                        color: surface.withValues(alpha: .95),
+                        shape: const CircleBorder(),
+                        child: RecommendationInfoButton(
+                          message: book['recommendationReason'] as String,
+                          color: textPrimary,
+                          onPressed: () => onShowExplanation(
+                            book['recommendationReason'] as String,
+                          ),
+                        ),
+                      ),
+                    ),
                   Positioned.fill(
                     child: IgnorePointer(
                       child: DecoratedBox(
@@ -204,11 +236,11 @@ class _RecommendedBookCard extends StatelessWidget {
                   children: [
                     Text(
                       book['title'] as String,
-                      maxLines: 2,
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.merriweather(
                         color: textPrimary,
-                        fontSize: 8.4,
+                        fontSize: 12,
                         fontWeight: FontWeight.w700,
                         height: 1.28,
                       ),
@@ -228,11 +260,11 @@ class _RecommendedBookCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             author,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.inter(
                               color: isUserAuthor ? accent : textSecondary,
-                              fontSize: 6.8,
+                              fontSize: 10,
                               fontWeight: isUserAuthor
                                   ? FontWeight.w700
                                   : FontWeight.w500,
@@ -248,8 +280,7 @@ class _RecommendedBookCard extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2E793E)
-                            .withValues(alpha: 0.10),
+                        color: const Color(0xFF2E793E).withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(999),
                         border: Border.all(
                           color: const Color(0xFF2E793E)
@@ -260,15 +291,18 @@ class _RecommendedBookCard extends StatelessWidget {
                         book['availability'] == 'GRATIS'
                             ? 'Gratis'
                             : 'Lectura externa',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: GoogleFonts.inter(
                           color: const Color(0xFF2E793E),
-                          fontSize: 5.6,
+                          fontSize: 8.5,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.25,
                         ),
                       ),
                     ),
                     const Spacer(),
+                    const SizedBox(height: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 6,
@@ -281,18 +315,21 @@ class _RecommendedBookCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.star_rounded,
-                            color: gold,
-                            size: 10.5,
-                          ),
+                          Icon(Icons.star_rounded, color: gold, size: 10.5),
                           const SizedBox(width: 3),
-                          Text(
-                            book['googleVolumeId'] != null ? 'Sin valorar' : '${book['rating']}',
-                            style: GoogleFonts.inter(
-                              color: textPrimary,
-                              fontSize: 6.7,
-                              fontWeight: FontWeight.w800,
+                          Flexible(
+                            child: Text(
+                              book['googleVolumeId'] != null ||
+                                      book['rating'] is! num
+                                  ? 'Sin valorar'
+                                  : '${book['rating']}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.inter(
+                                color: textPrimary,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                         ],

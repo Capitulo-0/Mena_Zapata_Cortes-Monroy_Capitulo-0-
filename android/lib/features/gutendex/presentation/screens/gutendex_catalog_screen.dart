@@ -35,7 +35,7 @@ class _GutendexCatalogScreenState extends State<GutendexCatalogScreen> {
 
   void _search() {
     _debounce?.cancel();
-    unawaited(_catalog.search(query: _query.text));
+    unawaited(_catalog.search(query: _query.text, refresh: true));
   }
 
   @override
@@ -95,7 +95,8 @@ class _GutendexCatalogScreenState extends State<GutendexCatalogScreen> {
                 onChanged: (value) {
                   _debounce?.cancel();
                   _catalog.prepare(query: value);
-                  _debounce = Timer(const Duration(milliseconds: 400), _search);
+                  _debounce = Timer(const Duration(milliseconds: 400),
+                    () => unawaited(_catalog.search(query: _query.text)));
                 },
               ),
               const SizedBox(height: 14),
@@ -105,7 +106,7 @@ class _GutendexCatalogScreenState extends State<GutendexCatalogScreen> {
                 initialValue: _catalog.language,
                 dropdownColor: AppColors.surfaceOf(context),
                 iconEnabledColor: AppColors.goldOf(context),
-                decoration: InputDecoration(labelText: 'Idioma',
+                decoration: InputDecoration(labelText: 'Idioma de la obra',
                   filled: true, fillColor: AppColors.surfaceOf(context),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: AppColors.goldOf(context).withValues(alpha: .45)))),
@@ -120,13 +121,21 @@ class _GutendexCatalogScreenState extends State<GutendexCatalogScreen> {
                 },
               ),
               const SizedBox(height: 18),
-              if (_catalog.loading)
+              if (_catalog.loading && !_catalog.hasSearched)
                 const Center(child: CircularProgressIndicator(color: AppColors.gold)),
+              if (_catalog.loading && _catalog.hasSearched) ...[
+                const LinearProgressIndicator(color: AppColors.gold),
+                const SizedBox(height: 8),
+                _message(context, 'Actualizando esta búsqueda. Se conservan sus resultados anteriores.'),
+              ] else if (_catalog.fromSessionCache)
+                _message(context, 'Resultados recientes de esta sesión. Pulsa Buscar para actualizarlos.'),
+              if (_catalog.error != null && _catalog.hasSearched)
+                _message(context, 'No se pudo actualizar. Se conservan los resultados de esta misma búsqueda.'),
               if (_catalog.error != null) ...[
                 _message(context, _catalog.error!, error: true),
                 TextButton(onPressed: _search, child: const Text('Reintentar catálogo')),
               ],
-              if (_catalog.hasSearched && !_catalog.loading && _catalog.items.isEmpty)
+              if (_catalog.hasSearched && !_catalog.loading && _catalog.error == null && _catalog.items.isEmpty)
                 _message(context, 'No encontramos obras para esta búsqueda e idioma.'),
               if (_catalog.count != null)
                 Padding(padding: const EdgeInsets.only(bottom: 10),
@@ -168,7 +177,7 @@ class _GutendexCatalogScreenState extends State<GutendexCatalogScreen> {
               ] else if (_catalog.next != null)
                 TextButton(onPressed: _catalog.loadingMore ? null : _catalog.more,
                   child: const Text('Más obras')),
-              if (_catalog.hasSearched && _catalog.items.isNotEmpty &&
+              if (_catalog.hasSearched && !_catalog.loading && _catalog.error == null && _catalog.items.isNotEmpty &&
                   _catalog.next == null && _catalog.moreError == null)
                 _message(context, 'Fin de resultados.'),
             ],

@@ -133,8 +133,7 @@ void main() {
     expect(repo.calls.last.query, 'Cervantes');
     repo.calls.last.result.complete(GutendexPage(results: [fixtureBook(2)]));
     await tester.pumpAndSettle();
-    for (final language in [GutendexLanguage.english, GutendexLanguage.all,
-      GutendexLanguage.spanish]) {
+    for (final language in [GutendexLanguage.english, GutendexLanguage.all]) {
       await tap(tester, find.byKey(const ValueKey('gutendex-language')));
       await tester.pumpAndSettle();
       await tester.tap(find.text(language.label).last);
@@ -147,5 +146,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('No encontramos obras'), findsOneWidget);
     }
+    final requestsBeforeReturn = repo.calls.length;
+    await tap(tester, find.byKey(const ValueKey('gutendex-language')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(GutendexLanguage.spanish.label).last);
+    await tester.pumpAndSettle();
+    expect(repo.calls.length, requestsBeforeReturn);
+    expect(find.text('Obra fixture 2'), findsOneWidget);
+    expect(find.textContaining('Resultados recientes de esta sesión'), findsOneWidget);
+    expect(tester.widget<TextField>(find.byKey(const ValueKey('gutendex-search'))).controller!.text,
+      'Cervantes');
   });
 }

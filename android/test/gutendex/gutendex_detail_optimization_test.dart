@@ -57,6 +57,9 @@ void main() {
     expect(repo.details.length, 2);
     await tester.scrollUntilVisible(find.text('Actualizar ficha'), 300, scrollable: find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first);
     expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Actualizar ficha')).onPressed, isNull);
+    await tester.pump();
+    await tester.ensureVisible(find.widgetWithText(TextButton, 'Actualizar ficha'));
+    await tester.pump();
     await tester.tap(find.text('Actualizar ficha'));
     await tester.pump();
     expect(repo.details.length, 2);

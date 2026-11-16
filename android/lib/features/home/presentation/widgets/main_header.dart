@@ -10,6 +10,7 @@ class MainHeader extends StatelessWidget {
     required this.isGuest,
     required this.onScannerTap,
     required this.onGeminiTap,
+
     this.onNotificationsTap,
     this.unreadNotificationsCount = 0,
   });
@@ -18,6 +19,7 @@ class MainHeader extends StatelessWidget {
   final bool isGuest;
   final VoidCallback onScannerTap;
   final VoidCallback onGeminiTap;
+
   final VoidCallback? onNotificationsTap;
   final int unreadNotificationsCount;
 
@@ -95,7 +97,7 @@ class MainHeader extends StatelessWidget {
               _HeaderButton(
                 compact: compact,
                 icon: Icons.auto_awesome_rounded,
-                tooltip: 'Asistente Gemini',
+                tooltip: 'Selección inteligente con Gemini',
                 gold: gold,
                 background: deepAlt,
                 onTap: onGeminiTap,
