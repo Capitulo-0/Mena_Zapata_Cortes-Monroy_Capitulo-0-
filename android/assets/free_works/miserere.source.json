@@ -1,0 +1,64 @@
+{
+  "slug": "miserere",
+  "title": "El miserere",
+  "author": "Gustavo Adolfo Bécquer",
+  "death_year": 1870,
+  "genre": "Cuentos",
+  "edition": "Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.",
+  "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._2.djvu",
+  "rights_evidence": [
+    "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+    "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+    "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+  ],
+  "reviewed_complete": true,
+  "internal_sections": [
+    "I",
+    "II",
+    "III"
+  ],
+  "sections": [
+    {
+      "section": "Leyenda completa; secciones I, II, III",
+      "page": "El miserere (Bécquer)",
+      "revision": 1010359,
+      "source_pages": [
+        "Página:Obras de Bécquer - Vol. 2.djvu/127",
+        "Página:Obras de Bécquer - Vol. 2.djvu/128",
+        "Página:Obras de Bécquer - Vol. 2.djvu/129",
+        "Página:Obras de Bécquer - Vol. 2.djvu/130",
+        "Página:Obras de Bécquer - Vol. 2.djvu/131",
+        "Página:Obras de Bécquer - Vol. 2.djvu/132",
+        "Página:Obras de Bécquer - Vol. 2.djvu/133",
+        "Página:Obras de Bécquer - Vol. 2.djvu/134",
+        "Página:Obras de Bécquer - Vol. 2.djvu/135",
+        "Página:Obras de Bécquer - Vol. 2.djvu/136",
+        "Página:Obras de Bécquer - Vol. 2.djvu/137",
+        "Página:Obras de Bécquer - Vol. 2.djvu/138",
+        "Página:Obras de Bécquer - Vol. 2.djvu/139",
+        "Página:Obras de Bécquer - Vol. 2.djvu/140",
+        "Página:Obras de Bécquer - Vol. 2.djvu/141",
+        "Página:Obras de Bécquer - Vol. 2.djvu/142",
+        "Página:Obras de Bécquer - Vol. 2.djvu/143"
+      ],
+      "characters": 19301,
+      "beginning": "EL MISERERE\n\nHace algunos meses, que visitándola célebre abadía de Fitero y ocupándome en revolver a",
+      "ending": "se de mí con sus notas; sus llaves y sus garabatos ininteligibles para los legos en la música.\n\nPor haberlas podido leer hubiera dado un mundo.\n\n¿Quién sabe si no serán una locura?",
+      "text_sha256": "1b66bea9033506eb92f6e08fb071875e7fba901e96fa229fbef199b21445bdfb",
+      "source_snapshot_sha256": "fdc4966376138789955bc048868db540334ed9fa1736aaed5b4048cda9ab2157",
+      "retrieved_at": "2026-11-16T20:23:24.395674+00:00",
+      "permanent_url": "https://es.wikisource.org/w/index.php?oldid=1010359",
+      "history_url": "https://es.wikisource.org/w/index.php?title=El+miserere+%28B%C3%A9cquer%29&action=history"
+    }
+  ],
+  "id": "wikisource-es-miserere",
+  "language": "es",
+  "source": "https://es.wikisource.org/wiki/El_miserere_%28B%C3%A9cquer%29",
+  "bytes": 20641,
+  "utf16_units": 20069,
+  "sha256": "7be9c6cf02f4119976acc04032b2cbb206d2032ad29e19da7f5e5e1d1bd40981",
+  "literary_body_sha256": "1b66bea9033506eb92f6e08fb071875e7fba901e96fa229fbef199b21445bdfb",
+  "license": "CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público",
+  "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "complete": true
+}

@@ -1,0 +1,63 @@
+CAPITULO 0 - PULIDO CONTROLADO DE CABECERA DE BIBLIOTECA
+Fecha: 2026-11-17T00:09:47
+
+1. DIAGNOSTICO Y ALCANCE
+El estado y las acciones remotas se dibujaban en LibrarySyncBar, mientras Importar libro EPUB pertenecia a los controles de ImportedEpubSection dentro de Mi Biblioteca. La linea de estado usaba texto primario y las acciones combinaban un icono aislado con un enlace largo; el importador no ocupaba el ancho util ni compartia una presentacion expresa con las herramientas.
+Se conservaron ubicacion, jerarquia de pantallas y todos los flujos. No se modifico la pantalla contenedora ni el titulo MI BIBLIOTECA, la navegacion o los tabs.
+Antes de editar se confirmaron rama feature/resiliencia-gutendex-20261116, HEAD c049e30 y git status --short. Se preservaron cambios locales anteriores, informes, assets, respaldos y configuracion privada. Respaldo de los tres archivos afectados: respaldos/cabecera_biblioteca_20261117_000429, con recibo SHA-256 de 346 archivos publicos. No se copiaron archivos privados.
+No se hicieron operaciones Git destructivas, pull/merge, commit, push ni PR; no se instalaron dependencias.
+
+2. ANTES / DESPUES VISUAL
+Estado:
+Antes: linea suelta de texto primario de 12 px, con presencia similar a otros contenidos.
+Despues: texto secundario de 10,5 px, tono sobrio adaptativo e icono discreto de 15 px, dentro de una superficie crema/cafe con borde dorado tenue y radio 14. Se conservan los mensajes reales de guardado, carga, error o biblioteca sincronizada; no se inventa otro estado.
+
+Herramientas:
+Antes: icono de actualizar y enlace Anadir libro manualmente, con alineacion diferente segun el ancho.
+Despues: Actualizar y Anadir libro en dos botones alineados, con iconos, 8 px entre ellos, area minima de 48 px y radio 10. Actualizar usa contorno dorado; Anadir libro usa cafe con texto crema. El ancho y alto de ambas acciones se organizan juntos; el texto puede ajustarse en varias lineas con accesibilidad ampliada.
+En anchos menores de 600 px, el estado queda arriba y las acciones alineadas debajo. En escritorio amplio, el estado y una fila de herramientas de 320 px comparten la misma banda. No se cambio que Actualizar invoque controller.load ni que Anadir libro invoque onAdd.
+
+EPUB:
+Antes: Importar libro EPUB con estilo generico y ancho segun contenido.
+Despues: Importar EPUB, contorno dorado, superficie de tarjeta crema, texto adaptativo legible, icono de archivo de 19 px, radio 12 y altura minima de 48 px. Ocupa el ancho util del contenido mediante SizedBox de ancho completo; padding horizontal 14 y vertical 12. Queda integrado con los colores y bordes de las herramientas, sin cambiar su posicion funcional ni el callback de importacion.
+La comparacion describe los widgets y estilos del codigo comprobado; no se presenta como comparacion de screenshots reales.
+
+3. ARCHIVOS MODIFICADOS EN ESTA INTERVENCION
+- android/lib/features/library/presentation/widgets/library_sync_bar.dart
+  Solo composicion, estilos, iconos y etiquetas visibles de estado/acciones. Se preservan controller.busy, controller.canWrite, load, onAdd, mensajes de error, progreso y retry.
+- android/lib/features/epub/presentation/imported_epub_section.dart
+  Solo presentacion del boton de importacion dentro de build. El prefijo que contiene importacion, validacion delegada, apertura, exportacion, eliminacion y proteccion por cuenta coincide byte a byte con el respaldo. No se tocaron tarjetas ni acciones EPUB previamente pulidas.
+- android/test/library_remote_widgets_test.dart
+  Expectativas ajustadas a la etiqueta abreviada y nuevos tipos visuales de botones. Se conservaron las comprobaciones de bloqueo, error y reintento. Se agrego comprobacion del callback de actualizar, alineacion de botones, area minima y tamano de texto secundario.
+Nuevos: este informe y logs android/tool/cabecera_biblioteca_widgets.log, cabecera_biblioteca_analyze.log y cabecera_biblioteca_diff_check.log.
+No se sobrescribieron informes anteriores. La comparacion de los 346 archivos del recibo inicial detecta solo los tres cambios anteriores y ningun archivo desaparecido.
+
+4. PRUEBAS EJECUTADAS
+flutter test --no-pub test/library_remote_widgets_test.dart test/epub/epub_import_widgets_test.dart --reporter expanded
+Resultado: 21 aprobadas, 0 fallidas, sin omisiones; All tests passed!; aproximadamente 20 s de ejecucion informados por Flutter.
+Log: android/tool/cabecera_biblioteca_widgets.log.
+Incluye:
+- Carga de Mi Biblioteca en el shell real con repositorio de prueba.
+- Actualizar invoca una nueva carga y mantiene los bloqueos durante carga/guardado.
+- Anadir libro mantiene el flujo existente, registro manual y seleccion de catalogo.
+- Los controles se alinean a 320 px con texto a escala 1 y 2, sin overflow; ambos conservan area minima de 48 px. Se comprueba tipografia secundaria del estado.
+- Se conservan error, reintento y restricciones de invitado/cuenta.
+- Importacion EPUB desde el boton con su key original, confirmacion, apertura y progreso, exportacion de bytes originales, eliminacion confirmada, reimportacion sin duplicados y aislamiento entre cuentas.
+- Recorrido EPUB en 320x568, 360x640 y 390x844 con scroll, barra flotante e inset de sistema, sin excepciones de layout ni acciones finales tapadas.
+
+flutter analyze --no-pub
+Resultado: No issues found!, 94,3 s.
+Log: android/tool/cabecera_biblioteca_analyze.log.
+
+git diff --check
+Resultado: codigo 0, sin errores de whitespace. Las advertencias LF/CRLF corresponden a cambios locales anteriores y no se silenciaron modificando otros archivos.
+Log: android/tool/cabecera_biblioteca_diff_check.log.
+
+No se ejecuto la suite completa de todos los modulos en esta intervencion; el resultado citado corresponde exactamente a los dos archivos de pruebas relevantes. No se atribuyen los pases de sesiones anteriores al nuevo codigo.
+
+5. PRESERVACION DE FUNCIONALIDAD Y LIMITACIONES
+Solo se modifico UI y sus pruebas. No se alteraron sincronizacion, importacion/exportacion/lectura EPUB, busqueda, contadores, tabs, modelos, repositorios, datos persistentes, backend, Firebase, Neon, navegacion, otras pantallas, tema global ni dependencias. Las 50 entradas gratuitas, manifiestos, TXT y lectores permanecen intactos.
+No se escribieron datos en la biblioteca real de la usuaria; las pruebas usan dobles y fixtures/almacenamiento de pruebas. No se probo una nueva sesion Chrome real ni Android en dispositivo, ni se genero build para publicar. Los widget tests no equivalen a esa validacion visual manual.
+Validacion manual sugerida: abrir el codigo actualizado en el mismo navegador/origen/cuenta de prueba; revisar el estado discreto y ambas acciones a 320/360/390 px; pulsar Actualizar, abrir Anadir libro y cancelar, e importar la fixture EPUB de pruebas. Verificar que lectura y regreso siguen iguales. Comprobar tambien texto ampliado si se usa accesibilidad. No realizar eliminaciones de libros personales.
+
+FIN. Trabajo terminado sin commit/push/PR. Detenerse; no comenzar Gemini ni otras mejoras.

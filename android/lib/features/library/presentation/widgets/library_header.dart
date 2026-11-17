@@ -8,79 +8,91 @@ class LibraryHeader extends StatelessWidget {
     super.key,
     required this.currentName,
     required this.onOptionsTap,
+    this.onAddTap,
   });
-
   final String currentName;
   final VoidCallback onOptionsTap;
-
+  final VoidCallback? onAddTap;
   @override
   Widget build(BuildContext context) {
     final displayName = currentName.trim().isEmpty
         ? 'LECTOR/A'
         : currentName.trim().toUpperCase();
-
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'MI BIBLIOTECA',
-                style: GoogleFonts.cinzel(
-                  color: AppColors.textPrimaryOf(context),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.8,
+        Row(
+          children: [
+            Expanded(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'MI BIBLIOTECA',
+                  style: GoogleFonts.cinzel(
+                    color: AppColors.textPrimaryOf(context),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: .8,
+                  ),
                 ),
               ),
-              const SizedBox(height: 4),
-              RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: 'Tus libros, progreso y estados en un solo lugar, ',
-                      style: GoogleFonts.merriweather(
-                        color: AppColors.textSecondaryOf(context),
-                        fontSize: 9.5,
-                        fontStyle: FontStyle.italic,
-                      ),
-                    ),
-                    TextSpan(
-                      text: '$displayName ✦',
-                      style: GoogleFonts.cinzel(
-                        color: AppColors.textPrimaryOf(context),
-                        fontSize: 9.2,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.35,
-                      ),
-                    ),
-                  ],
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              key: const ValueKey('library-add'),
+              tooltip: 'Añadir libro',
+              onPressed: onAddTap,
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.deep,
+                foregroundColor: AppColors.gold,
+                disabledBackgroundColor: AppColors.surfaceSoftOf(context),
+                disabledForegroundColor: AppColors.textSecondaryOf(context),
+                minimumSize: const Size(48, 48),
+                shape: const CircleBorder(),
+              ),
+              icon: const Icon(Icons.add_rounded, size: 23),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              key: const ValueKey('library-options'),
+              tooltip: 'Opciones de biblioteca',
+              onPressed: onOptionsTap,
+              style: IconButton.styleFrom(
+                backgroundColor: AppColors.surfaceOf(context),
+                foregroundColor: AppColors.textPrimaryOf(context),
+                side: BorderSide(color: AppColors.gold.withValues(alpha: .55)),
+                minimumSize: const Size(48, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.more_vert_rounded, size: 20),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: 'Tus libros, progreso y estados en un solo lugar, ',
+                style: GoogleFonts.merriweather(
+                  color: AppColors.textSecondaryOf(context),
+                  fontSize: 9.5,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              TextSpan(
+                text: '$displayName ✦',
+                style: GoogleFonts.cinzel(
+                  color: AppColors.textPrimaryOf(context),
+                  fontSize: 9.2,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: .35,
                 ),
               ),
             ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        InkWell(
-          onTap: onOptionsTap,
-          borderRadius: BorderRadius.circular(10),
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceOf(context),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: AppColors.gold.withValues(alpha: 0.55),
-              ),
-            ),
-            child: Icon(
-              Icons.more_vert_rounded,
-              size: 19,
-              color: AppColors.textPrimaryOf(context),
-            ),
           ),
         ),
       ],

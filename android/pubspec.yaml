@@ -20,6 +20,12 @@ dependencies:
   google_sign_in: ^7.2.0
   http: ^1.6.0
   file_picker: 11.0.2
+  flutter_epub_viewer: 2.2.1
+  archive: 4.7.1
+  crypto: 3.0.7
+  xml: 7.0.1
+  path_provider: 2.1.6
+  web: 1.1.2
 
 dev_dependencies:
   flutter_test:
@@ -32,3 +38,4 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/free_works/

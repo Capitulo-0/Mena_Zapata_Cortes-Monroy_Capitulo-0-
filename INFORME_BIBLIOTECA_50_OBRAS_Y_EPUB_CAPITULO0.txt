@@ -1,0 +1,338 @@
+CAPITULO 0 - CIERRE BIBLIOTECA GRATUITA Y EPUB
+Fecha local de cierre: 2026-11-16T21:50:22
+Rama: feature/resiliencia-gutendex-20261116. HEAD: c049e30.
+Estado: cierre de verificaciones Web completado, con adaptacion del entorno de pruebas Windows descrita abajo. No hubo correcciones del codigo de produccion en esta continuacion.
+
+1. ESTADO RECIBIDO Y PROTECCION
+Se leyo INFORME_CONTINUIDAD_BIBLIOTECA_50_EPUB_CAPITULO0_20261116_211018.txt y se inspeccionaron los archivos existentes. Ya estaban implementados importacion, validacion, visor EPUB, indice de capitulos, letra, persistencia local, CFI, exportacion, reimportacion, eliminacion confirmada, separacion logica por cuenta y las 50 entradas gratuitas. No se reconstruyeron estas funciones.
+Se verificaron rama, HEAD y status. Respaldo publico previo a esta continuacion: respaldos/cierre_epub_20261116_211606, con recibo SHA-256 de 527 archivos, copias de trabajo y tracked.patch. No se copiaron archivos de configuracion privada al respaldo publico.
+Comparacion final con ese recibo: cero archivos desaparecidos y solo dos archivos de pruebas diferentes; codigo de produccion, assets, dependencias y scripts previos intactos. Los cambios locales previos de Gutendex/Biblioteca/EPUB siguen sin commit. Se conservaron los informes y respaldos anteriores. No se ejecutaron reset, clean, checkout, pull, merge, commit, push ni PR. No se descargaron obras ni se ejecutaron generadores de una sola ejecucion.
+
+2. COMPROBACIONES QUE ESTABAN INTERRUMPIDAS
+El log anterior de Chrome se detenia antes de cargar la prueba IndexedDB: no acreditaba su ejecucion. Faltaba verificar de verdad el almacen Web y cerrar casos de cambio de cuenta con operacion pendiente, acceso local con datos del servidor no disponibles y reparacion de binario danado. Faltaban suite/analyze/build finales sobre el estado definitivo y comprobacion de assets empaquetados.
+
+3. PRUEBAS COMPLETADAS AHORA
+- test/epub/epub_import_widgets_test.dart: prueba nueva de cambio A -> B mientras el selector espera; al completarse el selector de A no se crea libro ni confirmacion en B, y al volver a A sigue sin existir una importacion accidental.
+- Mismo archivo: prueba nueva sobre LibraryScreen real con dataAvailable=false y almacenamiento nativo temporal real: el EPUB local con CFI/progreso sigue listado, permite Continuar y ofrece exportacion, sin requerir datos de libros del servidor. Es una prueba widget con indisponibilidad indicada al screen; no es una caida real del backend ni una prueba de login real.
+- test/epub/epub_core_test.dart: se amplio el caso de reparacion para sobrescribir exclusivamente el binario de prueba con bytes corruptos, rechazar la apertura y recuperar el archivo original por reimportacion conservando CFI y progreso.
+- Se corrigio un bloqueo de la nueva prueba widget: el IO real debia ejecutarse mediante tester.runAsync, fuera del reloj falso. El primer intento detenido queda en epub_cierre_feature_tests.log; la prueba corregida y la suite posterior pasan. No fue un defecto de produccion.
+- Pruebas EPUB especificas: 13 aprobadas. Log: android/tool/epub_cierre_feature_tests_final.log.
+- Verificador local existente: python tool/verify_collection.py. PASS, 50 entradas, UTF-8, SHA-256, hash literario, secciones en orden, extremos conservados y limites ReaderSource. No se regenero contenido.
+
+4. INDEXEDDB REAL EN CHROME Y ADAPTACION WINDOWS
+Se ejecuto primero el comando solicitado:
+flutter test --no-pub --platform chrome test/epub/epub_web_persistence_test.dart test/firebase_web_auth_test.dart --reporter expanded
+El ejecutor de Flutter 3.47.7 / Dart 3.13.5 en Windows devolvia 404 para /canvaskit/chromium/canvaskit.js y .wasm, aunque ambos existian en el SDK. Ademas, el HTML generado asignaba el selector con barras invertidas sin escapar: epubepub_web_persistence_test.dart, mientras el mapa compilado usa epub/epub_web_persistence_test.dart. El bloqueo ocurria antes de las aserciones; no era una omision valida de IndexedDB.
+No se edito el SDK, la app ni las aserciones para resolverlo. Se sirvieron al navegador exactamente los dos archivos JS/Wasm del SDK mediante Fetch/CDP (auxiliar tool/epub_cierre_sdk_assets.mjs). Tras cargar el iframe de prueba, se corrigio solo window.testSelector al valor original del mapa compilado y se invoco el main original compilado. Se ejecuto la prueba original sin alterar sus expectativas. Esta correccion del selector requirio una intervencion CDP adicional; el auxiliar por si solo no constituye una solucion permanente y automatica al defecto del SDK. Intentos fallidos quedan preservados en epub_cierre_web_tests.log y epub_cierre_web_retry.log.
+Resultado final: 9 pruebas aprobadas, ninguna omitida, incluyendo real IndexedDB preserves bytes/CFI across store recreation and isolates accounts. Evidencia: android/tool/epub_cierre_web_final.log. Las otras ocho pruebas corresponden al archivo Firebase Web ya existente, sin modificaciones en autenticacion.
+La prueba IndexedDB real verifico: escritura de bytes, recreacion del repositorio/almacen, recuperacion de archivo y CFI, letra 22, disponibilidad, separacion A/B y rechazo de acceso de otra cuenta, deduplicacion, exportacion por bytes, eliminacion, reimportacion y tres capitulos. La prueba no se salto por kIsWeb.
+Limitacion de repetibilidad: el comando sin adaptacion puede volver a bloquearse en este SDK Windows. El pase final con soporte CDP no demuestra que el ejecutor sin soporte este reparado. No se ocultaron fallos ni se aumento el numero de omisiones.
+
+5. RESULTADOS FINALES
+flutter test --no-pub --reporter expanded: 450 aprobadas, 2 omitidas, 0 fallidas, aproximadamente 4 min 20 s de ejecucion de tests. Log: tool/epub_cierre_full_tests.log. Las dos omisiones del entorno VM corresponden a las comprobaciones exclusivas de Web; ambas se ejecutaron luego en Chrome, con el resultado de la seccion 4.
+flutter analyze --no-pub: No issues found, 61,3 s. Log: tool/epub_cierre_analyze.log.
+git diff --check: codigo de salida 0. Log: tool/epub_cierre_diff_check.log. Solo advertencias de conversion LF/CRLF preexistentes, sin errores whitespace.
+flutter build web --no-pub --dart-define-from-file=config/firebase_web.local.json: codigo 0, Built build/web. Log: tool/epub_cierre_build.log; tiempo total medido 256.17 s; compilacion informada por Flutter 249,3 s. La salida Wasm dry run succeeded es informativa, no un error de compilacion. El artefacto final es el build Web JS normal; no se afirma validacion de un deployment Wasm.
+Build: 47.800.418 bytes de archivos sin comprimir, main.dart.js 4.208.202 bytes. No se midio latencia de carga ni peso transferido con compresion.
+Se comprobaron 50 TXT y 50 manifiestos dentro de build/web/assets/assets/free_works; los 100 archivos coinciden por SHA-256 con sus originales. Incluidos ocho recursos EPUB del paquete: epub.js, jszip.min.js, epubView.js, epub_cfi_utils.js, swipe.html, CSS y GIF del visor. No se publico el build ni se versiono configuracion local.
+
+6. RECORRIDO REAL EPUB YA ACREDITADO EN CHROME
+Evidencia anterior conservada y revisada: tool/epub_chrome_e2e_results.json, tool/epub_chrome_edge_results.json y tool/epub_chrome_page_navigation.json, todos success=true. Se realizo sobre la aplicacion real en Chrome automatizado, perfil aislado, modo invitado, selector real, IndexedDB real y epub.js. No se confunde con pruebas de dobles.
+Recorrido acreditado: importar fixture EPUB original de tres capitulos -> confirmar Mi Biblioteca -> leer -> letra 20 -> capitulo 2 -> salir -> recarga completa -> Mi Biblioteca conserva tarjeta -> Continuar restaura exactamente epubcfi(/6/4!/4/2/1:0), progreso 50% -> exportar los 3.079 bytes originales -> cancelar eliminacion conserva datos -> confirmar elimina -> reimportar copia -> abrir y leer tres capitulos. SHA-256 fixture/exportacion: cc101552c1174facde299dc70f8561d5cbe646a9347e5815bf18191aa1a34a2f.
+Tambien: siguiente capitulo 2 -> 3 y anterior -> 2 con CFI exacto; cuota real forzada en perfil de prueba con archivo de 8 MiB, error claro y cero registros; cancelacion de importacion y archivo corrupto sin tarjetas; perdida del binario, aviso Reimportar EPUB y recuperacion de CFI al reimportar. Cero peticiones observadas a Gutendex/Wikisource/Gutenberg durante el recorrido local.
+Anchos reales 320x568, 360x640 y 390x844: scrollWidth coincide con clientWidth y se mantiene el capitulo. PNG y JSON anteriores preservados.
+No se repitio todo ese recorrido en esta continuacion: solo cambiaron pruebas, ningun archivo de produccion ni dependencia. Se conserva esa evidencia anterior; no se afirma que provenga del build final recien generado. No se realizo una validacion manual por la usuaria en esta continuacion.
+
+7. PERSISTENCIA Y LIMITACIONES
+Visor: flutter_epub_viewer 2.2.1, lector EPUB dedicado desde Uint8List; no conversion principal EPUB -> TXT. file_picker 11.0.2 conservado. Dependencia transitiva flutter_inappwebview 6.2.0-beta.3: requiere validacion nativa adicional.
+Web: IndexedDB capitulo0-imported-epubs-v1, registros y binarios separados, huella SHA-256 como identidad/deduplicacion y namespace por cuenta. CFI, progreso y letra pertenecen al EPUB local, sin identificadores ficticios de Google Books. Mi Biblioteca integra Mis libros importados; el acceso local se conserva aunque el screen no disponga de datos del servidor.
+Android: adaptador de archivos privados con path_provider, directorio de soporte de la app y separacion por cuenta. Almacenamiento nativo probado en host Windows temporal. NO probado en telefono/emulador Android; no se genero ni probo APK en este cierre. Falta verificar selector, visor WebView, almacenamiento, regreso, CFI, exportacion y permisos en dispositivo Android.
+Los EPUB son locales al navegador/perfil/origen o dispositivo; no hay sincronizacion entre equipos, backend de archivos ni migraciones. Cambiar puerto/origen/perfil de Chrome cambia el almacenamiento visible. Borrar datos del sitio, desinstalar, modo privado, cuota y politicas del navegador pueden eliminar o impedir conservar archivos. Exportar copia es el respaldo del usuario. Las cuentas estan separadas logicamente, no mediante cifrado frente a quien controla el mismo navegador/origen. Invitados comparten el namespace guest de ese perfil; no equivale a una identidad privada por persona.
+Validacion existente: maximo 20 MiB de archivo, 80 MiB descomprimidos, 12 MiB por entrada y 1.500 archivos; rechazo de EPUB vacios, ZIP/EPUB corruptos, DRM/obfuscacion no soportada, scripts/eventos y recursos/navegacion externa no permitidos. No se elude DRM. Estas restricciones pueden rechazar EPUB legitimos complejos; no se promete compatibilidad universal, EPUB fijo, multimedia ni DRM comercial.
+Si falta o esta corrupto el archivo se requiere reimportar el original para recuperar lectura. Fallos de cuota se informan, sin tarjeta falsa de importacion exitosa. No se usa shared_preferences para almacenar el EPUB completo ni se envian sus bytes a servicios externos. El lector TXT original se conserva.
+
+8. COLECCION: CANTIDAD Y COMPOSICION HONESTA
+50 entradas locales completas segun la edicion/fuente documentada, con identificadores unicos, 50 TXT y 50 manifiestos. Son las 15 obras preexistentes mas 35 poemas autonomos de Gustavo Adolfo Becquer: Rimas I a XXXV, edicion 1885. Esos poemas tambien estan dentro del volumen Rimas ya incorporado. Por tanto NO son 50 novelas distintas ni 50 contenidos completamente independientes. No se incorporo ninguna nueva obra durante el cierre.
+TXT: 753.189 bytes. Manifiestos: 683.649 bytes. Total conjunto: 1.436.838 bytes, sin contar scripts ni fixtures. Los textos se cargan al abrir, desde assets; la lista emplea metadatos pequenos. Se mantienen busqueda por titulo/autor, filtros locales verificados, lectura directa, TXT, Gutendex secundario y Google Books para descubrimiento.
+Se verifico la integridad local contra los manifiestos y los controles ya existentes de secciones/inicio/final. Esto no es una nueva comparacion manual pagina por pagina ni una nueva auditoria juridica en linea. Se conservaron revisiones, ediciones y evidencias de procedencia/derechos del trabajo anterior. Los originales se documentan como dominio publico en Chile y las transcripciones/conversiones se reutilizan con atribucion y CC BY-SA cuando corresponde; no se incorporaron traducciones modernas nuevas. Las 35 entradas adicionales derivan de la fuente ya verificada del volumen Rimas de 1885.
+Listado de entradas, ediciones, fuentes y condiciones, extraido de los manifiestos locales:
+01. La ajorca de oro | Gustavo Adolfo Bécquer | Cuentos
+    Edicion: Obras de Gustavo A. Bécquer, tomo 1, 1885. Transcripción del escaneo de Wikisource.
+    Fuente: https://es.wikisource.org/wiki/La_ajorca_de_oro
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/ajorca_oro.source.json
+02. El beso | Gustavo Adolfo Bécquer | Cuentos
+    Edicion: Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.
+    Fuente: https://es.wikisource.org/wiki/El_beso
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/beso.source.json
+03. El capitán Veneno | Pedro Antonio de Alarcón | Novela
+    Edicion: Edición digital de Wikisource, cuatro partes y 27 capítulos. Obra original de 1881; edición impresa base no indicada.
+    Fuente: https://es.wikisource.org/wiki/El_capit%C3%A1n_Veneno/Parte_primera
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/capitan_veneno.source.json
+04. La cueva de la mora | Gustavo Adolfo Bécquer | Cuentos
+    Edicion: Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.
+    Fuente: https://es.wikisource.org/wiki/La_cueva_de_la_mora
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/cueva_mora.source.json
+05. Fuenteovejuna | Lope de Vega | Teatro
+    Edicion: Edición digital de Wikisource: actos I–III, revisiones 1392969, 1393035 y 1393036. Edición impresa base no indicada.
+    Fuente: https://es.wikisource.org/wiki/Fuenteovejuna/Acto_I
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/fuenteovejuna.source.json
+06. El gnomo | Gustavo Adolfo Bécquer | Cuentos
+    Edicion: Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.
+    Fuente: https://es.wikisource.org/wiki/El_gnomo
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/gnomo.source.json
+07. El Lazarillo de Tormes | Anónimo |
+    Edicion: Madrid: Tipográfica Renovación / Editorial Calpe, Colección Universal n.º 510, 1921
+    Fuente: https://es.wikisource.org/wiki/El_Lazarillo_de_Tormes
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión, cuando corresponda); obra original de dominio público
+    Manifiesto: android/assets/free_works/lazarillo_1921.source.json
+08. Maese Pérez el organista | Gustavo Adolfo Bécquer | Cuentos
+    Edicion: Obras de Gustavo A. Bécquer, tomo 1, 1885. Transcripción del escaneo de Wikisource.
+    Fuente: https://es.wikisource.org/wiki/Maese_P%C3%A9rez_el_organista
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/maese_perez.source.json
+09. El miserere | Gustavo Adolfo Bécquer | Cuentos
+    Edicion: Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.
+    Fuente: https://es.wikisource.org/wiki/El_miserere_%28B%C3%A9cquer%29
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/miserere.source.json
+10. El monte de las ánimas | Gustavo Adolfo Bécquer | Cuentos
+    Edicion: Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.
+    Fuente: https://es.wikisource.org/wiki/El_monte_de_las_%C3%A1nimas
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/monte_animas.source.json
+11. Los ojos verdes | Gustavo Adolfo Bécquer | Cuentos
+    Edicion: Obras de Gustavo A. Bécquer, tomo 1, 1885. Transcripción del escaneo de Wikisource.
+    Fuente: https://es.wikisource.org/wiki/Los_ojos_verdes
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/ojos_verdes.source.json
+12. La promesa | Gustavo Adolfo Bécquer | Cuentos
+    Edicion: Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.
+    Fuente: https://es.wikisource.org/wiki/La_promesa
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/promesa.source.json
+13. Rima I | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima I, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_01.source.json
+14. Rima II | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima II, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_02.source.json
+15. Rima III | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima III, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_03.source.json
+16. Rima IV | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima IV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_04.source.json
+17. Rima V | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima V, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_05.source.json
+18. Rima VI | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima VI, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_06.source.json
+19. Rima VII | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima VII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_07.source.json
+20. Rima VIII | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima VIII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_08.source.json
+21. Rima IX | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima IX, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_09.source.json
+22. Rima X | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima X, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_10.source.json
+23. Rima XI | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XI, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_11.source.json
+24. Rima XII | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_12.source.json
+25. Rima XIII | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XIII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_13.source.json
+26. Rima XIV | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XIV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_14.source.json
+27. Rima XV | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_15.source.json
+28. Rima XVI | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XVI, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_16.source.json
+29. Rima XVII | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XVII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_17.source.json
+30. Rima XVIII | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XVIII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_18.source.json
+31. Rima XIX | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XIX, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_19.source.json
+32. Rima XX | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XX, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_20.source.json
+33. Rima XXI | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXI, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_21.source.json
+34. Rima XXII | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_22.source.json
+35. Rima XXIII | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXIII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_23.source.json
+36. Rima XXIV | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXIV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_24.source.json
+37. Rima XXV | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_25.source.json
+38. Rima XXVI | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXVI, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_26.source.json
+39. Rima XXVII | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXVII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_27.source.json
+40. Rima XXVIII | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXVIII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_28.source.json
+41. Rima XXIX | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXIX, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_29.source.json
+42. Rima XXX | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXX, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_30.source.json
+43. Rima XXXI | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXXI, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_31.source.json
+44. Rima XXXII | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXXII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_32.source.json
+45. Rima XXXIII | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXXIII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_33.source.json
+46. Rima XXXIV | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXXIV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_34.source.json
+47. Rima XXXV | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Rima XXXV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rima_1885_35.source.json
+48. Rimas | Gustavo Adolfo Bécquer | Poesía
+    Edicion: Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. Rimas I–LXXVI.
+    Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/rimas_1885.source.json
+49. La venta de los gatos | Gustavo Adolfo Bécquer | Cuentos
+    Edicion: Obras de Gustavo A. Bécquer, tomo 3, 1885. Transcripción del escaneo de Wikisource.
+    Fuente: https://es.wikisource.org/wiki/La_venta_de_los_gatos
+    Reutilizacion: CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público
+    Manifiesto: android/assets/free_works/venta_gatos.source.json
+50. La vida es sueño | Pedro Calderón de la Barca |
+    Edicion: Ejemplar La vida es sueño.djvu; portada Insel-Verlag, Leipzig; fecha no confirmada
+    Fuente: https://es.wikisource.org/wiki/La_vida_es_sueño
+    Reutilizacion: CC BY-SA 4.0 para transcripción/conversión, cuando corresponda; obra original de dominio público
+    Manifiesto: android/assets/free_works/vida_sueno.source.json
+
+9. ARCHIVOS DE ESTA CONTINUACION
+Modificados respecto del respaldo inicial (y solo estos entre los 527 archivos comparados):
+- android/test/epub/epub_core_test.dart
+- android/test/epub/epub_import_widgets_test.dart
+Nuevos auxiliares/evidencias: android/tool/epub_cierre_sdk_assets.mjs; logs epub_cierre_web_tests.log, epub_cierre_web_retry.log, epub_cierre_web_final.log, epub_cierre_feature_tests.log, epub_cierre_offline_test.log, epub_cierre_feature_tests_final.log, epub_cierre_full_tests.log, epub_cierre_analyze.log, epub_cierre_diff_check.log y epub_cierre_build.log; epub_cierre_build_result.json y epub_cierre_verification.json. Artefactos regenerados: build/web (salida de compilacion). Respaldo nuevo descrito en seccion 1. Este informe es nuevo y no sobrescribe los anteriores.
+No se modificaron Home, Gemini, Perfil, Writer, Clubes, Maps, Firebase Authentication, Neon, Flyway, backend, tema global ni contratos persistentes de Google Books. Los archivos de produccion ya modificados antes de retomar permanecen identicos al respaldo. Las pruebas de regresion existentes se ejecutaron; no equivalen a inspeccion manual exhaustiva de cada modulo.
+Incidente de inspeccion: consultas de diagnostico mostraron parametros existentes de configuracion cliente en la salida de herramientas. No se reproducen aqui ni se copiaron a los nuevos archivos de evidencia; no se cambiaron ni versionaron archivos privados. Evitar volcar lineas completas de procesos o URLs de targets de pesta?as ajenas al Chrome de prueba.
+Los auxiliares CDP propios pendientes fueron cerrados. No se detuvieron procesos previos del usuario.
+
+10. VALIDACION MANUAL EN CHROME (PENDIENTE DE LA USUARIA)
+1) Desde android, iniciar:
+flutter run -d web-server --no-pub --web-hostname 127.0.0.1 --web-port 8766 --dart-define-from-file=config/firebase_web.local.json
+Abrir http://127.0.0.1:8766 en un perfil de pruebas, con ese mismo origen durante toda la validacion. No utilizar la biblioteca personal real para eliminaciones de prueba.
+2) Entrar como invitado (o cuenta de prueba) y usar la pestana Biblioteca de la navegacion inferior. Abrir Mis libros importados. Usar Importar libro EPUB y seleccionar android/test/fixtures/epub/capitulo0_prueba_3_capitulos.epub. Es una fixture original CC0 de tres capitulos; no es parte del catalogo publico.
+3) Confirmar la incorporacion; comprobar titulo, autor, formato EPUB y tarjeta. Leer, abrir indice de tres capitulos, aumentar letra, abrir capitulo segundo y volver a Mi Biblioteca.
+4) Recargar completamente Chrome. Volver con la misma identidad y origen a Biblioteca. Confirmar tarjeta y Continuar leyendo en el segundo capitulo, con letra conservada.
+5) Exportar copia EPUB. Comparar hashes sin abrir ni transformar los bytes:
+Get-FileHash -Algorithm SHA256 -LiteralPath test/fixtures/epub/capitulo0_prueba_3_capitulos.epub
+Get-FileHash -Algorithm SHA256 -LiteralPath '<ruta de la copia descargada>'
+Ambos deben ser cc101552c1174facde299dc70f8561d5cbe646a9347e5815bf18191aa1a34a2f.
+6) Cancelar una eliminacion y comprobar que sigue; luego confirmar la eliminacion SOLO de la fixture. Reimportar la copia exportada y leer sus tres capitulos.
+7) Comprobar cancelar selector/confirmacion, rechazo de archivo corrupto, y que repetir el mismo archivo no duplica tarjeta. Para aislamiento usar exclusivamente dos cuentas de prueba, nunca archivos personales. El namespace invitado no es una segunda cuenta autenticada.
+8) Abrir Biblioteca gratuita, buscar por titulo/autor y probar al menos dos textos diferentes. Recordar que Rimas I-XXXV repiten contenidos del volumen Rimas. Confirmar regreso, scroll, letra y ausencia de solicitudes a Gutendex/Wikisource para leer assets. Probar los tres tamanos moviles indicados sin overflow.
+9) No borrar datos del sitio antes de comprobar persistencia. La limpieza total del navegador no representa persistencia garantizada. Probar cuota solo en un perfil aislado, sin datos de la usuaria.
+
+11. RIESGOS Y CRECIMIENTO POSTERIOR
+Pendientes: validacion manual de la usuaria, pruebas Android en dispositivo y reparacion aguas arriba del ejecutor Flutter Web Windows para que el comando no requiera soporte CDP. No queda un defecto conocido de este bloque en las comprobaciones realizadas; el alcance anterior no acredita todas las variantes de EPUB/navegador/dispositivo. El build compilado no se desplego ni se probo manualmente despues de compilar.
+Para miles de obras: futuro almacenamiento remoto autorizado con metadatos pequenos (origen, revision, licencia, formato, bytes, SHA-256), descargas bajo demanda, cache local por cuenta, control de cuota e integridad, expiracion y reintento. Sincronizar archivos exigira almacenamiento remoto, autorizacion y reglas de acceso; no se implemento ni se simulo aqui.
+No se agregaron funcionalidades/dependencias, no se ampliaron contenidos y no se iniciaron Gemini ni Writer. Trabajo terminado en archivos locales y sin commit; detenerse tras este informe.

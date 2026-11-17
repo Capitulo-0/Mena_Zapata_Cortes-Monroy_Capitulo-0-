@@ -1,0 +1,112 @@
+CAPITULO 0 - SIMPLIFICACION DEFINITIVA DE CABECERA DE MI BIBLIOTECA
+Fecha: 2026-11-17T00:38:41
+
+1. PROTECCION Y DECISION VISUAL
+Se leyo INFORME_PULIDO_CABECERA_BIBLIOTECA_CAPITULO0.txt. Esta intervencion reemplaza su decision visual: no se mantiene la tarjeta/franja superior permanente.
+Antes de editar se comprobaron rama feature/resiliencia-gutendex-20261116, HEAD c049e30 y git status --short. Se preservaron cambios sin commit, informes, respaldos, configuracion privada, lectores y 50 entradas gratuitas.
+Respaldo previo: respaldos/simplificacion_cabecera_20261117_002609, con copias de los cuatro archivos afectados y recibo SHA-256 de 346 archivos publicos. No se copio configuracion privada. Comparacion final: solo esos cuatro archivos modificados, cero archivos desaparecidos.
+No se ejecutaron reset, clean, checkout, pull, merge, commit, push ni PR. No se actualizaron referencias remotas ni se inicio una revision de develop.
+
+2. ELEMENTOS QUE DESAPARECIERON
+Se retiro de la composicion real de Biblioteca la insercion de LibrarySyncBar. Ya no aparece la tarjeta permanente con Mi biblioteca sincronizada, Actualizar y Anadir libro. No hay padding, separador ni contenedor vacio en su lugar.
+Se conserva la estructura Expanded y su key del contenedor principal para no cambiar innecesariamente la identidad del stack de pantallas. El widget antiguo LibrarySyncBar permanece en su archivo como codigo previo, pero ningun punto de la composicion de produccion lo renderiza; no representa una barra oculta que siga ocupando espacio.
+En estado normal la pantalla comienza con:
+1) MI BIBLIOTECA, boton + y menu de tres puntos.
+2) Subtitulo literario existente, con el mismo contenido.
+3) Libros / Mis listas.
+4) Importar EPUB con su estilo previo intacto.
+5) Buscador.
+6) Filtros y contadores.
+7) Listado unificado de libros normales y EPUB.
+Solo las operaciones en curso o errores reales agregan informacion temporal; no hay mensaje permanente de sincronizacion exitosa.
+
+3. BOTON + Y PERMISOS
+El + se ubica en la misma fila que el titulo, a su derecha y antes del menu. Tiene fondo cafe, icono dorado, forma circular, area minima de 48x48 y tooltip Anadir libro. El menu tiene tambien un area tactil de 48x48 y tooltip Opciones de biblioteca.
+La fila conserva el titulo completo con ajuste de escala cuando falta ancho y deja el subtitulo debajo con el ancho util de la cabecera.
+El boton invoca exactamente _addRealBook, la accion manual que antes recibia LibrarySyncBar. No se creo un flujo nuevo ni otro servicio. La habilitacion reutiliza controller.canWrite y la restriccion de invitado. Durante carga/guardado o sin permiso queda deshabilitado con apariencia apropiada. La accion original tambien conserva sus guardas internas.
+No se modifico ni duplico ninguna accion del boton flotante global o de la barra inferior; se reemplazo el acceso visible de la franja por el +.
+
+4. ACTUALIZACION, GUARDADO Y ERRORES
+El controlador, repositorio, carga inicial y guardado/sincronizacion existentes no se modificaron. Se pasa el mismo controlador a la presentacion de LibraryScreen; no se agregan consultas automaticas ni se inventa una sincronizacion nueva.
+Actualizar biblioteca queda como una accion secundaria dentro del menu de tres puntos. Invoca el mismo controller.load. Se deshabilita durante controller.busy y escucha al controlador para volver a habilitarse aunque el menu siga abierto. No hay un boton permanente de actualizar fuera del menu.
+Durante operaciones se conserva un indicador fino de carga temporal, dentro del scroll de Biblioteca, sin texto de exito ni otra tarjeta decorativa permanente.
+Si controller.error contiene un error real, aparece su mensaje contextual y Reintentar. El texto es desplazable si supera el alto maximo de 96 px; no se recorta el contenido del error. Reintentar usa controller.retry y se deshabilita cuando corresponde. Al recuperarse la carga desaparece el aviso.
+No se afirma que la biblioteca este sincronizada cuando hay error; tampoco se presenta un error remoto como biblioteca vacia. La lectura EPUB local sigue accesible con datos del servidor no disponibles.
+
+5. MENU EXISTENTE
+El menu conserva sin sustituir sus callbacks:
+- Crear lista.
+- Exportar mi biblioteca.
+- Exportar mi lista.
+Solo se agrego Actualizar biblioteca, retirado de la franja. Las pruebas comprueban que las tres opciones originales siguen presentes cada vez que abren el menu.
+La nueva opcion tiene su propia superficie Material para que la tinta del control sea visible dentro de la hoja existente. Se corrigio la advertencia detectada por Flutter en la primera ejecucion, sin silenciarla.
+
+6. ARCHIVOS MODIFICADOS
+- android/lib/features/library/presentation/widgets/library_header.dart
+  Titulo/subtitulo y composicion compacta de + y menu, con callbacks recibidos. No contiene logica de negocio nueva.
+- android/lib/features/library/presentation/screens/library_screen.dart
+  Dos parametros opcionales para el controlador y accion existentes, conexion del header, indicador temporal/error/reintento contextual y actualizar dentro del menu. Sin cambios a filtros, tabs, contadores, libros o EPUB.
+- android/lib/features/home/presentation/screens/main_shell_screen.dart
+  Cambio exclusivamente de composicion de BIBLIOTECA en este contenedor compartido: retirar import/insercion de LibrarySyncBar y pasar _remoteLibrary y _addRealBook a LibraryScreen. No se tocaron HomeScreen, contenido/comportamiento de Home, otros tabs ni navegacion general. Este archivo era el unico punto que insertaba la franja y poseia el callback necesario.
+- android/test/library_remote_widgets_test.dart
+  Reemplazo de expectativas de la franja retirada por comprobaciones del +, menu, permisos, actualizacion, errores y reintento; preservacion de recorridos de registro manual, cuenta, progreso y perfil. Casos nuevos de cabecera movil.
+Nuevos: este informe; logs android/tool/simplificacion_cabecera_*.log y simplificacion_counter_preexistente.log; diagnostico adicional tool/existing_counter_scale_diagnostic_test.dart.
+No se borraron ni sobrescribieron informes previos, scripts, assets o archivos privados.
+
+7. PRUEBAS EJECUTADAS Y RESULTADOS
+Pruebas especificas finales:
+flutter test --no-pub test/library_remote_widgets_test.dart test/epub/epub_import_widgets_test.dart --reporter expanded
+25 aprobadas, 0 fallidas, sin omisiones; aproximadamente 35 s.
+Log: android/tool/simplificacion_cabecera_widgets_final.log.
+
+Suite completa definitiva:
+flutter test --no-pub --reporter expanded
+458 aprobadas, 2 omitidas, 0 fallidas; All tests passed!; 4 min 30 s informados por Flutter.
+Log: android/tool/simplificacion_cabecera_full_tests.log.
+Las dos omisiones son pruebas exclusivas de Web del entorno VM ya existentes. No se agregaron omisiones ni se eliminaron casos para lograr este resultado.
+
+flutter analyze --no-pub
+No issues found!, 35,9 s.
+Log: android/tool/simplificacion_cabecera_analyze.log.
+
+git diff --check
+Codigo 0, sin errores whitespace. Advertencias LF/CRLF preexistentes conservadas.
+Log: android/tool/simplificacion_cabecera_diff_check.log.
+
+Verificaciones cubiertas:
+- Franja y estado de sincronizacion permanente ausentes.
+- Titulo, + y menu alineados, area accesible y sin overflow en 320x568, 360x640 y 390x844 con escala normal.
+- Cabecera aislada con texto al doble en los mismos tres tamanos, sus dos callbacks y boton deshabilitado.
+- + abre el flujo real existente de registro/seleccion de catalogo, con ID SQL original y progreso persistente.
+- Invitados no invocan repositorio privado y su + queda deshabilitado.
+- Carga pendiente deshabilita + y actualizar; actualizar vuelve a habilitarse con el menu abierto cuando termina.
+- Actualizar desde el menu invoca una nueva carga y sus datos siguen alimentando Biblioteca, Perfil y desafio anual.
+- Error inicial conserva acceso a actualizar; aviso y retry reales desaparecen tras recuperarse.
+- Las tres acciones anteriores del menu permanecen.
+- Pruebas de importacion EPUB, lector/ruta y CFI, persistencia, aislamiento, exportacion exacta de bytes, confirmacion de eliminacion y reimportacion siguen pasando.
+- Listado normal/EPUB integrado, busqueda/filtros, controles locales, TXT, hashes de las 50 entradas y regresiones existentes cubiertos por la suite.
+Las pruebas son automatizadas Flutter con dobles y fixtures cuando corresponda; no implican una nueva validacion Chrome real ni Android en dispositivo.
+
+8. DIAGNOSTICO ADICIONAL FALLIDO, NO OCULTADO
+La primera ejecucion ampliada tuvo 17 aprobadas y 8 fallidas. Se conservaron sus evidencias en tool/simplificacion_cabecera_widgets.log.
+Una causa era la nueva ListTile dentro de la decoracion del menu: se corrigio incorporando Material, sin cambiar el callback. La otra era un overflow al aplicar escala de texto 2 a TODA LibraryScreen: provenia de LibraryStatusCounters, un widget de alto fijo que no se ha modificado.
+Se ejecuto por separado:
+flutter test --no-pub tool/existing_counter_scale_diagnostic_test.dart --reporter expanded
+Resultado: 1 diagnostico fallido por RenderFlex overflow del contador existente al doble de texto. Log: tool/simplificacion_counter_preexistente.log.
+Este diagnostico se conserva fuera de test/ como reproduccion adicional del comportamiento anterior; NO se lo presenta como prueba aprobada y no forma parte del recorrido predeterminado de flutter test. El recibo SHA-256 confirma que library_status_counters.dart es identico al inicio de esta tarea.
+No se cambiaron los contadores, de acuerdo con la restriccion explicita. Se mantuvieron pruebas de pantalla completa para los tres tamanos solicitados a escala normal y pruebas especificas de la nueva cabecera al doble. No se afirma que toda la pantalla soporte texto al 200% sin overflow.
+Pendiente real: revisar la accesibilidad del contador con texto muy ampliado en una tarea expresamente autorizada. No es un defecto demostrado de la nueva cabecera ni queda resuelto por este bloque.
+
+9. PRESERVACION Y VALIDACION MANUAL PENDIENTE
+EPUB (codigo completo de importacion, lectura, CFI, almacenamiento, bytes de exportacion y eliminacion), sus widgets, busqueda/filtros, contadores, modelos, repositorios y controlador no se modificaron. Las 50 obras, manifiestos y TXT son identicos al respaldo. No se cambiaron Google Books, Gemini, Writer, Clubes, Maps, backend, Firebase, Neon, Flyway, tema global, dependencias ni navegacion inferior.
+El unico ajuste dentro del archivo compartido MainShell fue el cableado visual de Biblioteca documentado arriba. No se utilizo la biblioteca personal real para pruebas destructivas.
+No se compilo Web/APK ni se ejecuto una nueva sesion Chrome real en esta intervencion. La usuaria debe validar el nuevo aspecto con el codigo actualizado; no se atribuye su aprobacion de disenios anteriores a esta simplificacion.
+Sugerencia de comprobacion manual con cuenta/perfil de prueba:
+1) Abrir Mi Biblioteca a 320, 360 y 390 px: titulo +, menu y subtitulo, sin franja ni hueco superior.
+2) Pulsar +, verificar el dialogo existente y cancelar sin registrar datos personales.
+3) Abrir menu: Crear lista, Exportar mi biblioteca, Exportar mi lista y Actualizar biblioteca. Comprobar que actualizar mantiene el estado de lectura.
+4) En un fallo de carga de prueba, comprobar mensaje contextual y Reintentar; recuperar y verificar que desaparecen. No confundir esto con prometer recarga completa sin red.
+5) Importar la fixture EPUB de tres capitulos desde Importar EPUB y comprobar lectura/regreso/progreso; revisar el listado unificado, busqueda, filtros y Mis listas.
+6) No borrar libros reales. Validacion en Android real pendiente. Para texto al 200%, tener presente la limitacion preexistente del contador.
+
+FIN. Simplificacion terminada y documentada. Sin commit/push/PR. Detenerse; no revisar develop ni iniciar Gemini automaticamente.

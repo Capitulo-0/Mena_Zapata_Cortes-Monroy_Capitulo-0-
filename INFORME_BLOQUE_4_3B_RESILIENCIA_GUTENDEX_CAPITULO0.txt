@@ -1,0 +1,126 @@
+CAPÍTULO 0 — BLOQUE 4.3B: RESILIENCIA GUTENDEX PARA DEFENSA
+Fecha: 16 de noviembre de 2026
+Estado: implementación y pruebas automatizadas terminadas; validación manual en Chrome pendiente.
+
+1. CONTEXTO Y SEGURIDAD
+Rama inicial y final: feature/resiliencia-gutendex-20261116.
+HEAD inicial y final: c049e30 feat: mejorar Gutendex y personalizar Home con Gemini (#65).
+Se comprobaron rama, último commit y git status --short antes de editar. No había cambios versionados pendientes; existían informes TXT, respaldos/ y android/config/firebase_web.local.json.bak sin seguimiento. Se preservaron, sin abrir configuración privada ni respaldos.
+Se leyó INFORME_BLOQUE_4_3A_BUSQUEDA_IDIOMAS_GUTENDEX_CAPITULO0.txt y se inspeccionaron exclusivamente Gutendex, sus pruebas y la dependencia de preferencias ya instalada. No se repitió una auditoría general.
+No hubo pull, merge, reset, clean, checkout, cambio de rama, add, commit, push ni PR. No se iniciaron backend, Firebase, Neon ni migraciones. No se instalaron dependencias ni se modificaron pubspec.yaml/pubspec.lock.
+
+2. DIAGNÓSTICO FOCALIZADO
+El repositorio HTTP mantiene un timeout de 15 segundos, parámetros search/languages y validación estricta de páginas HTTPS del mismo proveedor y consulta. Se conserva sin cambios.
+4.3A ya evitaba solicitudes idénticas simultáneas, descartaba respuestas obsoletas por generación, conservaba datos de la misma consulta durante actualización/fallo y mantenía caché de páginas por búsqueda, idioma y URI.
+La limitación principal era el ciclo de vida: caché de tres minutos eliminada al cerrar el catálogo. Una nueva apertura dependía otra vez de una respuesta remota, aunque se hubieran consultado datos válidos previamente.
+Había varios avisos separados para resultados guardados y error de actualización. La portada tenía un respaldo básico solo ante ausencia/error y una alternativa de carga HTML en Web, pero no recordaba explícitamente el fallo durante reconstrucciones del mismo widget.
+HTTP 522/503, latencia del servidor y restricciones CORS no quedan resueltos por esta corrección Flutter. No se midió ni se certificó una mejora de latencia del servidor público.
+
+3. SOLUCIÓN Y ESTADOS
+Se reutiliza el caché de sesión 4.3A y se añade un almacén local pequeño, exclusivamente de metadatos públicos recibidos correctamente.
+Al abrir una consulta sin resultados visibles se comprueba su copia local exacta. Si es válida se muestra sin lanzar una solicitud HTTP automática. La pantalla indica que procede de una consulta anterior, con máximo de 24 horas, y ofrece Buscar para actualizar.
+Buscar/Enter/Reintentar fuerzan una actualización explícita, salvo que ya exista la misma solicitud en curso. Los resultados correspondientes a esa consulta permanecen visibles durante carga y ante timeout/error. Un éxito sustituye los datos y elimina el estado de copia guardada.
+Búsqueda o idioma distintos reinician el contexto; nunca se usan datos de otra clave para rellenar una consulta sin resultados. La recuperación local también respeta la generación actual.
+Carga inicial: indicador existente y texto legible sobre la espera del servicio público. Actualización: indicador lineal con resultados anteriores. Error: un único contenedor con el mensaje controlado y una explicación secundaria, junto a Reintentar catálogo. No se acumulan los avisos de error y de caché.
+Una respuesta vacía exitosa sigue siendo distinta de un fallo. No hay temporizadores de reintento automático ni ciclos de solicitudes.
+La lectura local tiene un límite independiente de 500 ms: si el almacenamiento no responde, continúa la solicitud normal de red. Una lectura local que termine después no puede sobrescribir resultados nuevos. Este límite NO cambia el timeout HTTP de 15 segundos.
+
+4. CACHÉ Y LÍMITES
+Sesión, sin modificar gutendex_page_cache.dart:
+- Clave exacta: búsqueda con trim, idioma y URI de página.
+- TTL de tres minutos, máximo ocho páginas, 256 libros y 500.000 unidades de texto.
+- Evicción LRU y eliminación al cerrar el controlador.
+- Conserva páginas consultadas, aislamiento, deduplicación y protección frente a paginación obsoleta.
+
+Persistencia añadida con shared_preferences 2.5.6 ya presente en el proyecto:
+- Clave propia: gutendex.public_catalog.v1; esquema versionado.
+- Máximo 60 libros en total, cuatro primeras páginas de consultas y 250.000 unidades UTF-16 del JSON serializado, incluida su estructura. Equivale como máximo a unos 500 KB de unidades UTF-16, sin contar sobrecargas internas del runtime.
+- Son máximos simultáneos: con páginas grandes caben menos de cuatro consultas. No se promete conservar todas las búsquedas; se evictan las más antiguas guardadas.
+- Se conserva la primera página completa, no un recorte que pudiera saltar libros al paginar. Una página demasiado grande no se guarda.
+- Se contabiliza texto antes de serializar y se verifica el tamaño final. Las escrituras de cada instancia se serializan.
+- Fecha UTC de obtención y caducidad de 24 horas; leer no renueva la fecha. Se rechazan fechas futuras y entradas caducadas al recuperar.
+- Se validan versión, tamaño, claves, idiomas admitidos, cantidad de entradas/libros, identidad de libros, cuenta y enlaces next de la misma búsqueda/idioma y host HTTPS. Datos dañados o incompatibles no se muestran.
+- Solo campos públicos: título, autores/traductores, idiomas, materias, sinopsis original, formatos/URLs, copyright, descargas y datos de página. Sin tokens, identidad de usuario, credenciales ni datos de Biblioteca.
+- No se guardan imágenes, novelas, archivos TXT, contenido de lectura ni páginas adicionales en disco.
+- Fallos de preferencias no convierten un éxito HTTP en error ni borran resultados visibles. No se llama a clear ni se alteran claves ajenas.
+- Es un guardado de mejor esfuerzo: permisos del navegador, limpieza de datos, modo privado y disponibilidad del almacenamiento pueden impedir conservarlo. No es un respaldo garantizado.
+La lista visible que el usuario acumula con Más obras conserva el comportamiento anterior; los límites anteriores corresponden a los almacenes de caché.
+
+Documentación oficial consultada para la dependencia ya instalada:
+https://pub.dev/packages/shared_preferences
+https://pub.dev/documentation/shared_preferences/latest/shared_preferences/SharedPreferences-class.html
+Se reutilizó el mecanismo getInstance/getString/setString que ya emplea el proyecto, sin copiar ni modificar componentes de otros módulos.
+
+5. PORTADAS
+GutendexCover ahora conserva estado de fallo para la URL actual. Muestra un respaldo de crema/café/dorado con icono literario durante la espera, cuando falta una URL o cuando falla la imagen. Incluye semántica accesible y admite título real cuando el tamaño permite mostrarlo.
+No se programan reintentos. Reconstruir el mismo widget tras un fallo no vuelve a crear Image.network. Una URL distinta permite un nuevo intento. Destruir y volver a crear la pantalla puede permitir otro intento normal; no se promete una lista persistente de imágenes fallidas.
+Se retira la alternativa HTML de carga Web de este widget: un fallo utiliza el respaldo local, sin añadir otro mecanismo de acceso. No se intenta eludir CORS ni se modifica seguridad del navegador.
+Se mantienen imágenes reales cuando cargan correctamente. No se modifican portadas de Google Books ni componentes compartidos. La ficha utiliza el mismo widget existente sin cambios propios de código.
+
+6. ARCHIVOS MODIFICADOS Y CREADOS
+Modificados:
+- android/lib/features/gutendex/presentation/gutendex_controller.dart
+- android/lib/features/gutendex/presentation/screens/gutendex_catalog_screen.dart
+- android/lib/features/gutendex/presentation/widgets/gutendex_cover.dart
+Nuevos:
+- android/lib/features/gutendex/data/gutendex_saved_catalog.dart
+- android/test/gutendex/gutendex_resilience_test.dart
+- INFORME_BLOQUE_4_3B_RESILIENCIA_GUTENDEX_CAPITULO0.txt
+No se modificaron las pruebas anteriores, el repositorio HTTP, los modelos ni gutendex_detail_screen.dart. El diff de archivos versionados queda limitado a los tres archivos indicados; los nuevos se inventarían aparte.
+
+7. PRUEBAS REALES
+Resultado final de flutter test --no-pub:
+418 aprobadas, 1 omitida, 0 fallos; salida 0, All tests passed!; duración del runner: 3 minutos 40 segundos.
+La omisión preexistente corresponde a firebase_web_auth_test.dart con skip: !kIsWeb. No se alteró esa condición ni se ejecutó una prueba real de Firebase.
+Resultado final de flutter analyze --no-pub:
+No issues found!; salida 0; 21,8 segundos.
+git diff --check: salida 0. Solo aparecen avisos de conversión futura LF/CRLF; no se cambió configuración Git.
+
+21 pruebas nuevas incluidas en la suite final:
+- Persistencia de metadatos completos, identidad, autores, idiomas, formatos y cursor.
+- Claves exactas por consulta/idioma, caducidad y fechas futuras.
+- Límites de libros/consultas/JSON y rechazo de metadatos excesivos.
+- Cinco casos de datos dañados, versión desconocida, URL no permitida, ID inválido y tamaño excesivo.
+- Recuperación sin red, timeout de actualización conservando datos y recuperación manual exitosa.
+- Timeout en frío sin presentarlo como respuesta vacía.
+- Cambio inmediato de idioma durante lectura local y consultas diferentes.
+- Escrituras simultáneas en la instancia y preferencias ajenas intactas.
+- Guardado automático después de un éxito de red y recuperación tras cerrar el controlador.
+- Almacenamiento local lento: continuidad por red tras 500 ms y rechazo de resultado local tardío.
+- Seis casos móviles: 320x568, 360x640 y 390x844, claro/oscuro; catálogo guardado, ficha, vuelta, botón TXT, timeout y conservación de datos. Comprobación de tester.takeException() sin errores de layout.
+- Portada fallida mantenida al reconstruir, respaldo con título real y nueva URL habilitada.
+
+Las pruebas existentes aportan cobertura de respuesta HTTP correcta, HTTP 522/timeout, filtros, búsquedas sucesivas, respuestas obsoletas, solicitudes idénticas, caché de página/sesión, errores de paginación, enlaces seguros, fichas rápidas e importación TXT íntegra con selector falso.
+Las cuatro pruebas existentes Inicio → Gutendex → Inicio también terminaron aprobadas, sin modificar Home ni esas pruebas.
+La suite completa conserva la cobertura existente de Home/Gemini, Google Books/buscador simultáneo, Biblioteca/progreso/LEIDO, Perfil y lector. La preservación de Writer, Clubes y Maps se verifica por ausencia de cambios de código y por la cobertura disponible; no se afirma haber probado todas sus funciones manualmente.
+
+Ejecuciones intermedias y correcciones:
+Hubo fallos durante el desarrollo por duplicación visual del título en una portada de ficha, por espera de navegación en las nuevas pruebas y por almacenamiento local pendiente. Se retiró el cambio innecesario de la ficha, se hizo scroll real para alcanzar el botón TXT en las nuevas pruebas y se añadió el límite local de 500 ms.
+La primera suite completa terminó con 413 aprobadas, 1 omitida y 4 fallos de navegación por la espera local. Tras la corrección, las cuatro pruebas de navegación pasaron y se volvió a ejecutar toda la suite con el resultado final indicado arriba. No se redujo ni debilitó la cobertura existente.
+Se corrigieron asimismo incidencias de sintaxis y lints de las ediciones intermedias; el análisis final no presenta problemas.
+Las nuevas pruebas utilizan metadatos sintéticos, preferencias simuladas, repositorios falsos y fallos controlados. No dependen de la rapidez del servidor público ni descargan libros reales.
+
+8. QUÉ FUNCIONA SIN CONEXIÓN Y QUÉ NO
+Con la aplicación ya cargada, almacenamiento disponible y una copia válida de esa búsqueda/idioma, el catálogo puede recuperar la primera página de metadatos consultados y abrir una ficha con esos datos. La ficha conserva la información inicial aunque falle su actualización remota.
+El lector/importador TXT mantiene su funcionamiento local anterior. No se guardó ni subió el archivo del usuario y no se modificó el lector.
+No hay catálogo offline completo, imágenes persistentes ni texto completo descargado. Las consultas no guardadas, páginas adicionales no disponibles en sesión, actualizaciones de ficha, enlaces externos e imágenes necesitan internet.
+No se garantiza iniciar toda la aplicación sin red ni que autenticación y recursos de arranque estén disponibles offline. Tampoco se garantiza recuperación tras borrar almacenamiento, cambiar de navegador/origen o caducar/evictarse la entrada.
+El transporte HTTP previo no se reconstruyó: generaciones descartan respuestas obsoletas, pero no se afirma cancelación física de todas las solicitudes anteriores. Cerrar el catálogo conserva el cierre del cliente existente.
+No se implementaron proxy, descarga directa, scraping, traducción ni modo demostración con obras ficticias.
+
+9. VALIDACIÓN MANUAL PENDIENTE EN CHROME
+1) Con internet, abrir el catálogo Español y esperar una respuesta válida. Revisar título/autor y Network sin compartir tokens ni información privada. La primera consulta sigue pudiendo fallar si el servidor no responde.
+2) Volver a Inicio y reabrir el catálogo. Si la primera página correspondiente se guardó y no fue evictada, debe aparecer el aviso de consulta anterior y no solicitar de nuevo el catálogo automáticamente.
+3) Con la aplicación ya cargada, activar Offline en DevTools y reabrir esa consulta. Deben verse sus metadatos guardados. No esperar portadas remotas ni nuevas páginas sin red.
+4) Pulsar Buscar/Reintentar: conservar las tarjetas de esa misma consulta durante carga y error. No mostrar datos de otra búsqueda o idioma ni confundir error con ausencia de coincidencias.
+5) Restablecer internet y pulsar Buscar para obtener datos nuevos. Verificar que desaparece el aviso de copia anterior después del éxito. No hay reintento automático al recuperar la red.
+6) Cambiar Español/Inglés, buscar dos títulos/autores y volver; comprobar claves aisladas. El límite global puede haber evictado consultas anteriores.
+7) Abrir ficha desde datos guardados, revisar autor/idioma/formatos, volver al catálogo e importar un TXT legítimo desde Leer archivo TXT como antes.
+8) Comprobar 320x568, 360x640 y 390x844, claro/oscuro, scroll y teclado. Revisar respaldo de portada bajo fallos 503/CORS: no debe verse imagen rota ni iniciarse un ciclo de reintentos.
+No se ejecutó Chrome ni Android reales en esta intervención. La persistencia real del navegador/dispositivo y su experiencia visual siguen pendientes de esta validación manual.
+
+10. PREPARACIÓN DE LA DEFENSA Y PRESERVACIÓN
+Conviene consultar antes una búsqueda real que vaya a utilizarse y verificar su recuperación local en el mismo navegador/origen, sin guardar muchas consultas que puedan evictarla. Mantener un TXT legítimo disponible mediante el flujo manual ya comprobado.
+Si se necesita una demostración totalmente offline independiente del caché, requiere una propuesta separada con datos/fuente/fecha identificados como demostración y autorización posterior. No existe ese modo en esta entrega.
+El control final Git confirma que no hay cambios en Home, recomendaciones/Gemini, Biblioteca persistente, Perfil, lector TXT compartido, Maps, Writer, Clubes, Firebase, Neon, Flyway, tema global, configuraciones privadas o backend. Informes anteriores y respaldos permanecen en el inventario sin sobrescritura.
+No se hicieron commit, push ni PR. Se detiene el trabajo al entregar este informe; no se inicia otro módulo.

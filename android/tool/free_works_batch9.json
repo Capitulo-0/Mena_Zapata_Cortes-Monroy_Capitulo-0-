@@ -1,0 +1,162 @@
+[
+  {
+    "slug": "rima_1885_31",
+    "title": "Rima XXXI",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXXI, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Nuestra pasión fué un trágico sainete Verso final: Y á mí sólo las lágrimas!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXXI",
+        "beginning": "XXXI\n\nNuestra pasión fué un trágico sainete\nEn cuya absurda fábula\nLo cómico y lo grave confundidos\n",
+        "ending": "Lo cómico y lo grave confundidos\nRisas y llanto arrancan.\n\nPero fué lo peor de aquella historia\nQue al fin de la jornada,\nA ella tocaron lágrimas y risas,\nY á mí sólo las lágrimas!",
+        "extraction": "poem:XXXI",
+        "reviewed_headings": [
+          "XXXI"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_32",
+    "title": "Rima XXXII",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXXII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Pasaba arrolladora en su hermosura, Verso final: Se unieron los crepúsculos, y... «fué».",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXXII",
+        "beginning": "XXXII\n\nPasaba arrolladora en su hermosura,\nY el paso la dejé;\nNi aun á mirarla me volví, y no obstan",
+        "ending": "ví, y no obstante\nAlgo á mi oído murmuró: «esa es».\n\n¿Quién reunió la tarde á la mañana?\nLo ignoro: sólo sé\nQue en una breve noche de verano\nSe unieron los crepúsculos, y... «fué».",
+        "extraction": "poem:XXXII",
+        "reviewed_headings": [
+          "XXXII"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_33",
+    "title": "Rima XXXIII",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXXIII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Es cuestión de palabras, y no obstante Verso final: Y cuándo es dignidad!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXXIII",
+        "beginning": "XXXIII\n\nEs cuestión de palabras, y no obstante\nNi tú ni yo jamás,\nDespués de lo pasado, convendremos",
+        "ending": "espués de lo pasado, convendremos\nEn quién la culpa está.\n\n¡Lástima que el amor un diccionario\nNo tenga donde hallar\nCuándo el orgullo es simplemente orgullo,\nY cuándo es dignidad!",
+        "extraction": "poem:XXXIII",
+        "reviewed_headings": [
+          "XXXIII"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_34",
+    "title": "Rima XXXIV",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXXIV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Cruza callada, y son sus movimientos Verso final: Más que lo que cualquiera otra me diga.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXXIV",
+        "beginning": "XXXIV\n\nCruza callada, y son sus movimientos\nSilenciosa armonía:\nSuenan sus pasos y, al sonar, recuer",
+        "ending": "fuente eterna de poesía.\n\n¿Que es estúpida?... ¡Bah! mientras, callando\nGuarde oscuro el enigma,\nSiempre valdrá, á mi ver, lo que ella calla\nMás que lo que cualquiera otra me diga.",
+        "extraction": "poem:XXXIV",
+        "reviewed_headings": [
+          "XXXIV"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_35",
+    "title": "Rima XXXV",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXXV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: ¡No me admiró tu olvido! Aunque de un día Verso final: Eso... ¡ni lo pudiste sospechar!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXXV",
+        "beginning": "XXXV\n\n¡No me admiró tu olvido! Aunque de un día\nMe admiró tu cariño mucho más;\nPorque lo que hay en ",
+        "ending": "XXXV\n\n¡No me admiró tu olvido! Aunque de un día\nMe admiró tu cariño mucho más;\nPorque lo que hay en mí que vale algo,\nEso... ¡ni lo pudiste sospechar!",
+        "extraction": "poem:XXXV",
+        "reviewed_headings": [
+          "XXXV"
+        ]
+      }
+    ]
+  }
+]

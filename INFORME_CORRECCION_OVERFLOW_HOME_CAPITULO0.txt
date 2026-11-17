@@ -1,0 +1,184 @@
+CAPÍTULO 0 — CORRECCIÓN DE OVERFLOW EN RECOMENDACIONES
+Fecha: 16 de noviembre de 2026
+
+1. SEGURIDAD Y ESTADO INICIAL
+Se comprobaron antes de editar:
+- git branch --show-current: feature/integraciones-biblioteca-perfil.
+- git log -1 --oneline: bc85613 feat: implementar lector TXT real e importacion local.
+- git status --short: cambios locales previos de Gutendex 4.3A, Home/Gemini y pruebas, además de informes, archivos nuevos, configuración privada y respaldos.
+
+Se preservó ese trabajo. No se ejecutaron pull, merge, reset, clean, checkout, cambio de rama, git add, commit, push ni PR.
+
+Se inspeccionaron exclusivamente recommended_books_section.dart, library_recommendations_section.dart y los componentes/pruebas necesarios para comprender y comprobar el layout. No se repitió una auditoría general.
+
+No se abrieron ni modificaron credenciales, configuración privada o respaldos.
+
+2. CAUSA EXACTA
+RecommendedBooksSection asignaba una altura de:
+226 + max(0, textScaler.scale(100) - 100).
+
+Esto daba 226 px a escala 1 y 276 px a escala 1,5. La portada consumía siempre 122 px. El espacio restante debía contener título, autor, etiqueta de disponibilidad, valoración y sus márgenes/bordes.
+
+Los siguientes elementos agravaban el caso:
+- Tres tarjetas simultáneas dividen el ancho móvil en columnas estrechas.
+- Los títulos reales largos ocupan más líneas.
+- La etiqueta Lectura externa puede partirse en más de una línea.
+- La valoración contenía una Row con icono y Text sin Flexible.
+- El cuerpo utilizaba Expanded y Spacer dentro de una altura fija insuficiente.
+- Aumentar la altura con una fórmula basada solo en escala no contemplaba el ancho ni las métricas reales de cada texto/fuente.
+
+La reproducción previa a la corrección, en 320x568 y escala 1,5, produjo errores reales del framework:
+- RenderFlex vertical: overflow de 31 y 15 píxeles en la Column del cuerpo.
+- RenderFlex horizontal: overflow de 91 y 84 píxeles en la Row de valoración.
+Los valores corresponden al runner de pruebas local, no a una medición de las capturas Chrome de la usuaria.
+
+La primera prueba con portada nula también expuso una conversión directa Null a String. Se separó la reproducción de layout con datos válidos y se conservó el caso de metadatos nulos en las páginas siguientes.
+
+Las pruebas responsive anteriores relevantes usaban un único candidato breve: esa tarjeta disponía de mucho más ancho y no reproducía la combinación de tres columnas, etiquetas partidas y textos largos.
+
+3. SOLUCIÓN APLICADA
+Se eliminó la altura fija y su fórmula de escala.
+
+La fila de hasta tres tarjetas utiliza IntrinsicHeight y CrossAxisAlignment.stretch:
+- La altura se obtiene del contenido real y su ancho disponible.
+- Las tarjetas visibles comparten la altura que necesita la más exigente.
+- Al cambiar de grupo, la altura puede adaptarse al nuevo contenido.
+- Expanded y Spacer reciben ahora restricciones finitas derivadas de esa altura natural.
+- No existe scroll vertical dentro de cada tarjeta.
+- El scroll exterior del Home sigue permitiendo acceder a toda la tarjeta por encima de la navegación flotante.
+
+La medición adicional queda acotada a las tres tarjetas visibles; no se mide de esta forma todo el catálogo.
+
+Contenido:
+- Portada de 122 px conservada, con el tratamiento visual y fallback existentes.
+- Título: hasta tres líneas, ellipsis, tamaño base 12.
+- Autor: hasta dos líneas, ellipsis, tamaño base 10.
+- Disponibilidad: hasta dos líneas, ellipsis, tamaño base 8,5.
+- Valoración: Flexible en su Row, una línea y ellipsis, tamaño base 9.
+- Separación mínima de ocho píxeles antes de la valoración.
+- Se conserva la alineación inferior de la valoración y la altura igual entre tarjetas visibles.
+- Autor ausente: etiqueta explícita Autor no disponible.
+- Portada ausente: se reutiliza el fallback existente.
+- Valoración inexistente/no numérica: Sin valorar.
+
+No se modifican los metadatos originales ni se inventan autores o valoraciones. Las etiquetas de ausencia son presentación.
+
+Se mantienen colores, bordes, sombras, portadas, iconos de información, títulos, navegación y controles anterior/siguiente. No se redujeron fuentes para hacer caber el contenido: se aumentó su legibilidad.
+
+No se añadieron ClipRect, FittedBox, ocultación de errores Flutter, cambios de FlutterError.onError ni desactivación de comprobaciones. El clip de bordes redondeados ya existente no se usa como solución del desbordamiento.
+
+library_recommendations_section.dart se revisó, pero no requirió modificación. No se añadieron párrafos debajo del carrusel ni se tocó el resto del Home.
+
+4. ARCHIVOS DE ESTA INTERVENCIÓN
+Único archivo existente modificado:
+android/lib/features/home/presentation/widgets/recommended_books_section.dart
+
+Archivo nuevo de pruebas:
+android/test/home_recommendations_overflow_test.dart
+
+Informe nuevo:
+INFORME_CORRECCION_OVERFLOW_HOME_CAPITULO0.txt
+
+El diff normal contra HEAD incluye cambios anteriores sin commit. Para distinguir esta intervención se comparó contra una línea base de huellas tomada antes de editar.
+
+5. DATOS Y MATRIZ DE PRUEBAS
+Se añadieron 24 casos:
+- 320x568.
+- 360x640.
+- 390x844.
+- 430x932.
+Para cada tamaño: escalas 1,0 / 1,3 / 1,5 y temas claro/oscuro.
+
+Se utilizan seis candidatos distintos, con tres tarjetas simultáneas y varias posiciones del carrusel:
+- Las cadenas del rey.
+- SUAVE ES LA NOCHE.
+- El corazón del rey (Saga Rey I).
+- Títulos superiores a 60 caracteres.
+- Autor sintético de más de 40 caracteres.
+- Portada y autor nulos, valoración ausente y etiquetas Gratis / Lectura externa.
+
+Son fixtures de prueba; el autor sintético no se presenta como el autor real de esas obras ni se introdujo en producción.
+
+Las verificaciones comprueban:
+- tester.takeException() nulo después de los layouts y cambios de página.
+- Tres portadas/tarjetas renderizadas simultáneamente.
+- Alturas iguales entre las tarjetas visibles.
+- Avance hasta el último grupo, regreso y nuevo avance.
+- Selección de tarjeta con el mismo ID de libro recibido.
+- Información de recomendación accesible al pulsar su icono.
+- Último título y última valoración alcanzables por encima de una navegación inferior flotante de prueba.
+- Ausencia de Scrollable descendiente dentro de cada tarjeta.
+- Ausencia de un acceso Gemini adicional en el cuerpo.
+
+Se usa un contenedor de navegación inferior de prueba con altura y márgenes representativos y el padding exterior de 130 px existente. Las pruebas de navegación real a fichas se conservan adicionalmente en la suite completa.
+
+No basta con un pump sin validaciones: las pruebas fallaban explícitamente antes del arreglo y verifican ausencia de excepciones del framework en las situaciones descritas. No se filtraron los errores ni se ocultaron warnings de taps.
+
+6. RESULTADOS REALES
+Reproducción previa, datos válidos, widget original:
+flutter test --no-pub test/home_recommendations_overflow_test.dart --plain-name "realistic recommendations 320x568 scale=1.5 dark=false"
+Resultado: fallo por los overflows verticales/horizontales documentados. Salida 1.
+
+Matriz específica tras la corrección:
+flutter test --no-pub test/home_recommendations_overflow_test.dart
+24 aprobadas, cero fallos, salida 0.
+Después se reforzaron las comprobaciones de regreso del carrusel, última etiqueta y ausencia de scroll interno; esas comprobaciones están incluidas en la suite final.
+
+SUITE FINAL COMPLETA:
+flutter test --no-pub
+351 aprobadas, 1 omitida, 0 fallos. All tests passed.
+Salida 0. Duración del runner: 02:04.
+
+La línea base anterior de referencia era 327 aprobadas y una omitida. Se sumaron 24 pruebas nuevas; no se modificó ningún archivo de pruebas anterior.
+
+ANÁLISIS:
+flutter analyze --no-pub
+No issues found!
+Salida 0. Duración informada: 76,4 segundos.
+
+CONTROL DE ESPACIOS:
+git diff --check
+Salida 0, sin errores.
+Los avisos LF/CRLF de Git no motivaron normalización de otros archivos.
+
+La única prueba omitida sigue siendo firebase_web_auth_test.dart, Chrome Google uses Firebase popup without invoking native Google SDK, con skip: !kIsWeb preexistente. No se añadieron omisiones.
+
+No se ejecutaron nuevas pruebas Java en esta intervención: el backend está fuera de alcance y no cambió. No se atribuyen como nuevas ejecuciones los resultados Java de informes anteriores.
+
+7. AUSENCIA DE REGRESIONES Y PRESERVACIÓN
+Se registraron huellas SHA-256 de 542 archivos previos no sensibles. La comparación posterior detectó un único archivo diferente: recommended_books_section.dart.
+
+Se conservan:
+- Algoritmo, ranking, deduplicación por título y diversidad.
+- Backend de recomendaciones y sus contratos.
+- Gemini y su experiencia exclusivamente desde la cabecera.
+- Gutendex 4.3A y todas sus pruebas.
+- Google Books y el buscador simultáneo.
+- Biblioteca persistente, progreso y corrección LEIDO.
+- Lector TXT.
+- Perfil, Writer, clubes, Maps, Firebase, Neon, Flyway y tema global.
+- Informes, configuraciones privadas y respaldos previos.
+
+La suite completa aprobó con las pruebas existentes de títulos únicos, Gemini, fichas/regreso, búsqueda, Gutendex, lector, Biblioteca y progreso.
+
+No se agregaron dependencias ni se modificaron pubspec, lockfiles o configuraciones. No se ejecutó backend, migración o modificación de datos reales.
+
+8. VALIDACIÓN MANUAL EN CHROME
+1) Iniciar o recargar la aplicación con la configuración autorizada habitual, mediante una recarga completa para usar el widget actualizado.
+2) Abrir Inicio y cargar Recomendado para ti con varios candidatos reales. Verificar tres tarjetas simultáneas y los títulos mencionados cuando estén disponibles.
+3) En DevTools probar 320x568, 360x640, 390x844 y 430x932. Mantener inicialmente el zoom del navegador al 100% para comprobar esas dimensiones lógicas.
+4) Recorrer todos los grupos mediante los controles anterior y siguiente. Verificar que no aparecen franjas de overflow ni mensajes BOTTOM OVERFLOWED.
+5) Comprobar títulos de tres líneas y autores de hasta dos líneas con ellipsis, disponibilidad, valoración y el fallback de portada.
+6) Desplazar el Home hasta la parte inferior de las tarjetas: etiquetas y acciones deben poder quedar por encima de la barra flotante. No debe aparecer scroll dentro de una tarjeta.
+7) Pulsar información y abrir una ficha; regresar al Home y repetir el avance del carrusel.
+8) Probar claro/oscuro y ampliación de texto. El zoom 130%/150% de Chrome es una comprobación manual adicional, pero no equivale exactamente al TextScaler 1,3/1,5 de los tests Flutter, porque también puede cambiar el viewport lógico.
+9) Confirmar que Actualizar y los títulos únicos se mantienen, y que Gemini sigue únicamente en el icono de cabecera.
+
+9. LÍMITES Y CIERRE
+La corrección se verificó con pruebas automatizadas, fuentes locales de prueba y fixtures realistas. No se ejecutó esta versión en Chrome real ni en Android físico durante la intervención; esa validación manual sigue pendiente.
+
+La altura puede variar moderadamente entre grupos según texto, ancho y escala. Las tarjetas de cada grupo visible mantienen la misma altura. En pantallas pequeñas o con texto ampliado puede ser necesario el desplazamiento exterior del Home, sin scroll interno por tarjeta.
+
+No se evaluaron ni modificaron conectividad, CORS o disponibilidad de portadas/proveedores. No se hicieron solicitudes reales Gemini ni cambios de sus claves o configuración.
+
+Rama y HEAD conservados. Sin commit, push o PR. Trabajo detenido al finalizar esta corrección.

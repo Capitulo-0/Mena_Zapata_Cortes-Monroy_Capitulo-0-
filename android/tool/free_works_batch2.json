@@ -1,0 +1,384 @@
+[
+  {
+    "slug": "beso",
+    "title": "El beso",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Cuentos",
+    "edition": "Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._2.djvu",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "reviewed_complete": true,
+    "sections": [
+      {
+        "page": "El beso",
+        "label": "Relato completo",
+        "beginning": "EL BESO",
+        "ending": "de su guantelete de piedra.",
+        "extraction": "scan",
+        "reviewed_headings": [
+          "I.\n",
+          "II",
+          "III"
+        ]
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "slug": "promesa",
+    "title": "La promesa",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Cuentos",
+    "edition": "Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._2.djvu",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "reviewed_complete": true,
+    "sections": [
+      {
+        "page": "La promesa",
+        "label": "Relato completo",
+        "beginning": "LA PROMESA",
+        "ending": "está enterrada Margarita.",
+        "extraction": "scan",
+        "reviewed_headings": [
+          "II",
+          "III",
+          "IV",
+          "I.\n",
+          "II",
+          "III",
+          "IV",
+          "V"
+        ]
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "slug": "cueva_mora",
+    "title": "La cueva de la mora",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Cuentos",
+    "edition": "Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._2.djvu",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "reviewed_complete": true,
+    "sections": [
+      {
+        "page": "La cueva de la mora",
+        "label": "Relato completo",
+        "beginning": "LA CUEVA DE LA MORA",
+        "ending": "por estos contornos.",
+        "extraction": "scan",
+        "reviewed_headings": [
+          "I",
+          "II",
+          "III"
+        ]
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "slug": "gnomo",
+    "title": "El gnomo",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Cuentos",
+    "edition": "Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._2.djvu",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "reviewed_complete": true,
+    "sections": [
+      {
+        "page": "El gnomo",
+        "label": "Relato completo",
+        "beginning": "EL GNOMO",
+        "ending": "del toque del Ave- María.",
+        "extraction": "scan",
+        "reviewed_headings": [
+          "I",
+          "II",
+          "III",
+          "IV"
+        ]
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "slug": "venta_gatos",
+    "title": "La venta de los gatos",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Cuentos",
+    "edition": "Obras de Gustavo A. Bécquer, tomo 3, 1885. Transcripción del escaneo de Wikisource.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._3.djvu",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "reviewed_complete": true,
+    "sections": [
+      {
+        "page": "La venta de los gatos",
+        "label": "Relato completo",
+        "beginning": "LA VENTA DE LOS GATOS",
+        "ending": "yo aprendí á descifrar entonces.",
+        "extraction": "scan",
+        "reviewed_headings": [
+          "I",
+          "II"
+        ]
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "slug": "rimas_1885",
+    "title": "Rimas",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "edition": "Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. Rimas I–LXXVI.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "reviewed_complete": true,
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Rimas I–LXXVI",
+        "beginning": "I\n\nYo sé un himno gigante y extraño",
+        "ending": "¡Qué sueño el del sepulcro tan tranquilo!",
+        "extraction": "scan",
+        "reviewed_headings": [
+          "I",
+          "II",
+          "III",
+          "IV",
+          "V",
+          "VI",
+          "VII",
+          "VIII",
+          "IX",
+          "X",
+          "XI",
+          "XII",
+          "XIII",
+          "XIV",
+          "XV",
+          "XVI",
+          "XVII",
+          "XVIII",
+          "XIX",
+          "XX",
+          "XXI",
+          "XXII",
+          "XXIII",
+          "XXIV",
+          "XXV",
+          "XXVI",
+          "XXVII",
+          "XXVIII",
+          "XXIX",
+          "XXX",
+          "XXXI",
+          "XXXII",
+          "XXXIII",
+          "XXXIV",
+          "XXXV",
+          "XXXVI",
+          "XXXVII",
+          "XXXVIII",
+          "XXXIX",
+          "XL",
+          "XLI",
+          "XLII",
+          "XLIII",
+          "XLIV",
+          "XLV",
+          "XLVI",
+          "XLVII",
+          "XLVIII",
+          "XLIX",
+          "L",
+          "LI",
+          "LII",
+          "LIII",
+          "LIV",
+          "LV",
+          "LVI",
+          "LVII",
+          "LVIII",
+          "LIX",
+          "LX",
+          "LXI",
+          "LXII",
+          "LXIII",
+          "LXIV",
+          "LXV",
+          "LXVI",
+          "LXVII",
+          "LXVIII",
+          "LXIX",
+          "LXX",
+          "LXXI",
+          "LXXII",
+          "LXXIII",
+          "LXXIV",
+          "LXXV",
+          "LXXVI"
+        ]
+      }
+    ],
+    "notes": "Colección de 76 rimas de esta edición, no todas las poesías del autor. Exportación MediaWiki del rango 141–218 del escaneo; se excluye el índice.",
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)"
+  },
+  {
+    "slug": "fuenteovejuna",
+    "title": "Fuenteovejuna",
+    "author": "Lope de Vega",
+    "death_year": 1635,
+    "genre": "Teatro",
+    "edition": "Edición digital de Wikisource: actos I–III, revisiones 1392969, 1393035 y 1393036. Edición impresa base no indicada.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Fuenteovejuna",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Lope_de_Vega"
+    ],
+    "reviewed_complete": true,
+    "sections": [
+      {
+        "page": "Fuenteovejuna/Acto I",
+        "label": "Acto I",
+        "beginning": "Personajes",
+        "ending": "FIN DEL ACTO PRIMERO",
+        "extraction": "page",
+        "reviewed_headings": []
+      },
+      {
+        "page": "Fuenteovejuna/Acto II",
+        "label": "Acto II",
+        "beginning": "ACTO SEGUNDO",
+        "ending": "FIN DEL ACTO SEGUNDO",
+        "extraction": "page",
+        "reviewed_headings": []
+      },
+      {
+        "page": "Fuenteovejuna/Acto III",
+        "label": "Acto III",
+        "beginning": "ACTO TERCERO",
+        "ending": "Fuenteovejuna da fin.",
+        "extraction": "page",
+        "reviewed_headings": []
+      }
+    ],
+    "notes": "Texto español original; incluye personajes y tres actos completos. No se atribuye una edición impresa no documentada."
+  },
+  {
+    "slug": "capitan_veneno",
+    "title": "El capitán Veneno",
+    "author": "Pedro Antonio de Alarcón",
+    "death_year": 1891,
+    "genre": "Novela",
+    "edition": "Edición digital de Wikisource, cuatro partes y 27 capítulos. Obra original de 1881; edición impresa base no indicada.",
+    "edition_evidence": "https://es.wikisource.org/wiki/El_capitán_Veneno",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Pedro_Antonio_de_Alarcón"
+    ],
+    "reviewed_complete": true,
+    "sections": [
+      {
+        "page": "El capitán Veneno/Parte primera",
+        "label": "Parte primera",
+        "beginning": "Parte Primera: Heridas en el cuerpo",
+        "ending": "no hay bien ni mal que cien años dure!",
+        "extraction": "page",
+        "reviewed_headings": [
+          "I - UN POCO DE HISTORIA POLÍTICA",
+          "II - NUESTRA HEROÍNA",
+          "III - NUESTRO HÉROE",
+          "IV - EL PELLEJO PROPIO Y EL AJENO",
+          "V - TRABUCAZO",
+          "VI - DIAGNÓSTICO Y PRONÓSTICO",
+          "VII - EXPECTACIÓN",
+          "VIII - INCONVENIENTES DE LA GUÍA DE FORASTEROS",
+          "IX - MÁS INCONVENIENTES DE LA GUÍA DE FORASTEROS",
+          "X - EL CAPITÁN SE DEFIENDE A SÍ PROPIO"
+        ]
+      },
+      {
+        "page": "El capitán Veneno/Parte segunda",
+        "label": "Parte segunda",
+        "beginning": "Parte Segunda: Vida del hombre malo",
+        "ending": "por la primera vez de su vida.",
+        "extraction": "page",
+        "reviewed_headings": [
+          "I - LA SEGUNDA CURA",
+          "II - IRIS DE PAZ",
+          "III - PODER DE LA ELOCUENCIA",
+          "IV - PREÁMBULOS INDISPENSABLES",
+          "V - HISTORIA DEL CAPITÁN",
+          "VI - LA VIUDA DEL CABECILLA",
+          "VII - LOS PRETENDIENTES DE ANGUSTIAS"
+        ]
+      },
+      {
+        "page": "El capitán Veneno/Parte tercera",
+        "label": "Parte tercera",
+        "beginning": "Parte Tercera: Heridas en el alma",
+        "ending": "otro momento de descanso.",
+        "extraction": "page",
+        "reviewed_headings": [
+          "I - ESCARAMUZAS",
+          "II - SE PLANTEA LA CUESTIÓN",
+          "III - LA CONVALECENCIA",
+          "IV - MIRADA RETROSPECTlVA",
+          "V - PERIPECIA",
+          "VI - CATÁSTROFE",
+          "VII - MILAGROS DEL DOLOR"
+        ]
+      },
+      {
+        "page": "El capitán Veneno/Parte cuarta",
+        "label": "Parte cuarta",
+        "beginning": "Parte Cuarta: De potencia a potencia",
+        "ending": "FIN",
+        "extraction": "page",
+        "reviewed_headings": [
+          "I - DE CÓMO EL CAPITÁN LLEGÓ A HABLAR SOLO",
+          "II - BATALLA CAMPAL",
+          "III - ETIAMSI OMNES"
+        ]
+      }
+    ],
+    "notes": "Sin traducción ni prólogo editorial moderno. Se identifica la edición digital por las revisiones de cada parte."
+  }
+]

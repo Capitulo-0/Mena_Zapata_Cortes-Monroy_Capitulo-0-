@@ -1,0 +1,68 @@
+CAPÍTULO 0 — CORRECCIÓN DEL CARRUSEL AL ACTUALIZAR RECOMENDACIONES
+Fecha: 16 de noviembre de 2026
+
+1. ESTADO INICIAL Y SEGURIDAD
+Rama comprobada antes de editar y al finalizar: feature/integraciones-biblioteca-perfil.
+HEAD: bc85613 feat: implementar lector TXT real e importacion local.
+Existían cambios locales de Gutendex 4.3A, Home/Gemini y ajustes visuales, pruebas, informes y archivos no versionados. Se preservaron. No se ejecutaron pull, merge, reset, clean, checkout, cambio de rama, add, commit, push ni PR. No se instalaron dependencias ni se iniciaron servicios o conexiones productivas.
+La inspección se limitó al carrusel, su sección contenedora y el flujo de actualización relacionado; no se realizó una auditoría general.
+
+2. CAUSA EXACTA Y REPRODUCCIÓN
+recommended_books_section.dart construía una fila con un Expanded por cada libro realmente visible. Al pasar de tres a dos resultados, el espacio de la fila se repartía entre dos tarjetas y estas se ensanchaban. No era necesario cambiar los resultados ni el backend.
+Una prueba de regresión ejecutada antes de corregirlo reprodujo el fallo a 320x568: la primera tarjeta pasó de 89 a 137 píxeles tras una respuesta válida de tres a dos libros, un aumento de 48 píxeles.
+
+3. SOLUCIÓN IMPLEMENTADA
+Un LayoutBuilder calcula el ancho mediante una cuadrícula objetivo de tres columnas: (ancho disponible - 2 separaciones de 7 píxeles) / 3. El ancho disponible ya descuenta los márgenes laterales existentes de 16 píxeles.
+Cada tarjeta recibe ese ancho, independientemente de que existan una, dos o tres recomendaciones visibles. Una o dos se alinean al inicio. No se añaden tarjetas vacías ni libros para rellenar. A 320 píxeles de viewport, el ancho corregido es aproximadamente 91,33 píxeles para todos esos casos.
+Se conserva IntrinsicHeight y el estiramiento vertical de la fila: las tarjetas del mismo grupo mantienen altura coherente y adaptable a su contenido. No se añadieron alturas fijas de tarjeta ni se redujeron tipografías.
+Se conservaron portadas, autores, títulos, disponibilidad, valoraciones, información contextual, navegación y colores existentes. Las flechas y el desplazamiento por grupos permanecen sin cambios; el estado vacío continúa en el contenedor existente.
+
+4. ACTUALIZACIÓN Y CANTIDAD DE RESULTADOS
+Se revisaron el controlador y el contenedor sin modificarlos. Durante una actualización se conserva el conjunto anterior; una respuesta exitosa sustituye el conjunto y aplica la deduplicación existente. Un error conserva los datos anteriores. Se mantiene la protección contra solicitudes duplicadas.
+Las pruebas distinguen una respuesta nueva válida de dos libros, una respuesta de tres entradas reducida a dos por duplicación de título y un error que conserva exactamente el objeto anterior. No se encontró una regresión de estado que justificara cambios funcionales.
+No se capturó la respuesta real del backend en la sesión de Chrome de la usuaria: no puede afirmarse si aquella reducción concreta se debió a la respuesta o a la deduplicación. No se forzó un mínimo de tres recomendaciones.
+
+5. ARCHIVOS DE ESTA INTERVENCIÓN
+Modificado:
+- android/lib/features/home/presentation/widgets/recommended_books_section.dart: distribución de ancho según tres columnas.
+- android/test/home_recommendations_defense_test.dart: expectativa de altura coherente con una única tarjeta estrecha y comprobación explícita de su ancho.
+Nuevo:
+- android/test/home_recommendations_refresh_layout_test.dart: 28 pruebas de regresión.
+- INFORME_CORRECCION_CARRUSEL_REFRESH_CAPITULO0.txt: este informe.
+
+La prueba anterior de sección compacta suponía menos de 370 píxeles con una única tarjeta estirada. Con la cuadrícula solicitada y su contenido real ajustado en líneas, la altura observada fue 391 píxeles, sin overflow. Se ajustó ese límite a 410 en escala 1.0; el límite de 470 en escala 1.5 permanece. Se añadió una medición exacta del ancho de columna. Se mantuvieron las comprobaciones de excepciones, información y navegación. No se suprimieron errores de Flutter ni se omitieron pruebas para obtener resultados verdes.
+
+6. PRUEBAS REALES
+flutter test --no-pub: salida 0; 397 pruebas aprobadas, 1 omitida, 0 fallos; duración indicada por el runner: 2 minutos 18 segundos.
+La prueba omitida preexistente corresponde a autenticación web que requiere kIsWeb; esta ejecución usa el runner habitual de Flutter, no Chrome.
+flutter analyze --no-pub: salida 0; No issues found!; 8,3 segundos.
+git diff --check: salida 0. Git emite avisos de conversión futura LF/CRLF en archivos locales previos; no son errores de whitespace.
+Antes del cierre se corrigieron fallos de preparación de las nuevas pruebas y la expectativa de altura descrita arriba. El resultado completo final es el consignado; no quedan pruebas fallidas.
+
+Cobertura nueva:
+- Reproducción y medición directa de tres a dos tarjetas.
+- 24 combinaciones: 320x568, 360x640, 390x844 y 430x932; claro y oscuro; escalas 1.0, 1.3 y 1.5.
+- Secuencias de resultados 3→2→3→1→3→0→3→5→2→3, con actualizaciones repetidas.
+- Medición de anchos estables, alineación inicial y alturas iguales del grupo visible.
+- Datos anteriores durante carga, botón deshabilitado y ausencia de solicitudes duplicadas.
+- Títulos y autores largos, metadatos incompletos y portada ausente mediante las fixtures existentes de pruebas.
+- Flechas hacia adelante y atrás con cinco libros, explicación contextual y cierre.
+- Home de widgets con actualización a dos libros, apertura de HomeBookDetailScreen y regreso sin nueva solicitud ni pérdida de tarjetas.
+- Respuesta válida menor, deduplicación existente y conservación del conjunto tras error.
+- Comprobaciones tester.takeException() para detectar errores de layout; ninguna excepción en la ejecución final.
+La suite completa incluye las regresiones existentes de Google Books, Gutendex, lector TXT, Biblioteca, progreso y autenticación. Estos resultados automatizados no equivalen a validación manual del navegador o dispositivo.
+
+7. PRESERVACIÓN Y CONTROL DE CAMBIOS
+Se registraron hashes SHA-256 de 547 archivos existentes antes de editar y se compararon al terminar. Solo difieren el widget y la prueba enumerados en el apartado 5. La nueva prueba se inventarió aparte; el informe se creó posteriormente con protección para no sobrescribir un archivo previo.
+Los respaldos y la configuración privada no se leyeron ni escribieron. Se conservó el inventario Git de archivos pendientes y no versionados. El diff respecto de HEAD también incluye trabajo anterior: no debe atribuirse todo a esta intervención.
+Permanecen intactos el backend y algoritmo de recomendaciones, datos y deduplicación, Gemini y su acceso único desde cabecera, Gutendex 4.3A y pruebas previas de Gutendex, Biblioteca persistente, lector TXT, Perfil, Writer, clubes, Maps, Firebase, Neon, Flyway y tema global.
+
+8. VALIDACIÓN MANUAL PENDIENTE EN CHROME
+Abrir la cuenta habitual y ubicar Recomendado para ti. Observar el ancho de tres tarjetas y pulsar Actualizar. Si la respuesta válida contiene dos o una, deben mantener el ancho anterior y quedar alineadas al inicio; no es necesario ni correcto forzar tres libros.
+Repetir Actualizar y comprobar que los datos anteriores permanecen durante carga. Si existen más de tres resultados, recorrer las flechas y regresar. Abrir una ficha y volver; abrir y cerrar la información contextual.
+Probar los cuatro tamaños indicados, ambos temas y las escalas de texto. Confirmar que no aparecen franjas de overflow y que el scroll del Home permite alcanzar controles sin contenido tapado por la navegación inferior.
+Si reaparece una reducción sospechosa de resultados, inspeccionar la respuesta real de la solicitud en Network sin divulgar tokens ni datos privados, para distinguir respuesta menor de deduplicación. No cambiar el ranking para rellenar tarjetas.
+Esta intervención no ejecutó una prueba manual en Chrome ni en Android. No realizó solicitudes reales al proveedor ni modificó la caché existente; las respuestas de las pruebas son dobles controlados.
+
+9. CIERRE
+Corrección de layout y pruebas completadas. No se inició otra funcionalidad. No se realizaron commit, push ni PR. Se detiene esta intervención para validación manual en Chrome.

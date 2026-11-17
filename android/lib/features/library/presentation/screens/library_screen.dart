@@ -1,4 +1,11 @@
 import 'dart:async';
+
+import '../../../epub/data/epub_store.dart';
+import '../../../epub/data/epub_file_access.dart';
+import '../../../epub/data/epub_repository.dart';
+import '../../../epub/models/imported_epub.dart';
+import '../../../epub/presentation/imported_epub_section.dart';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -7,6 +14,7 @@ import '../../models/book_review.dart';
 import '../../models/book_status.dart';
 import '../../models/library_book.dart';
 import '../../models/personal_library_list.dart';
+import '../controllers/library_controller.dart';
 import '../dialogs/library_review_dialog.dart';
 import '../dialogs/library_export_dialogs.dart';
 import '../dialogs/personal_list_dialogs.dart';
@@ -27,6 +35,11 @@ class LibraryScreen extends StatefulWidget {
   const LibraryScreen({
     super.key,
     this.onReadBook,
+    this.syncController,
+    this.onAddBook,
+    this.epubStore,
+    this.epubFiles = const SystemEpubFileAccess(),
+    this.epubReaderBuilder,
     this.dataAvailable = true,
     this.onRemoveBook,
     required this.books,
@@ -45,6 +58,12 @@ class LibraryScreen extends StatefulWidget {
     this.onGuestRestrictedAction,
   });
 
+  final LibraryController? syncController;
+  final VoidCallback? onAddBook;
+  final EpubStore? epubStore;
+  final EpubFileAccess epubFiles;
+  final Widget Function(ValidatedEpub, EpubRepository, String)?
+  epubReaderBuilder;
   final List<LibraryBook> books;
   final Map<int, BookStatus> statuses;
   final Map<int, int> progresses;
@@ -77,6 +96,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   final TextEditingController _searchController = TextEditingController();
 
+  List<ImportedEpub> _epubBooks = const [];
   String _view = 'libros';
   String _filter = 'leyendo';
   String _query = '';
@@ -91,6 +111,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   List<LibraryBook> get _booksInLibrary {
+    if (!widget.dataAvailable) return [];
     return widget.books
         .where((book) => widget.statuses.containsKey(book.id))
         .toList();
@@ -120,29 +141,86 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   int _count(BookStatus status) {
-    return widget.statuses.values.where((value) => value == status).length;
+    return _booksInLibrary
+            .where((b) => widget.statuses[b.id] == status)
+            .length +
+        _epubBooks.where((b) => _epubStatus(b) == status).length;
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (!widget.dataAvailable) {
-      return ColoredBox(
-      color: AppColors.backgroundOf(context),
-      child: Padding(padding: const EdgeInsets.all(16), child: _buildHeader()),
-    );
+  BookStatus _epubStatus(ImportedEpub book) => book.cfi.isEmpty
+      ? BookStatus.porLeer
+      : book.progress >= .99
+      ? BookStatus.leido
+      : BookStatus.leyendo;
+
+  List<ImportedEpub> get _filteredEpubs => _epubBooks.where((book) {
+    final status = _epubStatus(book);
+    if (_filter == 'leyendo' && status != BookStatus.leyendo ||
+        _filter == 'porLeer' && status != BookStatus.porLeer ||
+        _filter == 'leidos' && status != BookStatus.leido) {
+      return false;
     }
+    final q = _query.trim().toLowerCase();
+    return q.isEmpty ||
+        [
+          book.title,
+          book.author,
+          book.fileName,
+          'EPUB local',
+        ].any((text) => text.toLowerCase().contains(q));
+  }).toList();
+
+  @override
+  Widget build(BuildContext context) => ImportedEpubSection(
+    store: widget.epubStore,
+    files: widget.epubFiles,
+    readerBuilder: widget.epubReaderBuilder,
+    libraryBuilder: (books, buildEpubCard, importControls) {
+      _epubBooks = books;
+      return _buildLibrary(importControls, buildEpubCard);
+    },
+  );
+
+  Widget _buildLibrary(
+    Widget importControls,
+    Widget Function(ImportedEpub) buildEpubCard,
+  ) {
     return ColoredBox(
       color: AppColors.backgroundOf(context),
       child: SafeArea(
         bottom: false,
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 140),
+          // Reserve space for floating navigation, transient feedback and the
+          // system inset so the last card's actions remain reachable.
+          padding: EdgeInsets.fromLTRB(
+            16, 14, 16, 208 + MediaQuery.viewPaddingOf(context).bottom,
+          ),
           children: [
             _buildHeader(),
-            const SizedBox(height: 12),
+            if (widget.syncController?.busy == true)
+              const Padding(padding: EdgeInsets.symmetric(vertical: 4),
+                child: LinearProgressIndicator(minHeight: 2)),
+            if (widget.syncController?.error != null) ...[
+              const SizedBox(height: 6),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 96),
+                child: SingleChildScrollView(child: Text(
+                  widget.syncController!.error!,
+                  key: const ValueKey('library-sync-error'),
+                  style: TextStyle(fontSize: 11, color: AppColors.textSecondaryOf(context)),
+                )),
+              ),
+              Align(alignment: Alignment.centerRight, child: TextButton(
+                onPressed: widget.syncController!.busy ? null : widget.syncController!.retry,
+                child: const Text('Reintentar'),
+              )),
+            ],
+            const SizedBox(height: 8),
             _buildViewSelector(),
             const SizedBox(height: 12),
             if (_view == 'libros') ...[
+              importControls,
+              const SizedBox(height: 8),
               _buildSearch(),
               const SizedBox(height: 10),
               _buildCounters(),
@@ -161,10 +239,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       ),
               ),
               const SizedBox(height: 12),
-              if (_filteredBooks.isEmpty)
+              if (!widget.dataAvailable)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Los libros sincronizados no están disponibles. Puedes leer tus EPUB locales.',
+                  ),
+                ),
+              if (widget.dataAvailable &&
+                  _filteredBooks.isEmpty && _filteredEpubs.isEmpty)
                 _buildEmptyState()
-              else
+              else ...[
                 ..._filteredBooks.map(_buildBookCard),
+                ..._filteredEpubs.map(buildEpubCard),
+              ],
             ] else
               _buildListsView(),
           ],
@@ -177,6 +265,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return LibraryHeader(
       currentName: widget.currentName,
       onOptionsTap: _showLibraryOptions,
+      onAddTap: !widget.isGuest && widget.syncController?.canWrite == true
+          ? widget.onAddBook : null,
     );
   }
 
@@ -229,7 +319,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Widget _buildEmptyState() {
     return LibraryEmptyState(
-      libraryEmpty: _booksInLibrary.isEmpty,
+      libraryEmpty: _booksInLibrary.isEmpty && _epubBooks.isEmpty,
     );
   }
 
@@ -566,6 +656,26 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       ],
                     ),
                     const SizedBox(height: 15),
+                    if (widget.syncController != null) ...[
+                      Material(
+                        color: Colors.transparent,
+                        child: ListenableBuilder(
+                          listenable: widget.syncController!,
+                          builder: (_, _) => ListTile(
+                        key: const ValueKey('library-refresh'),
+                        enabled: !widget.syncController!.busy,
+                        leading: Icon(Icons.refresh_rounded, color: AppColors.goldOf(context)),
+                        title: const Text('Actualizar biblioteca'),
+                        onTap: widget.syncController!.busy ? null : () {
+                          if (widget.syncController!.busy) return;
+                          Navigator.of(sheetContext).pop();
+                          widget.syncController!.load();
+                        },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                     _libraryOptionTile(
                       icon: Icons.add_box_outlined,
                       title: 'Crear lista',
@@ -675,7 +785,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Future<void> _showExportLibraryDialog() async {
     if (_blockGuestAction()) return;
 
-    final total = _booksInLibrary.length;
+    final total = _booksInLibrary.length + _epubBooks.length;
     final reading = _count(BookStatus.leyendo);
     final pending = _count(BookStatus.porLeer);
     final read = _count(BookStatus.leido);

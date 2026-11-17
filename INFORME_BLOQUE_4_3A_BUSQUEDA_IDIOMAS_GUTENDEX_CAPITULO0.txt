@@ -1,0 +1,325 @@
+CAPÍTULO 0 — BLOQUE 4.3A: BÚSQUEDA E IDIOMAS GUTENDEX
+Fecha: 2026-11-16
+Rama inicial y final: feature/integraciones-biblioteca-perfil
+HEAD inicial y final: bc8561397ea177689f7c6002a64f8e2e0e45e86c
+Estado: mejoras locales implementadas; pendiente validación manual en Chrome.
+Sin commit, push, PR ni traducción automática.
+
+1. RECUPERACIÓN Y ESTADO INICIAL
+Antes de editar se comprobaron rama, HEAD y git status --short.
+Coinciden con lo esperado; no había modificaciones versionadas.
+Elementos locales sin seguimiento preservados:
+- ANALISIS_BUSQUEDA_LIBROS_USUARIOS_CAPITULO0.txt
+- AUDITORIA_CONTINUIDAD_CAPITULO0_POST_PR63.txt
+- INFORME_BLOQUE_4_2C_LECTURA_DIRECTA_CAPITULO0.txt
+- android/config/firebase_web.local.json.bak
+- respaldos/
+No se abrieron configuración privada ni respaldos.
+
+Se leyó primero INFORME_BLOQUE_4_2C_LECTURA_DIRECTA_CAPITULO0.txt.
+Se recuperaron también los informes de optimización Gutendex, Bloque 4.1 y
+ajuste visual, especialmente sus contratos y límites.
+Se inspeccionaron exclusivamente el flujo Gutendex y sus pruebas pertinentes.
+Los recuentos históricos no se utilizaron como resultados nuevos.
+
+2. DIAGNÓSTICO ACOTADO
+El repositorio HTTP ya construía correctamente:
+- search con el texto recortado en los extremos, para título o autor.
+- languages=es o languages=en; parámetro ausente para Todos.
+- next del proveedor, validado contra búsqueda/idioma, HTTPS y host esperado.
+No había evidencia de un defecto en esos parámetros que justificara cambiarlos.
+
+El controlador ya descartaba respuestas obsoletas por generación y evitaba
+páginas duplicadas mientras loadingMore estaba activo.
+Sin embargo:
+- Cada búsqueda reiniciaba resultados y cursor, incluso la misma consulta.
+- Pulsar Buscar/Enter más de una vez podía lanzar solicitudes idénticas.
+- No había caché de páginas del catálogo.
+- Un reintento inicial no conservaba resultados válidos de la misma consulta.
+- El estado vacío podía aparecer después de un error de actualización si
+  previamente había una respuesta vacía válida.
+- El rótulo Idioma no aclaraba que filtra la obra, no la sinopsis.
+
+El debounce ya era de 400 ms y se conserva.
+La demora inicial, los HTTP 522 y el timeout pueden seguir dependiendo del
+servidor público. No se atribuye automáticamente toda la latencia a Flutter.
+
+3. CAMBIOS IMPLEMENTADOS
+Caché en memoria de metadatos, propiedad de un único controlador del catálogo:
+- Clave: búsqueda exacta normalizada con trim, idioma y página/URI next.
+- No se unen mayúsculas/minúsculas ni espacios internos por heurística.
+- TTL de tres minutos desde recepción, sin prolongarlo al consultar la caché.
+- Máximo ocho páginas, 256 obras y 500.000 unidades UTF-16 de texto de
+  metadatos, incluidas claves y URLs contabilizadas.
+- Evicción por uso reciente; resultados de cada página en lista inmutable.
+- Entradas demasiado grandes no se guardan.
+- Se guardan éxitos, incluidos vacíos válidos; no errores.
+- Se elimina al cerrar el catálogo. No hay disco, preferencias, Neon ni caché
+  global entre aperturas.
+- La expiración se comprueba al acceder/insertar; no hay temporizadores
+  de actualización automática.
+Los límites corresponden a la caché, no a toda la lista visible que el usuario
+decida acumular con la paginación existente.
+
+Coordinación de consultas:
+- Solicitudes iguales en curso comparten una tarea.
+- Cambio real de texto/idioma invalida inmediatamente el contexto anterior,
+  antes de que venza el debounce.
+- Un cambio que solo agrega espacios exteriores no invalida una consulta igual.
+- Si se vuelve a una consulta todavía pendiente, se reutiliza la solicitud
+  correspondiente sin aplicar respuestas de otra búsqueda.
+- Respuestas obsoletas no actualizan pantalla ni llenan la caché.
+- Nueva primera página recibida invalida páginas adicionales guardadas de
+  esa búsqueda. Páginas pendientes de la generación previa no se incorporan.
+- Se conservan deduplicación por ID y bloqueo de ciclos de paginación.
+
+Actualización:
+- Buscar, Enter y Reintentar catálogo fuerzan una actualización explícita,
+  salvo que esa misma solicitud ya esté en curso.
+- Debounce y cambio de idioma pueden usar páginas recientes de la sesión.
+- Resultados válidos se conservan durante actualización o fallo SOLO cuando
+  pertenecen a la misma búsqueda e idioma.
+- En un contexto diferente se limpian resultados/cuenta/cursor antes de aplicar
+  únicamente datos de su propia clave.
+- La pantalla avisa cuando recupera datos de sesión y cómo actualizarlos.
+- Durante revalidación avisa que muestra resultados anteriores de esa consulta.
+- No hay bucles de reintento ni consultas periódicas.
+
+Se mantienen navegación, portadas, paso del libro a ficha rápida, estilos,
+isExpanded: true, scroll y lector TXT.
+
+4. ERRORES Y ESTADOS
+Se conserva el timeout HTTP original de 15 segundos.
+No se modificó el cliente de red ni se amplió ese límite.
+La interfaz utiliza los mensajes controlados ya existentes:
+- HTTP, incluido HTTP 522, como error del proveedor.
+- Timeout como Gutendex tardó demasiado.
+- Fallo de conexión y datos no válidos como errores independientes.
+No se interpreta un error como una respuesta vacía exitosa.
+
+No encontramos obras se muestra solo tras una respuesta válida, sin carga
+ni error activo. También se evita el mensaje Fin de resultados durante una
+actualización/error inicial.
+Un fallo de actualización conserva las tarjetas previas de la misma consulta
+con el aviso correspondiente y un reintento manual.
+La paginación sigue conservando tarjetas ante fallos y reintentando su cursor.
+
+No se cancelan físicamente todas las solicitudes HTTP anteriores: se descartan
+sus resultados por generación. La coalescencia evita duplicados lógicos;
+los tiempos y límites de transporte permanecen los existentes.
+
+5. IDIOMA DE LAS SINOPSIS
+Fuentes oficiales revisadas:
+https://gutendex.com/
+https://raw.githubusercontent.com/garethbjohnson/gutendex/master/books/models.py
+https://raw.githubusercontent.com/garethbjohnson/gutendex/master/books/serializers.py
+https://raw.githubusercontent.com/garethbjohnson/gutendex/master/books/views.py
+
+El esquema separa languages de la obra y summaries, una lista de textos.
+El filtro languages del servidor se aplica a las lenguas del libro.
+Summary contiene referencia a la obra y text; no declara idioma propio.
+El serializador devuelve esos textos sin un contrato de traducción al idioma
+de la obra. Por tanto, languages=es no exige summaries en español.
+Flutter mantiene los textos recibidos; no los estaba traduciendo al inglés.
+La procedencia exacta y el proceso de redacción de cada sinopsis no se
+certificaron; no se afirma que todas sean generadas por el mismo método.
+
+Se renombró el selector a Idioma de la obra.
+En la ficha, cuando existe sinopsis, se añade:
+Sinopsis original del proveedor; puede estar en otro idioma.
+El aviso es discreto, con tipografía y colores secundarios existentes.
+No se detectó idioma por heurísticas, ni se afirmó que el texto sea español,
+ni se cambió la sinopsis, ni se ejecutó traducción o llamada a otro servicio.
+
+6. ARCHIVOS MODIFICADOS Y NUEVOS
+Modificados:
+- android/lib/features/gutendex/presentation/gutendex_controller.dart
+- android/lib/features/gutendex/presentation/screens/gutendex_catalog_screen.dart
+- android/lib/features/gutendex/presentation/screens/gutendex_detail_screen.dart
+- android/test/gutendex/gutendex_widgets_test.dart
+- android/test/gutendex/gutendex_detail_optimization_test.dart
+
+Nuevos:
+- android/lib/features/gutendex/presentation/gutendex_page_cache.dart
+- android/test/gutendex/gutendex_page_cache_test.dart
+- android/test/gutendex/gutendex_search_contract_test.dart
+- android/test/gutendex/gutendex_search_session_test.dart
+- android/test/gutendex/gutendex_search_session_widgets_test.dart
+- INFORME_BLOQUE_4_3A_BUSQUEDA_IDIOMAS_GUTENDEX_CAPITULO0.txt
+
+El repositorio HTTP y los modelos Gutendex permanecieron sin cambios.
+No se modificó código del lector TXT ni su selector/validación.
+En la ficha solo se añadió el aviso de sinopsis.
+
+7. PRUEBAS NUEVAS Y AJUSTADAS
+23 casos nuevos:
+- Caché: seis casos de claves, TTL, LRU, límites, inmutabilidad e invalidación.
+- Sesión/controlador: nueve casos de duplicados, preservación exacta durante
+  actualización, idiomas, páginas, expiración, errores, obsolescencia y dispose.
+- Contrato HTTP/modelos: cuatro casos de título + idioma es/en con caracteres
+  y espacios, HTTP 522 frente a timeout/vacío y sinopsis inglesa de obra española.
+- Widgets: cuatro casos de resultados conservados ante timeout, ida/vuelta de
+  idiomas con caché, vacío previo seguido de error y sinopsis original/aviso.
+
+Se ajustó el test existente de cambio de idiomas:
+Inglés y Todos siguen comprobando la solicitud, query y reinicio de cursor;
+volver a Español ahora exige recuperar la consulta Cervantes de caché sin otra
+solicitud y conservando su búsqueda. No se eliminó la cobertura de Español.
+
+En el test existente de actualización de ficha se aseguró la visibilidad
+del botón tras un frame antes de pulsarlo, por el espacio del nuevo aviso.
+Se mantuvieron las expectativas de botón deshabilitado y ausencia de duplicados.
+No se ocultaron warnings con warnIfMissed:false ni errores de renderizado.
+
+8. EJECUCIONES REALES
+Primera ejecución de controlador/caché/sesión:
+21 aprobadas, cero fallos, salida 0.
+
+Primera suite Gutendex:
+flutter test --no-pub test/gutendex
+88 aprobadas, 1 fallida.
+Falló la expectativa previa de lanzar otra solicitud al volver a Español,
+incompatible con la nueva reutilización de caché. Se sustituyó por expectativas
+explícitas de recuperación de la consulta correcta y cero llamadas adicionales.
+Hubo además una advertencia de tap fuera de pantalla en el test de ficha;
+se corrigió su desplazamiento sin desactivar la comprobación.
+
+Suite Gutendex final:
+flutter test --no-pub test/gutendex
+90 aprobadas, cero fallos, salida 0.
+Incluye un caso adicional de inmutabilidad/límite de claves añadido después
+de la primera ejecución.
+
+SUITE COMPLETA:
+flutter test --no-pub
+286 aprobadas, 1 omitida, 0 fallos, salida 0. All tests passed.
+Son las 263 existentes y las 23 nuevas.
+La omitida es firebase_web_auth_test.dart, skip: !kIsWeb.
+No se cambió esa condición ni se ejecutó la prueba omitida en Chrome.
+
+Las pruebas incluyen también fichas rápidas, navegación desde Inicio en
+360x640 y 800x1000, lector/importación TXT, temas claro y oscuro, Google Books,
+buscador simultáneo, Biblioteca/progreso y LEIDO automático.
+
+9. ANÁLISIS ESTÁTICO Y CONTROL GIT
+Primer analyze: un aviso prefer_collection_literals en el archivo nuevo.
+Se usó un literal Map que conserva el orden de inserción para LRU.
+FINAL flutter analyze --no-pub:
+No issues found! (ran in 8.7s), salida 0.
+
+git diff --check: sin observaciones, salida 0.
+Se revisaron diferencias completas y se verificaron archivos nuevos con
+git diff --no-index --check contra /dev/null.
+Se corrigió una línea en blanco extra al final del nuevo archivo de caché;
+tras ello no hubo diagnósticos de espacios. La salida 1 de no-index significa
+archivo distinto del vacío y no un error de espacios.
+No hubo cambios semánticos posteriores a la suite final.
+
+git diff --stat versionado:
+5 archivos, 120 inserciones y 20 eliminaciones.
+Los cinco archivos nuevos Dart y este TXT se inventarían por separado,
+porque no aparecen en el diff normal mientras están sin seguimiento.
+Avisos LF/CRLF de Git no modificaron configuración ni ocultaron errores.
+
+Se registraron hashes iniciales y se compararon los archivos existentes al
+cierre. Solo cambiaron los cinco archivos autorizados de la sección 6.
+Se conservaron informes, archivos locales previos y todos los módulos protegidos.
+No hubo git add, commit, push, PR, pull, merge, reset, clean o cambio de rama.
+
+10. LÍMITES DE LA EVIDENCIA
+Todas las nuevas pruebas de red usan MockClient, JSON sintético y/o repositorios
+falsos con respuestas controladas. La expiración se verifica con reloj inyectado.
+No se midió latencia real ni se repitieron consultas al servidor público
+para afirmar una mejoría externa. Se consultó documentación/código públicos.
+No se ejecutaron navegador real, Android real ni build en esta intervención.
+Los resultados del usuario en Chrome son contexto, no una validación nueva
+de esta versión local.
+
+Una consulta inicial sin éxito previo sigue dependiendo de Gutendex.
+La caché reduce consultas repetidas, pero no elimina HTTP 522, CORS, fallos
+de conexión o timeout. No se afirma que la latencia del servidor esté resuelta.
+TTL no significa actualidad garantizada: la UI distingue datos de sesión
+y una actualización pendiente. No hay actualización automática al estar inactivo.
+Al salir del catálogo se pierde la caché; no es persistencia ni modo offline.
+
+11. PROPUESTA CONCRETA DEL SIGUIENTE BLOQUE: SINOPSIS EN ESPAÑOL
+PROPUESTA SOLAMENTE; requiere autorización posterior y validación de 4.3A.
+
+Experiencia:
+- Acción explícita Ver sinopsis en español, sin traducir el catálogo entero
+  automáticamente. No usar languages de la obra para inferir lengua de sinopsis.
+- Mantener siempre el texto original del proveedor, con opción de verlo.
+- Mostrar Traducción automática, sin presentarla como original o certificada.
+- Ante cuota, error o timeout, conservar el original y permitir reintento manual.
+- No traducir títulos/autores ni contenido de archivos TXT.
+
+Contrato propuesto para futura revisión:
+POST /api/gutendex/synopsis/translations
+Entrada: bookId, originalText, originalSha256 y targetLanguage=es.
+Salida: bookId, originalSha256, targetLanguage, translatedText y versión del
+proveedor/modelo. No aplicar una respuesta si el hash ya no coincide.
+Este endpoint NO existe por esta intervención ni se modificó Spring Boot.
+
+Seguridad y claves:
+- Elegir proveedor y revisar términos, derechos de uso/traducción y retención
+  de metadatos antes de contratar o transmitir textos.
+- Clave solo en backend/gestor de secretos, nunca en Flutter Web, repositorio,
+  logs, parámetros URL o configuración enviada al navegador.
+- Reutilizar autenticación interna bajo autorización separada, con límites
+  por usuario/origen, tamaño y presupuesto; no enviar tokens Firebase al traductor.
+- Tratar originalText como datos no confiables, sin ejecutar instrucciones,
+  HTML, herramientas o URLs incluidas. Renderizar respuesta como texto.
+- No aceptar ni enviar novelas locales, archivos privados o credenciales.
+
+Coste y caché:
+- Piloto bajo demanda con sinopsis de hasta 4.000 caracteres y límite de salida.
+- Medir caracteres/tokens de entrada y salida, consultas únicas y tarifa vigente
+  del proveedor seleccionado; no se promete gratuidad ni un precio no verificado.
+- Presupuesto diario/mensual configurable y bloqueo comprensible al alcanzarlo.
+- Reutilizar traducciones por SHA-256 del original + idioma objetivo + versión
+  de traductor/modelo, no solo por ID de libro.
+- Caché futura acotada, por ejemplo 1.000 entradas con caducidad configurable,
+  sin crear ahora tablas ni persistencia en Neon.
+- Coalescer solicitudes iguales en curso para evitar coste duplicado.
+Cualquier proveedor, dependencia, clave, backend o persistencia necesitará
+autorización específica. No se generó gasto de traducción en este bloque.
+
+Calidad y pruebas:
+- Evaluar un conjunto pequeño revisado manualmente en español neutro,
+  preservando nombres, hechos, negaciones y sin añadir información.
+- No certificar idioma con una heurística débil; considerar detección del
+  proveedor revisada o traducción solicitada sin afirmar lengua original.
+- Pruebas con traductor falso: acierto, error, cuota, timeout, hash obsoleto,
+  claves de caché, cancelación y texto original intacto.
+- Revisar salidas largas, caracteres españoles, accesibilidad y fallbacks.
+- Validar política de atribución/licencia de las sinopsis, distinta de la
+  situación de derechos de los libros completos.
+
+12. VALIDACIÓN MANUAL PENDIENTE EN CHROME
+1) Abrir catálogo con Español; esperar éxito o error sin interpretar el fallo
+   del servidor como ausencia de obras.
+2) Buscar un título/autor, cambiar a Inglés y Todos, volver a Español:
+   comprobar búsqueda intacta y resultados del filtro correcto.
+3) Volver a una consulta reciente: verificar aviso de sesión y ausencia de
+   solicitudes idénticas innecesarias en DevTools, sin exponer información privada.
+4) Pulsar Buscar/Enter para revalidar: deben mantenerse solo tarjetas de esa
+   consulta, con aviso de actualización; pulsaciones repetidas no duplican.
+5) Paginar, cambiar de idioma durante una espera y comprobar que no aparezcan
+   páginas o errores de otra consulta.
+6) Dejar vencer tres minutos y volver a consultar: debe solicitar de nuevo
+   sin afirmar que la caché expiró y se actualizó automáticamente.
+7) Abrir ficha de una obra española con sinopsis inglesa: original intacto
+   y nota del proveedor. Leer TXT y volver como antes.
+8) Revisar 360x640 y 800x1000, teclado, scroll y claro/oscuro.
+Registrar comportamiento real y latencia separando caché de respuesta de red.
+
+13. PRESERVACIÓN Y DETENCIÓN
+Sin cambios en Inicio, Google Books, buscador simultáneo, Biblioteca y sus
+estados/progreso/LEIDO, Perfil, Maps, Writer, clubes, Firebase/autenticación,
+Neon, backend, Flyway, migraciones o configuración global.
+Sin nuevas dependencias ni cambios en pubspec/lockfile.
+No se modificaron enlaces, validadores o acceso a Project Gutenberg.
+No se reabrió 4.2C ni se implementó descarga directa.
+No se inició traducción de sinopsis.
+
+Trabajo detenido al terminar. Esperar validación manual en Chrome.

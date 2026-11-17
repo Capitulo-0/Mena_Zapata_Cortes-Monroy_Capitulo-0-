@@ -1,0 +1,174 @@
+ANÁLISIS Y PROPUESTA — BÚSQUEDA DE LIBROS Y USUARIOS
+CAPÍTULO 0
+Fecha: 2026-11-15
+Rama de trabajo: feature/integraciones-biblioteca-perfil
+Estado: propuesta pendiente de autorización para implementar.
+
+1. ALCANCE
+
+Inspección estática del buscador, controladores, repositorios y pruebas existentes.
+Este documento no autoriza ni implementa cambios de código.
+No se ejecutaron pruebas, servicios, migraciones ni conexiones a Neon o Firebase.
+No se accedió a credenciales ni respaldos.
+
+2. DIAGNÓSTICO
+
+Archivo principal:
+android/lib/features/home/presentation/widgets/home_search_section.dart
+
+El bloqueo está presente tanto en la búsqueda enviada como en las sugerencias:
+
+- _search() deriva la búsqueda general a _searchUsersFirst().
+- _searchUsersFirst() solo consulta Google Books si la búsqueda de usuarios responde sin coincidencias. Cuando encuentra usuarios retorna antes de consultar libros. Si usuarios falla, muestra su error sin consultar libros.
+- _buildUniversalResults() retorna alternativamente carga de usuarios, error de usuarios, resultados de usuarios o resultados de libros. No permite que ambas categorías convivan.
+- _loadPreview() repite la prioridad excluyente: usuarios encontrados o error de usuarios impiden consultar sugerencias de libros.
+- _buildSearchPreview() también retorna una sola categoría.
+- El botón “Más resultados” depende de !_usersLoading, ausencia de _usersError y !_showUserResults, aunque pagina únicamente libros.
+- _loadMoreBooks() descarta actualizar libros si _showUserResults está activo.
+- CatalogController.search() captura los errores internamente y los expone en .error. No basta con esperar excepciones en los catch del widget.
+- El renderizado de libros oculta las tarjetas cuando existe error del catálogo, incluso si son resultados previamente cargados y el error corresponde a una página adicional.
+
+Protecciones existentes que deben conservarse:
+- Generaciones _searchGeneration y _previewGeneration.
+- Generación propia de CatalogController, clear() y dispose().
+- Debounce de sugerencias de 400 ms.
+- Controladores separados para resultados y sugerencias.
+- Modos all/title/author/isbn, filtros locales, cursor de paginación y deduplicación por googleVolumeId.
+- Callbacks de navegación a libro/perfil y onSearchModeChanged.
+- Ruta de búsqueda local cuando no existe repositorio de catálogo.
+
+3. PROPUESTA MÍNIMA Y SEGURA
+
+Limitar el cambio de producción a home_search_section.dart.
+No modificar repositorios, backend ni interfaces públicas del widget.
+
+3.1 Consultas independientes
+
+En búsqueda general (sin modos o filtros literarios activos), iniciar libros y usuarios de forma independiente, sin esperar una categoría para iniciar la otra.
+
+Cada operación actualizará solamente sus resultados, carga y error. No condicionar el renderizado de una categoría al éxito de la otra ni esperar a que ambas terminen para mostrar resultados.
+
+Mantener la regla actual de búsqueda exclusivamente literaria cuando se activa título, autor, ISBN, género u orden de libros. Estos filtros siguen afectando únicamente libros. Esta propuesta preserva ese comportamiento y permite ambas categorías en la búsqueda general.
+
+Cuando no exista repositorio de usuarios, conservar búsqueda de libros. Cuando no exista catálogo remoto, conservar la búsqueda local.
+
+3.2 Presentación sin rediseño
+
+Modificar _buildUniversalResults() para componer las secciones de libros y usuarios, reutilizando _buildSearchResults(), _buildUserResults() y _buildUserRow().
+
+Mantener tarjetas, filas, estilos y navegación existentes. Extraer o centralizar “Volver” para que aparezca una sola vez.
+
+Cada categoría tendrá:
+- Indicador de carga propio.
+- Resultados propios.
+- Vacío solo después de una respuesta válida sin coincidencias.
+- Error y reintento propios.
+
+Evitar un mensaje global de “sin resultados” cuando la otra categoría todavía carga, tiene resultados o falló.
+
+3.3 Sugerencias independientes
+
+Después del mismo debounce de 400 ms, iniciar ambas consultas cuando corresponda a búsqueda general.
+
+Conservar la tarjeta existente de una sugerencia de libro y las filas de usuarios sugeridos, permitiendo que aparezcan juntas.
+
+Separar estado de carga/error de usuarios sugeridos del estado del catálogo de sugerencias. Un fallo no debe ocultar la otra categoría ni prolongar artificialmente su carga.
+
+Consultar _suggestions.error al finalizar la búsqueda: el controlador absorbe excepciones.
+
+3.4 Paginación y errores
+
+Desvincular “Más resultados” y _loadMoreBooks() del estado de usuarios.
+
+Mantener el cursor y la deduplicación existentes de CatalogController.
+
+Si falla una página adicional:
+- Conservar los libros ya cargados.
+- Mostrar el error en la sección de libros.
+- Permitir reintentar esa misma página.
+- Mantener usuarios intactos.
+
+Los reintentos de búsqueda y sugerencias deben consultar solo el servicio que falló, sin borrar ni repetir innecesariamente la categoría exitosa.
+
+3.5 Resultados obsoletos
+
+Mantener la invalidación por generaciones al editar, limpiar, volver, enviar y aplicar filtros.
+
+Cada consulta capturará la generación y los parámetros de su búsqueda. Antes de aplicar éxito, error o finalizar carga verificará mounted y que sigue perteneciendo a la generación vigente.
+
+Los reintentos conservarán el contexto de la consulta vigente y no aplicarán datos si el usuario ya cambió el texto o los filtros.
+
+Conservar clear() del controlador para invalidar sus respuestas pendientes y comprobar el mismo criterio al paginar.
+
+No se requiere introducir cancelación HTTP para este cambio: las respuestas antiguas se descartan lógicamente.
+
+4. ARCHIVOS Y WIDGETS INVOLUCRADOS
+
+Producción a actualizar:
+android/lib/features/home/presentation/widgets/home_search_section.dart
+
+Puntos concretos:
+- _search() y _searchUsersFirst(): eliminar dependencia secuencial y exclusión.
+- _searchBooks(): interpretar el error del controlador.
+- _loadPreview() y _buildSearchPreview(): consultas y estados independientes.
+- _buildUniversalResults(): composición de ambas categorías.
+- _buildUserResults() y _buildSearchResults(): reutilización con un único “Volver”.
+- _loadMoreBooks() y condición de “Más resultados”: independencia de usuarios.
+- Invalidaciones y reintentos: preservar generación vigente.
+- Renderizado de errores: conservar libros cargados ante fallo de paginación.
+
+Archivos inspeccionados que se conservarían:
+android/lib/features/catalog/presentation/catalog_controller.dart
+android/lib/features/profile/data/user_search_repository.dart
+
+No se propone cambiar sus contratos ni implementación.
+
+Pruebas a ampliar:
+android/test/catalog_widgets_test.dart
+
+Pruebas existentes a conservar como regresión:
+android/test/catalog_test.dart
+
+No se requieren cambios en Maps, Writer, clubes, Firebase, SQL ni Java.
+
+5. PRUEBAS NECESARIAS
+
+Agregar un repositorio falso de usuarios con respuestas controlables para simular éxito, vacío, error y retrasos. Usar también el catálogo falso existente.
+
+Casos principales:
+1) Usuarios y libros coinciden: ambos aparecen, cualquiera que sea el orden de llegada.
+2) Usuarios sigue cargando: libros disponibles permanecen visibles.
+3) Libros sigue cargando: usuarios disponibles permanecen visibles.
+4) Error de usuarios: libros se consultan y aparecen igualmente.
+5) Error de libros: usuarios siguen disponibles.
+6) Ambas categorías vacías o fallidas: estados correctos, sin vacíos ficticios.
+7) Reintento de una categoría: no borra ni repite la exitosa.
+8) Texto libre conserva consulta a Google Books.
+9) Título, autor e ISBN conservan sus modos y parámetros.
+10) Géneros y orden mantienen comportamiento; no se introducen filtros sobre usuarios.
+11) Paginación funciona con usuarios visibles, cargando o fallidos.
+12) Error de página adicional conserva libros previos; reintento usa el cursor correcto sin duplicados.
+13) Sugerencias de libros y usuarios conviven con debounce de 400 ms.
+14) Error o carga de una sugerencia no oculta la otra categoría.
+15) Sugerencias y resultados conservan navegación a ficha/perfil.
+16) Escritura rápida: resultados y errores antiguos de ambas categorías se descartan.
+17) Limpiar, volver, enviar o aplicar filtros invalida respuestas pendientes.
+18) Paginación antigua no se incorpora a una consulta nueva.
+19) Sin repositorio de usuarios y con búsqueda local existente: compatibilidad conservada.
+20) Un único “Volver” y recuperación de secciones originales de Inicio mediante onSearchModeChanged.
+
+catalog_test.dart ya contiene cobertura de errores/reintento, descarte de respuestas antiguas y paginación con deduplicación; conservarla como regresión.
+
+Validación propuesta para una intervención futura autorizada:
+- Ejecutar las pruebas de catálogo y widgets afectadas sin instalar dependencias.
+- Ejecutar análisis Flutter y regresiones pertinentes si el entorno lo permite.
+- No iniciar servicios ni usar Firebase/Neon para estas pruebas con dobles.
+- Registrar resultados reales; este análisis no declara pruebas aprobadas.
+
+6. CONCLUSIÓN
+
+La corrección puede quedar concentrada en el widget del buscador y sus pruebas: sustituir la selección excluyente de categorías por consultas y secciones independientes, preservando filtros, modos, sugerencias y paginación.
+
+Estado: NO IMPLEMENTADO. Esperar autorización explícita antes de modificar código.
+
+FIN DEL ANÁLISIS
