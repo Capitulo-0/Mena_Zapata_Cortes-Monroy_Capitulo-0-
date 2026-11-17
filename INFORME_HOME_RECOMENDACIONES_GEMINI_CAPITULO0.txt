@@ -1,0 +1,298 @@
+CAPÍTULO 0 — HOME PERSONALIZADO Y GEMINI
+Fecha: 16 de noviembre de 2026
+Alcance: recomendaciones del Home, componentes nuevos de backend y pruebas.
+
+1. ESTADO INICIAL Y SEGURIDAD
+
+Rama comprobada: feature/integraciones-biblioteca-perfil.
+HEAD comprobado: bc85613 feat: implementar lector TXT real e importacion local.
+Se mantuvieron rama y HEAD durante toda la intervención.
+
+git status --short inicial:
+ M android/lib/features/gutendex/presentation/gutendex_controller.dart
+ M android/lib/features/gutendex/presentation/screens/gutendex_catalog_screen.dart
+ M android/lib/features/gutendex/presentation/screens/gutendex_detail_screen.dart
+ M android/test/gutendex/gutendex_detail_optimization_test.dart
+ M android/test/gutendex/gutendex_widgets_test.dart
+?? ANALISIS_BUSQUEDA_LIBROS_USUARIOS_CAPITULO0.txt
+?? AUDITORIA_CONTINUIDAD_CAPITULO0_POST_PR63.txt
+?? INFORME_BLOQUE_4_2C_LECTURA_DIRECTA_CAPITULO0.txt
+?? INFORME_BLOQUE_4_3A_BUSQUEDA_IDIOMAS_GUTENDEX_CAPITULO0.txt
+?? android/config/firebase_web.local.json.bak
+?? android/lib/features/gutendex/presentation/gutendex_page_cache.dart
+?? android/test/gutendex/gutendex_page_cache_test.dart
+?? android/test/gutendex/gutendex_search_contract_test.dart
+?? android/test/gutendex/gutendex_search_session_test.dart
+?? android/test/gutendex/gutendex_search_session_widgets_test.dart
+?? respaldos/
+
+Todos esos cambios y archivos se preservaron. No se abrieron los contenidos de la configuración privada ni de los respaldos.
+
+PR anterior verificado mediante consulta de solo lectura a GitHub:
+PR 64 hacia develop, closed, merged_at=2026-11-16T03:44:28Z.
+https://github.com/Capitulo-0/Mena_Zapata_Cortes-Monroy_Capitulo-0-/pull/64
+Esto confirma su fusión remota; no actualiza ni modifica el HEAD local.
+
+No se ejecutaron pull, fetch, merge, reset, clean, cambio de rama, git add, commit, push ni creación de PR.
+
+2. CONTEXTO CONSULTADO Y DIAGNÓSTICO
+
+Se leyó INFORME_BLOQUE_4_3A_BUSQUEDA_IDIOMAS_GUTENDEX_CAPITULO0.txt para reconocer y proteger el trabajo pendiente. Se inspeccionaron de forma acotada HomeScreen, el carrusel existente, el diálogo Gemini anterior, la entrega de Biblioteca desde MainShell, LibraryEntry, CatalogRepository/ApiClient, el alcance de sesión de app.dart, los servicios Google Books, LibraryService, CurrentUserService y la configuración de seguridad existente.
+
+Antes del cambio:
+- Home creaba un CatalogController y buscaba siempre subject:fiction.
+- Ese flujo no calculaba preferencias con la Biblioteca personal.
+- La acción pública showGeminiAssistant abría un diálogo con respuestas simuladas.
+- La Biblioteca real y sus estados ya estaban disponibles en Home desde MainShell; no era necesario modificar sus contratos ni su persistencia.
+
+Se conserva el archivo histórico del diálogo simulado, pero Home ya no lo importa ni lo abre. El acceso existente a Gemini solicita ahora la selección real de recomendaciones, con confirmación.
+
+3. DATOS REALES UTILIZADOS
+
+El backend resuelve la cuenta mediante CurrentUserService y llama a LibraryService.list con el identificador interno obtenido de esa identidad autenticada. No acepta un userId del cliente para decidir la Biblioteca.
+
+Preferencias:
+- Hasta 24 registros, priorizando LEIDO, LEYENDO y POR_LEER; en igualdad, fecha de actualización.
+- Pesos respectivos: 4, 2 y 1.
+- Autores de googleBooks.authors, con respaldo conservador en el autor bibliográfico disponible.
+- Categorías exclusivamente desde googleBooks.categories.
+- Título y estado reales para la selección opcional de Gemini.
+- Autores y categorías limitados a tres valores por registro y cada texto acotado a 120 caracteres.
+
+No se infieren géneros por el título. Metadatos faltantes no se sustituyen por preferencias ficticias. Sin autores o categorías utilizables se muestra exploración general, aunque existan registros incompletos.
+
+4. RECOMENDACIÓN SIN IA
+
+RecommendationService reutiliza GoogleBooksService; no introduce otro cliente de Google Books ni cambia sus endpoints o DTO.
+
+Como máximo dos búsquedas por cálculo:
+- Autor con mayor peso, mediante el modo author ya existente.
+- Categoría con mayor peso mediante subject.
+- Si no existen preferencias utilizables: una búsqueda subject:fiction, identificada como exploración general.
+
+Cada búsqueda solicita 20 resultados. Se conservan como máximo 16 candidatos; su puntuación utiliza coincidencias comprobadas de autores y categorías, normalizando mayúsculas y acentos. Cuando hay preferencias, no se presentan como personalizados candidatos sin coincidencias bibliográficas verificables.
+
+Se excluyen y deduplican obras mediante:
+- googleVolumeId.
+- ISBN-10/13 con comprobación de dígito de control y normalización ISBN-10 a ISBN-13.
+- Coincidencia de título normalizado y autor.
+
+Se comprueba la pertenencia contra toda la Biblioteca, no únicamente contra los 24 registros usados para preferencias. Ediciones o traducciones con títulos distintos y sin identificadores relacionados pueden no reconocerse como la misma obra; no se inventan equivalencias.
+
+Se reutilizan portada, título, autores y navegación a HomeBookDetailScreen. Una portada ausente utiliza el tratamiento visual ya existente.
+
+Caché exclusivamente en memoria del proceso backend:
+- Hasta 128 cuentas.
+- Validez de candidatos de 60 segundos.
+- Separación por propietario y huella de la Biblioteca.
+- Una modificación de Biblioteca invalida el conjunto anterior.
+- Las solicitudes simultáneas de una misma cuenta se serializan y reutilizan un cálculo válido.
+- La caché pública de metadatos y el control de consultas del cliente Google Books existente se conservan.
+
+No hay tablas, migraciones, almacenamiento de recomendaciones en Neon ni modificación de registros de lectura.
+
+5. INTEGRACIÓN GEMINI
+
+Implementación real de transporte REST en Spring Boot con java.net.http.HttpClient y Jackson ya disponibles. No se añadieron dependencias.
+
+Documentación oficial consultada el 16/11/2026:
+https://aistudio.google.com/docs/interactions-overview
+https://aistudio.google.com/docs/structured-output
+https://aistudio.google.com/api-reference/interactions-api/create-interaction
+https://aistudio.google.com/docs/models
+
+Se usa Interactions API:
+POST https://generativelanguage.googleapis.com/v1beta/interactions
+Api-Revision: 2026-05-20
+Modelo predeterminado: gemini-4-hydrogen; configurable mediante GEMINI_MODEL.
+
+La clave se obtiene exclusivamente de GEMINI_API_KEY en el backend y se envía al proveedor en el encabezado x-goog-api-key. El endpoint externo es fijo, HTTPS y sin redirecciones. No se entrega la clave a Flutter, no se escribe en archivos y no se registran cuerpos del proveedor.
+
+Gemini recibe únicamente preferencias literarias acotadas y candidatos bibliográficos reales almacenados previamente por el servidor. No recibe UID, identificador interno de cuenta, nombre, correo, token Firebase, contraseñas, reseñas ni contenido de libros.
+
+La solicitud se realiza únicamente después de una acción explícita y confirmación. La interfaz informa qué metadatos literarios se compartirán.
+
+La respuesta estructurada solo permite seleccionar hasta seis IDs de candidatos y códigos de relación. El servidor valida:
+- Propiedad, vigencia y huella del conjunto de candidatos.
+- Que cada ID exista en el conjunto real.
+- Ausencia de IDs duplicados.
+- Que cada código de explicación esté respaldado por coincidencias previamente calculadas para ese candidato.
+
+Las explicaciones visibles se construyen con relaciones verificadas del servidor; no se presentan afirmaciones libres inventadas por la IA. Un ID o motivo inválido descarta toda la selección y conserva las recomendaciones normales.
+
+Controles:
+- Timeout total de Gemini de ocho segundos y conexión de tres segundos.
+- Petición de hasta 1.024 tokens de salida y respuesta HTTP limitada a 65.536 bytes.
+- Prompt limitado a 24.000 caracteres.
+- Sin herramientas de búsqueda ni historial conversacional: store=false.
+- Máximo tres intentos por cuenta por minuto, veinte globales por minuto y cuatro solicitudes simultáneas.
+- Diez segundos entre intentos de una cuenta; solicitudes repetidas tras un fallo no disparan inmediatamente otra llamada.
+- Selecciones exitosas del mismo conjunto se reutilizan.
+- Cancelación de la operación HTTP si sigue pendiente al agotar el plazo.
+
+store=false desactiva el almacenamiento de conversación de Interactions; no supone una garantía adicional sobre todas las políticas de tratamiento y retención del proveedor. Antes de una demostración real corresponde revisar las condiciones y el plan de la cuenta Gemini utilizada.
+
+Las cuotas son básicas, locales a esta instancia y se reinician con el proceso. Un despliegue con varias instancias necesitaría coordinación posterior; no se incorporó infraestructura nueva.
+
+6. ENDPOINTS
+
+GET /api/me/recommendations
+- Autenticado por la cadena de seguridad existente.
+- Devuelve candidateSetId, personalized, items, aiStatus y notice.
+- Cada item contiene un GoogleBook real, explicación y códigos verificables.
+
+POST /api/me/recommendations/gemini
+- Autenticado.
+- Cuerpo: candidateSetId, UUID del conjunto entregado por el servidor.
+- No acepta como fuente fiable una lista de candidatos o preferencias enviada por el navegador.
+- Conjunto ajeno, vencido o Biblioteca modificada: HTTP 409; se pide actualizar.
+- Falta de clave, cuota, timeout, indisponibilidad o selección inválida: se devuelven candidatos normales con un aiStatus que permite informar el motivo.
+
+No se cambió SecurityConfiguration: las nuevas rutas quedan bajo anyRequest().authenticated().
+
+7. HOME Y AISLAMIENTO DE CUENTAS
+
+Se mantiene el carrusel RecommendedBooksSection original como hijo directo del Home. Se añaden debajo relación con las lecturas, identificación de exploración general o personalización, identificación de selección con Gemini, actualización, carga y errores.
+
+Se utilizan AppColors y los componentes existentes, sin cambiar el tema ni el componente responsive compartido.
+
+Home detecta cambios del contenido y estados de Biblioteca, incluso si el mapa de estados se mutó conservando su identidad. Recrea el controlador, elimina datos anteriores y descarta respuestas tardías de la sesión anterior.
+
+ApiHomeRecommendationRepository reutiliza ApiClient con expectedUid. El transporte existente comprueba la identidad antes y después de la respuesta. No hay caché global Flutter que comparta preferencias entre cuentas.
+
+Actualizar permite volver a consultar la Biblioteca desde el servidor. Durante un error de actualización solo se conserva información del mismo contexto; un cambio de cuenta o Biblioteca crea otro controlador.
+
+Los invitados reciben exploración pública mediante CatalogRepository. Sin catálogo disponible se muestra un estado vacío; no se fabrican recomendaciones.
+
+No se modificaron HomeSearchSection ni los contratos de búsqueda simultánea.
+
+8. ARCHIVOS DE ESTA INTERVENCIÓN
+
+Único archivo existente modificado:
+android/lib/features/home/presentation/screens/home_screen.dart
+
+Archivos nuevos Flutter:
+android/lib/features/home/data/home_recommendation_repository.dart
+android/lib/features/home/presentation/home_recommendation_controller.dart
+android/lib/features/home/presentation/widgets/library_recommendations_section.dart
+android/test/home_recommendations_test.dart
+
+Archivos nuevos backend:
+backend/src/main/java/com/capitulo0/backend/recommendation/Recommendations.java
+backend/src/main/java/com/capitulo0/backend/recommendation/GeminiRecommendationClient.java
+backend/src/main/java/com/capitulo0/backend/recommendation/RecommendationService.java
+backend/src/main/java/com/capitulo0/backend/recommendation/RecommendationController.java
+backend/src/test/java/com/capitulo0/backend/recommendation/RecommendationTests.java
+backend/src/test/java/com/capitulo0/backend/recommendation/GeminiRecommendationClientTests.java
+backend/src/test/java/com/capitulo0/backend/recommendation/RecommendationEndpointTests.java
+
+Informe nuevo:
+INFORME_HOME_RECOMENDACIONES_GEMINI_CAPITULO0.txt
+
+Los archivos previos pendientes de commit permanecen pendientes y se distinguen del inventario anterior. Los archivos nuevos todavía no están versionados.
+
+9. PRUEBAS REALES EJECUTADAS
+
+Flutter, ejecución final completa:
+flutter test --no-pub
+Resultado: 300 aprobadas, 1 omitida, 0 fallos. Código de salida 0.
+Duración informada por el runner: 01:55.
+Incluye 14 pruebas nuevas y todas las pruebas anteriores sin modificaciones.
+
+flutter analyze --no-pub
+Resultado final: No issues found! Código de salida 0.
+Duración informada: 21,4 segundos.
+
+Java:
+mvn -q "-Dtest=RecommendationTests,RecommendationEndpointTests,GeminiRecommendationClientTests,GoogleBooksTests,FirebaseBearerFilterTests" test
+Resultado final: 28 aprobadas, 0 fallos, 0 errores y 0 omitidas:
+- RecommendationTests: 13.
+- RecommendationEndpointTests: 3.
+- GeminiRecommendationClientTests: 3.
+- GoogleBooksTests existentes: 7.
+- FirebaseBearerFilterTests existentes: 2.
+Código de salida 0.
+
+Compilación backend:
+mvn -q -DskipTests compile
+Resultado: código de salida 0 con Java 25.
+La ejecución final de Maven test también recompiló los componentes modificados.
+
+Las pruebas Java son unitarias, MockMvc standalone y transporte contra un servidor HTTP falso de loopback. No se cargó un contexto Spring Boot productivo, no se inició la aplicación, no se ejecutaron Flyway ni conexiones Firebase/Neon. Los avisos de Maven/JDK sobre Jansi, Unsafe y el agente Mockito no fueron fallos de compilación o pruebas.
+
+Cobertura:
+- Preferencia por lecturas finalizadas, autores y categorías.
+- Biblioteca vacía y datos incompletos.
+- Cuentas con intereses distintos, intento de suplantación mediante parámetros y conjuntos ajenos.
+- Exclusión de obras guardadas y duplicados.
+- Caché, expiración y solicitudes simultáneas.
+- Clave ausente, HTTP, cuota, timeout, límite de respuesta y JSON incorrecto.
+- IDs o motivos inventados y selecciones duplicadas.
+- Cambio de Biblioteca durante Gemini.
+- Respuestas tardías y cambio de cuenta Flutter.
+- Actualización manual y mutación de estados de Biblioteca.
+- Confirmación y cancelación de Gemini, navegación real a ficha y regreso.
+- Controles en 360x640 y 800x1000, claro y oscuro, sin overflow observado en los tests.
+
+Las ejecuciones intermedias detectaron errores de tipos, preparación de un doble Mockito, estructura del carrusel y uso de helpers de navegación/scroll en los nuevos tests. Se corrigieron y se repitieron las verificaciones pertinentes hasta los resultados finales anteriores. Ningún test previo se modificó, omitió o redujo para obtener resultados verdes.
+
+Prueba omitida existente:
+firebase_web_auth_test.dart: Chrome Google uses Firebase popup without invoking native Google SDK.
+Su condición skip: !kIsWeb ya existía; la suite ejecutada usa el runner habitual y no Chrome.
+
+No se ejecutó toda la suite Java: incluye pruebas de persistencia/migraciones fuera del alcance y prohibidas en esta intervención. No se afirmaron resultados para ellas.
+
+10. COMPROBACIÓN GIT Y PRESERVACIÓN
+
+git diff --check: código de salida 0, sin errores de whitespace.
+Git muestra avisos de conversión futura LF/CRLF; no se normalizaron los archivos protegidos.
+
+Se compararon huellas SHA-256 de los 522 archivos previos registrados en la línea base no sensible: el único diferente fue HomeScreen. Gutendex 4.3A, sus pruebas e informes conservan exactamente sus huellas iniciales.
+
+Google Books, Biblioteca y progreso/LEIDO, Perfil, Maps, lector TXT, autenticación, Writer, clubes y módulos sociales no fueron modificados. La suite Flutter existente siguió aprobando; esto no reemplaza una prueba manual de cada módulo o un dispositivo real.
+
+Sin cambios en pubspec.yaml, pubspec.lock, pom.xml, configuración global, seguridad Firebase, migraciones, esquema Neon ni archivos privados. Sin dependencias nuevas ni datos productivos modificados.
+
+11. CONFIGURACIÓN Y ESTADO OPERATIVO
+
+El flujo está implementado y comprobado con dobles. Para funcionamiento real requiere que el backend con estos archivos esté ejecutándose en el entorno autorizado y que API_BASE_URL continúe apuntando a ese backend.
+
+Google Books debe mantener su configuración existente de google-books.api-key. No se cambió ni inspeccionó una clave real.
+
+Gemini:
+- Configurar GEMINI_API_KEY en el entorno del proceso Spring Boot mediante el mecanismo seguro del entorno.
+- GEMINI_MODEL es opcional; valor predeterminado gemini-4-hydrogen.
+- No configurar la clave con --dart-define, no llevarla al navegador ni escribirla en informes o Git.
+- Un archivo .env arbitrario no es leído automáticamente por este código; la variable debe estar disponible para Spring Boot.
+- Mantener los timeouts y las rutas existentes; no se necesitan migraciones para esta función.
+
+La comprobación de presencia encontró GEMINI_API_KEY ausente en el entorno de esta sesión. No se solicitó ni se mostró una clave. No hubo solicitud auténtica a Gemini ni consulta a una Biblioteca productiva durante el trabajo.
+
+Por tanto, NO se declara terminada la validación real de Gemini, ni una demostración completa Home/backend/proveedor en vivo. Se verificó la implementación, el transporte con dobles y el respaldo seguro. Con credenciales y entorno autorizados falta ejecutar y comprobar la solicitud auténtica.
+
+12. PRUEBA MANUAL PROPUESTA EN CHROME
+
+1) Utilizar el backend autorizado con estos cambios y su configuración Google Books existente. No ejecutar migraciones ni modificar datos fuera de las acciones normales de la aplicación.
+2) Abrir la aplicación con la configuración local habitual, sin agregar claves Gemini a Flutter.
+3) Iniciar sesión en una cuenta de prueba con libros reales guardados que tengan autores/categorías. Revisar Para ti · Tu Biblioteca, relaciones mostradas y exclusión de obras guardadas.
+4) Abrir una recomendación y regresar. Comprobar título, portada, autor y ficha.
+5) Añadir o retirar un libro mediante el flujo existente, o cambiar su estado. Volver al Home y comprobar actualización. Pulsar Actualizar para forzar la consulta del estado actual del servidor.
+6) Cambiar a otra cuenta con intereses diferentes. Verificar que no reaparezcan recomendaciones o respuestas de la cuenta anterior.
+7) Con Biblioteca vacía, comprobar que se informa Exploración general.
+8) Sin clave Gemini, solicitar Seleccionar con Gemini y confirmar. Verificar aviso de falta de configuración y conservación de las recomendaciones normales.
+9) Configurar la clave únicamente en el backend autorizado y reiniciar ese proceso por el procedimiento habitual. Revisar previamente cuota, coste y condiciones de la cuenta del proveedor.
+10) Actualizar candidatos, pulsar Seleccionar con Gemini y leer la confirmación. Cancelar no debe enviar la solicitud.
+11) Confirmar Solicitar selección. Comprobar una petición autenticada al endpoint propio, etiqueta Selección con Gemini y relaciones verificadas. La clave no debe aparecer en las herramientas del navegador.
+12) Abrir una ficha seleccionada y regresar. Probar de nuevo en tamaños 360x640 y 800x1000 y con tema oscuro.
+13) Si se alcanza cuota o hay error, comprobar que permanecen las recomendaciones de Biblioteca. Esperar al menos diez segundos entre intentos; los conjuntos vencen tras 60 segundos y requieren Actualizar.
+14) Registrar fecha, modelo y resultado de la solicitud auténtica, sin guardar clave, tokens ni respuestas con datos personales innecesarios.
+
+Limitaciones pendientes:
+- Validación manual real en Chrome de la nueva función.
+- Validación Android en dispositivo: no realizada, no se declara compatibilidad probada en hardware.
+- Disponibilidad y latencia externas de Google Books/Gemini no quedan resueltas por tests falsos.
+- El ranking es conservador; puede quedar vacío con metadatos insuficientes o sin coincidencias exactas.
+- La calidad de selección y las cuotas reales dependen del modelo y la cuenta configurados.
+- El backend necesita incorporar estos archivos en su proceso autorizado; no se desplegó ni inició durante esta intervención.
+
+No se continuó con Gutendex, traducción de sinopsis, descarga directa, persistencia de IA ni otros bloques. Sin commit ni push.

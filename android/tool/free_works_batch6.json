@@ -1,0 +1,162 @@
+[
+  {
+    "slug": "rima_1885_16",
+    "title": "Rima XVI",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XVI, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Si al mecer las azules campanillas Verso final: Respiro yo.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XVI",
+        "beginning": "XVI\n\nSi al mecer las azules campanillas\nDe tu balcón,\nCrees que suspirando pasa el viento\nMurmurador",
+        "ending": "ras que te cercan,\nTe llamo yo.\n\nSi se turba medroso en la alta noche\nTu corazón,\nAl sentir en tus labios un aliento\nAbrasador,\nSabe que, aunque invisible, al lado tuyo\nRespiro yo.",
+        "extraction": "poem:XVI",
+        "reviewed_headings": [
+          "XVI"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_17",
+    "title": "Rima XVII",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XVII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Hoy la tierra y los cielos me sonrien, Verso final: ¡Hoy creo en Dios!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XVII",
+        "beginning": "XVII\n\nHoy la tierra y los cielos me sonrien,\nHoy llega al fondo de mi alma el sol;\nHoy la he visto..",
+        "ending": "XVII\n\nHoy la tierra y los cielos me sonrien,\nHoy llega al fondo de mi alma el sol;\nHoy la he visto... la he visto y me ha mirado...\n¡Hoy creo en Dios!",
+        "extraction": "poem:XVII",
+        "reviewed_headings": [
+          "XVII"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_18",
+    "title": "Rima XVIII",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XVIII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Fatigada del baile, Verso final: Qué dulcísimo sueño!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XVIII",
+        "beginning": "XVIII\n\nFatigada del baile,\nEncendido el color, breve el aliento,\nApoyada en mi brazo,\nDel salón se d",
+        "ending": "l céfiro,\nTal vez allí dormía\nAl soplo de sus labios entreabiertos.\n\n—¡Oh! ¿Quién así, pensaba,\nDejar pudiera deslizarse el tiempo?\n¡Oh, si las flores duermen,\nQué dulcísimo sueño!",
+        "extraction": "poem:XVIII",
+        "reviewed_headings": [
+          "XVIII"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_19",
+    "title": "Rima XIX",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XIX, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Cuando sobre el pecho inclinas Verso final: De oro y nieve.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XIX",
+        "beginning": "XIX\n\nCuando sobre el pecho inclinas\nLa melancólica frente,\nUna azucena tronchada\nMe pareces.\n\nPorque",
+        "ending": "ndo sobre el pecho inclinas\nLa melancólica frente,\nUna azucena tronchada\nMe pareces.\n\nPorque al darte la pureza\nDe que es símbolo celeste,\nComo á ella, te hizo Dios\nDe oro y nieve.",
+        "extraction": "poem:XIX",
+        "reviewed_headings": [
+          "XIX"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_20",
+    "title": "Rima XX",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XX, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Sabe, si alguna vez tus labios rojos Verso final: También puede besar con la mirada.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XX",
+        "beginning": "XX\n\nSabe, si alguna vez tus labios rojos\nQuema invisible atmósfera abrasada,\nQue el alma que hablar ",
+        "ending": "XX\n\nSabe, si alguna vez tus labios rojos\nQuema invisible atmósfera abrasada,\nQue el alma que hablar puede con los ojos,\nTambién puede besar con la mirada.",
+        "extraction": "poem:XX",
+        "reviewed_headings": [
+          "XX"
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,223 @@
+INFORME DE CONTINUIDAD — CAPÍTULO 0 — 50 OBRAS Y EPUB
+Fecha de corte: 2026-11-16 21:10:19 (hora local).
+Estado: DESARROLLO DETENIDO por instrucción expresa de la usuaria. Este es un informe nuevo; no sustituye los informes anteriores ni declara terminado el bloque.
+
+1. ESTADO DE GIT Y PROTECCIÓN
+Rama: feature/resiliencia-gutendex-20261116
+HEAD: c049e30
+Se conservan cambios sin commit de los bloques anteriores y de EPUB. No se ejecutaron reset, clean, checkout, cambio de rama, commit, push ni PR. No se borraron archivos.
+Respaldo de inicio de EPUB: respaldos/antes_epub_20261116_181704/ (98 archivos comprobados por SHA-256, receipts.json y tracked.patch). Se mantienen también los respaldos anteriores y el informe de las 15 obras.
+La configuración privada se utilizó únicamente como archivo de parámetros de ejecución local, sin imprimir su contenido ni editarla. No se inició Gemini ni Writer.
+
+2. EPUB REALMENTE IMPLEMENTADO
+Dependencia: flutter_epub_viewer 2.2.1, con EpubSource.fromData(Uint8List). Es un lector EPUB dedicado basado en epub.js; no convierte el libro a TXT ni reconstruye el lector TXT.
+Dependencias indispensables añadidas/declaradas: archive 4.7.1, crypto 3.0.7, xml 7.0.1, path_provider 2.1.6 y web 1.1.2. File_picker sigue en 11.0.2. El visor incorpora transitivamente flutter_inappwebview 6.2.0-beta.3: debe validarse en Android antes de declarar compatibilidad comprobada en dispositivo.
+Importación de un único .epub mediante el selector instalado, lectura local por stream, límite 20 MiB y confirmación previa. Cancelar no crea una entrada. Se extraen título, autor y tabla de contenido.
+Validación ZIP previa a descomprimir: directorio central, cabeceras consistentes, rutas y duplicados, CRC, cifrado, 1.500 entradas como máximo, 12 MiB por entrada, 80 MiB expandidos y límite de relación de compresión. Se comprueban mimetype, container.xml, paquete OPF y spine.
+Se rechazan EPUB vacíos, corruptos, excesivos, DRM/cifrado/ofuscación, scripts, eventos activos, instrucciones XML no compatibles y recursos externos. El visor usa allowScriptedContent:false y useLocalServer:false. Los bytes no se envían a Gemini, Gutendex, Google Books ni backend.
+La interfaz incluye título y autor, índice, navegación anterior/siguiente, tamaño de letra, porcentaje del visor, carga, errores y retorno a Mi Biblioteca. Se corrigieron un primer renderizado en blanco y la carrera entre el reajuste del iframe y el cambio de capítulo. Existe un adaptador Web acotado para eliminar el mínimo de 800 px de la página del visor; no se modificó el paquete en la caché ni el tema global.
+
+3. PERSISTENCIA EN MI BIBLIOTECA
+Sección integrada: Mis libros importados, con Importar libro EPUB, Leer/Continuar leyendo, Exportar copia EPUB y Eliminar de mi Biblioteca con confirmación. Hay portada tipográfica de respaldo.
+Se conserva LibraryEntry y el contrato de libros del servidor. Los EPUB no reciben IDs ficticios de Google Books, no se envían a Neon y no se mezclan con sus contadores/recomendaciones.
+Web: IndexedDB capitulo0-imported-epubs-v1; almacenes records y files, escritura atómica de metadatos y Uint8List. La lista consulta metadatos y existencia del binario, sin cargar todos los EPUB.
+Android: implementación con archivos privados bajo getApplicationSupportDirectory()/imported_epubs_v1/<hash de cuenta>, binario original y JSON; escrituras temporales con flush/rename. Se probó esta implementación con archivos reales en el host Windows, NO en un dispositivo Android.
+Identificador estable y detección de duplicados: SHA-256 del EPUB original. Espacio lógico separado por SHA-256 de LocalAccountScope.uid. Invitado tiene un espacio guest separado de los UID registrados; las sesiones de invitado del mismo navegador comparten ese espacio local. Es separación lógica, no cifrado ni sincronización remota.
+CFI, porcentaje y tamaño de letra se guardan por EPUB. Se serializan las escrituras y se esperan al salir. Si cambia la cuenta se oculta el lector anterior y se invalidan resultados asíncronos de la sección. Se conservan controles de error al guardar progreso.
+Si falta el binario, la tarjeta ofrece Reimportar EPUB y desactiva exportación; no promete lectura disponible. Reimportar el original recupera el avance conservado. Se añadió también reparación de una copia dañada al volver a importar bytes válidos.
+La sección local también se muestra cuando dataAvailable es false para la Biblioteca del servidor. Este ajuste es posterior a la última suite completa y requiere verificación final.
+No hay sincronización de EPUB entre dispositivos. Cambiar de dominio, host, puerto, perfil de navegador o borrar datos del sitio cambia/pierde el almacenamiento local. No se usan shared_preferences para los archivos EPUB.
+
+4. IMPORTACIÓN Y EXPORTACIÓN COMPROBADAS
+Fixture original, legal y de tres capítulos: android/test/fixtures/epub/capitulo0_prueba_3_capitulos.epub.
+Tamaño: 3.079 bytes. SHA-256: cc101552c1174facde299dc70f8561d5cbe646a9347e5815bf18191aa1a34a2f.
+Texto original de prueba con declaración CC0; no forma parte del catálogo público. fixture_bytes.dart permite usar exactamente los mismos bytes en pruebas.
+Prueba real en Chrome headless aislado, aplicación de producción servida en http://127.0.0.1:8766, modo invitado, navegación inferior a Mi Biblioteca, selector de archivos real, IndexedDB real y visor real. No fue un lector simulado ni una app de prueba paralela.
+Resultado del recorrido completo: success=True.
+Se importó y confirmó la fixture; se leyeron sus tres capítulos; se cambió letra a 20; se avanzó al segundo capítulo; se salió; se recargó toda la aplicación; se volvió a entrar como invitado y a Mi Biblioteca; el libro permaneció; Continuar leyendo restauró exactamente epubcfi(/6/4!/4/2/1:0), 50 % y letra 20.
+Se exportó mediante el mecanismo real de file_picker, se compararon byte a byte los 3.079 bytes, se canceló y luego confirmó eliminación, y se reimportó la copia descargada, verificando apertura y tercer capítulo. Cero consultas a Gutendex/Wikisource/Gutenberg durante ese recorrido.
+Botones siguiente/anterior: success=True; se pasó del capítulo 2 al 3 y se regresó al CFI exacto del capítulo 2.
+Casos adicionales en Chrome: success=True. Se forzó cuota insuficiente con una fixture generada de 8 MiB: mensaje claro y cero registros. Se verificaron cancelación de confirmación, archivo corrupto, pérdida deliberada del binario del perfil aislado, recarga, Reimportar EPUB y recuperación del CFI exacto.
+En 320x568, 360x640 y 390x844 se comprobó scrollWidth == clientWidth y conservación del capítulo, con capturas PNG. La primera sonda de cuota de 3 KiB fue aceptada por Chrome pese al override; se repitió con la sonda mayor y sí se observó el rechazo real. No confundir ese primer intento fallido de la prueba con un fallo final oculto.
+Evidencia principal: tool/epub_chrome_e2e_results.json, tool/epub_chrome_edge_results.json, tool/epub_chrome_page_navigation.json y capturas tool/epub_chrome_*.png. El perfil y las descargas de prueba están ignorados por tool/.gitignore y se conservan.
+
+5. COLECCIÓN GRATUITA ACTUAL
+TXT: 50. Manifiestos de procedencia: 50.
+Se conservaron las 15 lecturas anteriores y se incorporaron 35 poemas autónomos completos: Rimas I–XXXV, Gustavo Adolfo Bécquer, edición de Obras, tomo III, Madrid, Librería de Fernando Fe, 1885.
+Estos 35 poemas también están incluidos en el volumen Rimas que ya existía. El solapamiento se declara en la edición y manifiestos; son poemas autónomos, no 35 novelas ni 35 colecciones nuevas. No se añadieron resúmenes ni fragmentos de poemas.
+Se reutilizó exclusivamente la instantánea local ya verificada del escaneo: ninguna nueva descarga masiva ni insistencia ante 403/429. Se prepararon siete lotes de cinco, con auditoría offline entre lotes.
+Cada nuevo TXT conserva el poema íntegro, principio y final; tiene manifiesto con fuente, revisión ancla del índice, fecha de la fuente, SHA-256, licencia, relación con la colección matriz e historiales de páginas. Se registró que la revisión del índice no congela cada página transcluida.
+Fuente: https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885). Original en dominio público en Chile, autor fallecido en 1870; transcripción/conversión CC BY-SA 4.0 cuando corresponda, con créditos.
+Tamaño actual de TXT: 753189 bytes. Manifiestos: 683649 bytes.
+Catálogo generado: lib/features/gutendex/models/prepared_free_works.dart. Búsqueda local y filtro de Poesía actualizados a 50 entradas/36 entradas de poesía. El cuerpo se carga solo al leer; los límites de ReaderSource se mantienen.
+El acceso opcional a Gutendex al final de la Biblioteca gratuita pasó a TextButton discreto. No se eliminó código/cachés/pruebas remotas, ni se modificó el acceso existente de Home, ni se añadieron solicitudes automáticas.
+
+6. PRUEBAS TERMINADAS
+- Primeras pruebas EPUB de núcleo: 6 aprobadas (fixture, validación, CRC/truncado/tamaño, DRM/scripts/rutas/bomba, persistencia real de archivos, cuenta distinta, duplicado, exportar/reimportar y recuperación de archivo ausente).
+- Widgets EPUB: 5 aprobadas, incluyendo tres tamaños móviles, recorrido con doble de visor/selector, cancelación y cuota/corrupto. Son pruebas con dobles; el recorrido real de Chrome se documenta por separado.
+- Conjunto EPUB + colección de 50: 17 aprobadas, tool/epub_and_50_tests.log.
+- Suite completa ejecutada: 448 aprobadas, 1 omitida por condición preexistente Web de Firebase. Duración aproximada 4 min 4 s, tool/epub_full_tests.log.
+- Último análisis completado: No issues found, 11,4 s, tool/epub_analyze_final.log.
+- git diff --check se ejecutó sin errores durante el desarrollo. Hay advertencias preexistentes LF/CRLF.
+- Verificador offline ejecutado tras completar la atribución: PASS de 50 obras, hashes/cuerpo/secciones/UTF-8/límites únicos y conservados.
+IMPORTANTE: hubo cambios posteriores a la suite completa (acceso EPUB con servidor no disponible, refinamiento XML, portada, títulos únicos y atribuciones). Los resultados anteriores NO sustituyen una nueva suite final sobre el estado definitivo.
+Últimas líneas de la suite completa conservada:
+04:03 +446 ~1: C:/Users/co.mena/Mena_Zapata_Cortes-Monroy_Capitulo-0-/android/test/reading_record_status_test.dart: Sin total no inventa paginas (allowUnknownTotal=true)
+04:03 +447 ~1: C:/Users/co.mena/Mena_Zapata_Cortes-Monroy_Capitulo-0-/android/test/reading_record_status_test.dart: Sin total no inventa paginas (allowUnknownTotal=false)
+04:04 +448 ~1: All tests passed!
+Último análisis conservado:
+Analyzing android...
+No issues found! (ran in 11.4s)
+
+7. PRUEBAS Y COMPILACIÓN PENDIENTES
+- Prueba Web de IndexedDB real con dos cuentas lógicas y recreación del store: test/epub/epub_web_persistence_test.dart. El primer intento falló por estar fuera de test/; el archivo fue movido y quedó con skip: !kIsWeb para la VM. La nueva ejecución estaba en curso/sin veredicto y fue detenida al pausar. No declararla aprobada.
+- Completar comprobaciones adicionales de cambio de cuenta con selector pendiente, acceso con dataAvailable:false y reparación de copia corrupta. Existencia detectada de las dos nuevas pruebas extra en el archivo de widgets: False. La última solicitud para añadirlas y ejecutarlas fue interrumpida; comprobar el contenido antes de retomarla, no asumir que se aplicó.
+- Repetir flutter test --no-pub, flutter analyze --no-pub y git diff --check sobre el estado definitivo; comprobar que las pruebas nuevas pasan y registrar omisiones exactas.
+- Compilar flutter build web --no-pub --dart-define-from-file=config/firebase_web.local.json. Hay log de build nuevo: False. Hay resultado JSON nuevo: False. No existe una compilación Web final comprobada de este bloque.
+- build/web contiene actualmente 15 TXT de obras: puede corresponder a la compilación anterior de 15. No usarlo como entrega de 50+EPUB hasta recompilar y comparar los assets empaquetados.
+- No se compiló ni probó APK en dispositivo Android. Falta validar WebView, selector/SAF, exportación a destino elegido, almacenamiento privado, reanudación/CFI y rendimiento en Android.
+- Crear el informe final originalmente solicitado INFORME_BIBLIOTECA_50_OBRAS_Y_EPUB_CAPITULO0.txt solo cuando se concluyan esas comprobaciones. Este informe es de continuidad, no de cierre del bloque.
+Estado del log de la prueba Web detenida:
+00:00 +0: loading C:/Users/co.mena/Mena_Zapata_Cortes-Monroy_Capitulo-0-/android/test/epub/epub_web_persistence_test.dart
+
+8. PROCESOS Y ERRORES AL DETENER
+Se cerró mediante q el servidor interactivo de pruebas (puerto 8766). Se detuvieron únicamente procesos propios identificados por las órdenes de prueba Web/servidor 8765 (PID 16844, 18556, 23304 y 16364). Se solicitó Browser.close al Chrome aislado del puerto 9227. No se borró su perfil ni ninguna evidencia.
+La compilación Web definitiva y las pruebas adicionales de la última solicitud no tienen resultado comprobado; no dejarlas implícitamente como exitosas. Al retomar comprobar procesos/puertos y archivos antes de lanzar otra ejecución, sin terminar procesos ajenos.
+Los problemas observados de página en blanco, retorno al primer capítulo al usar el índice y mínimo fijo de 800 px del iframe fueron corregidos y el recorrido real posterior pasó. Los registros antiguos con fallos se conservan como historial.
+La validación EPUB es deliberadamente restrictiva: no admite DRM/ofuscación, DTD, scripts, multimedia activa, enlaces/recursos externos ni algunos estilos/XML no compatibles. No prometer compatibilidad con cualquier EPUB legal. No hay cifrado de archivos locales ni sincronización entre equipos. El progreso porcentual es el estimado de epub.js, no un conteo de páginas impresas.
+
+9. ARCHIVOS CREADOS/MODIFICADOS
+Núcleo nuevo y pruebas/fixtures (rutas relativas a android):
+lib\features\epub\data\epub_file_access.dart
+lib\features\epub\data\epub_repository.dart
+lib\features\epub\data\epub_store.dart
+lib\features\epub\data\epub_store_native.dart
+lib\features\epub\data\epub_store_stub.dart
+lib\features\epub\data\epub_store_web.dart
+lib\features\epub\data\epub_validator.dart
+lib\features\epub\data\epub_viewport.dart
+lib\features\epub\data\epub_viewport_stub.dart
+lib\features\epub\data\epub_viewport_web.dart
+lib\features\epub\models\imported_epub.dart
+lib\features\epub\presentation\epub_reader_screen.dart
+lib\features\epub\presentation\imported_epub_section.dart
+test\epub\epub_core_test.dart
+test\epub\epub_import_widgets_test.dart
+test\epub\epub_web_persistence_test.dart
+test\fixtures\epub\.gitignore
+test\fixtures\epub\capitulo0_prueba_3_capitulos.epub
+test\fixtures\epub\corrupt_browser_test.epub
+test\fixtures\epub\fixture_bytes.dart
+test\fixtures\epub\generated\quota_probe.epub
+test\fixtures\epub\README.txt
+
+Archivos existentes modificados por este bloque:
+- android/lib/features/library/presentation/screens/library_screen.dart (integración mínima de sección EPUB, también con datos remotos no disponibles).
+- android/pubspec.yaml y android/pubspec.lock (dependencias indispensables, sin upgrade de file_picker).
+- android/lib/features/gutendex/models/prepared_free_works.dart (50 registros).
+- android/lib/features/gutendex/presentation/screens/free_library_screen.dart (enlace remoto secundario).
+- android/test/gutendex/free_collection_test.dart (cuenta 50, filtro 36 y títulos únicos).
+- android/tool/prepare_collection.py (extracción íntegra de poemas autónomos y atribuciones).
+Nuevos assets: android/assets/free_works/rima_1885_01.txt hasta rima_1885_35.txt, con sus 35 .source.json. Nuevas configuraciones: tool/free_works_batch3.json a free_works_batch9.json. Se mantienen los 15 TXT/manifiestos previos.
+Herramientas/evidencias relacionadas (rutas bajo android/tool, incluye scripts de una sola ejecución: NO ejecutarlos todos de nuevo):
+complete_poem_attribution.py
+create_epub_fixture.py
+create_epub_tests.py
+create_epub_widget_tests.py
+epub_analyze_final.log
+epub_and_50_tests.log
+epub_chrome.mjs
+epub_chrome_320x568.png
+epub_chrome_360x640.png
+epub_chrome_390x844.png
+epub_chrome_chapter2.png
+epub_chrome_e2e.mjs
+epub_chrome_e2e_failure.png
+epub_chrome_e2e_results.json
+epub_chrome_edge_cases.mjs
+epub_chrome_edge_failure.png
+epub_chrome_edge_results.json
+epub_chrome_initial.png
+epub_chrome_page_navigation.json
+epub_chrome_quota_error.png
+epub_chrome_reimported.png
+epub_chrome_storage_tests.log
+epub_chrome_three_chapters.png
+epub_confirm_real.png
+epub_core_tests.log
+epub_first_analyze.log
+epub_full_tests.log
+epub_guest_home.png
+epub_library_before_import.png
+epub_library_nav.png
+epub_reader_chapter1.png
+epub_reader_fixed_chapter1.png
+epub_second_analyze.log
+epub_tests.log
+epub_widget_tests.log
+expand_verified_poems.py
+finalize_epub_reimport.py
+fit_epub_reader_viewport.py
+fix_browser_test_location.py
+fix_chrome_test_controller.py
+fix_epub_browser_findings.py
+fix_epub_index_resize.py
+fix_epub_initial_checks.py
+fix_epub_initial_navigation.py
+fix_epub_paths.py
+fix_epub_ui_wait.py
+implement_epub_core.py
+implement_epub_storage.py
+implement_epub_ui.py
+prepare_epub_quota_probe.py
+refine_epub_cover_and_checks.py
+refine_epub_offline_access.py
+
+Los cambios tracked de gutendex_controller.dart, gutendex_catalog_screen.dart, gutendex_cover.dart y home_gutendex_navigation_test.dart ya existían al comenzar. No atribuirlos íntegramente a EPUB. Se preservan informes, respaldos y archivos privados; no se inició trabajo en Home, Gemini, Perfil, Writer, Clubes, Maps, Firebase, Neon, Flyway ni backend Spring Boot.
+Git status completo al guardar continuidad:
+ M lib/features/gutendex/presentation/gutendex_controller.dart
+ M lib/features/gutendex/presentation/screens/gutendex_catalog_screen.dart
+ M lib/features/gutendex/presentation/widgets/gutendex_cover.dart
+ M lib/features/library/presentation/screens/library_screen.dart
+ M pubspec.lock
+ M pubspec.yaml
+ M test/home_gutendex_navigation_test.dart
+?? ../ANALISIS_BUSQUEDA_LIBROS_USUARIOS_CAPITULO0.txt
+?? ../AUDITORIA_CONTINUIDAD_CAPITULO0_POST_PR63.txt
+?? ../INFORME_AJUSTE_FINAL_HOME_GEMINI_CAPITULO0.txt
+?? ../INFORME_AMPLIACION_BIBLIOTECA_GRATUITA_CAPITULO0.txt
+?? ../INFORME_BLOQUE_4_2C_LECTURA_DIRECTA_CAPITULO0.txt
+?? ../INFORME_BLOQUE_4_3A_BUSQUEDA_IDIOMAS_GUTENDEX_CAPITULO0.txt
+?? ../INFORME_BLOQUE_4_3B_RESILIENCIA_GUTENDEX_CAPITULO0.txt
+?? ../INFORME_CORRECCION_CARRUSEL_REFRESH_CAPITULO0.txt
+?? ../INFORME_CORRECCION_HOME_GEMINI_DEFENSA_CAPITULO0.txt
+?? ../INFORME_CORRECCION_OVERFLOW_HOME_CAPITULO0.txt
+?? ../INFORME_HOME_RECOMENDACIONES_GEMINI_CAPITULO0.txt
+?? ../INFORME_LECTURA_DIRECTA_OBRAS_GRATUITAS_CAPITULO0.txt
+?? ../INFORME_PULIDO_VISUAL_HOME_CAPITULO0.txt
+?? ../INFORME_SOLUCION_CATALOGO_GUTENBERG_CAPITULO0.txt
+?? assets/free_works/
+?? config/firebase_web.local.json.bak
+?? lib/features/epub/
+?? lib/features/gutendex/data/asset_reader_source.dart
+?? lib/features/gutendex/data/gutendex_saved_catalog.dart
+?? lib/features/gutendex/models/free_work.dart
+?? lib/features/gutendex/models/prepared_free_works.dart
+?? lib/features/gutendex/presentation/screens/free_library_screen.dart
+?? test/epub/
+?? test/fixtures/
+?? test/gutendex/free_collection_test.dart
+?? test/gutendex/free_library_test.dart
+?? test/gutendex/gutendex_resilience_test.dart
+?? tool/
+?? ../respaldos/
+
+10. SIGUIENTE PASO EXACTO PARA RETOMAR
+1) Leer este informe y el de ampliación anterior. Verificar rama feature/resiliencia-gutendex-20261116, HEAD c049e30 y cambios locales; conservar todo y no hacer operaciones Git destructivas ni commit/push/PR.
+2) Confirmar que no queden las pruebas/servidores propios activos. Revisar primero test/epub/epub_web_persistence_test.dart y tool/epub_chrome_storage_tests.log. Repetir únicamente: flutter test --no-pub --platform chrome test/epub/epub_web_persistence_test.dart test/firebase_web_auth_test.dart --reporter expanded. Resolver cualquier fallo sin afirmar aislamiento Web real hasta obtener resultado.
+3) Revisar si las pruebas extra interrumpidas llegaron a incorporarse (actualmente indicador: False). Añadir/terminar solo las que falten y ejecutar test/epub. No rerunear a ciegas los scripts implement_epub_*.py ni expand_verified_poems.py, porque son implementaciones de una sola ejecución y algunas salidas ya existen.
+4) Ejecutar la suite completa final, análisis y diff --check. Después compilar Web con la configuración local existente, sin mostrarla ni publicarla; comprobar 50 TXT y 50 manifiestos en el build. Registrar el tamaño y el resultado real.
+5) Si se repite Chrome real, arrancar la app con flutter run -d web-server --no-pub --web-hostname 127.0.0.1 --web-port 8766 --dart-define-from-file=config/firebase_web.local.json en terminal interactiva; iniciar Chrome headless aislado con puerto CDP 9227 y perfil tool/epub_chrome_profile. Los scripts tool/epub_chrome_e2e.mjs y tool/epub_chrome_edge_cases.mjs esperan ese origen. No utilizar un perfil personal ni ejecutar la eliminación de fixtures contra bibliotecas reales.
+6) Completar el informe final con resultados exactos, alcance real Android y la composición honesta de las 50 obras (35 poemas autónomos de una colección ya presente). Detener el bloque; no comenzar Gemini ni Writer sin nueva instrucción.
+
+FIN: trabajo guardado en archivos locales, sin commit. Desarrollo detenido por petición de la usuaria.

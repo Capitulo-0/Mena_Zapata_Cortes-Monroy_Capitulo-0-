@@ -2,7 +2,6 @@ import '../../../library/data/library_repository.dart';
 import '../../../library/models/library_entry.dart';
 import '../../../library/presentation/controllers/library_controller.dart';
 import '../../../library/presentation/dialogs/add_library_book_dialog.dart';
-import '../../../library/presentation/widgets/library_sync_bar.dart';
 import '../../../../core/session/local_account_scope.dart';
 
 import 'dart:async';
@@ -220,8 +219,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
     if (remote == null) return child;
     return Column(
       children: [
-        if (selectedIndex == 1)
-          LibrarySyncBar(controller: remote, onAdd: _addRealBook),
         Expanded(key: const ValueKey('library-main-stack'), child: child),
       ],
     );
@@ -1276,6 +1273,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onOpenProfile: () => _selectTab(4),
       ),
       LibraryScreen(
+        syncController: _remoteLibrary,
+        onAddBook: _addRealBook,
         dataAvailable: _remoteLibrary?.loaded ?? true,
         onRemoveBook: _removeFromLibrary,
         onReadBook: _openReading,

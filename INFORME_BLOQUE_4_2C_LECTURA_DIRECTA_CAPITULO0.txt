@@ -1,0 +1,249 @@
+CAPÍTULO 0 — BLOQUE 4.2C: REVISIÓN DE LECTURA DIRECTA
+Fecha: 2026-11-16
+Rama: feature/integraciones-biblioteca-perfil
+HEAD: bc8561397ea177689f7c6002a64f8e2e0e45e86c
+
+RESULTADO
+No se habilitó la descarga ni se añadió Leer libro.
+La revisión acotada no confirmó una fuente que cumpla simultáneamente
+condiciones de acceso, correspondencia de contenido y viabilidad Web/Android.
+Se aplicó la salida condicionada de la instrucción: documentar y detener
+la obtención directa antes de implementarla.
+El lector real y Leer archivo TXT permanecen intactos.
+
+1. ESTADO INICIAL Y CONTEXTO RECUPERADO
+Antes de editar se verificaron rama, HEAD y git status --short.
+Rama y commit coinciden con los esperados; no había cambios versionados.
+Cuatro elementos locales sin seguimiento conservados:
+- ANALISIS_BUSQUEDA_LIBROS_USUARIOS_CAPITULO0.txt
+- AUDITORIA_CONTINUIDAD_CAPITULO0_POST_PR63.txt
+- android/config/firebase_web.local.json.bak
+- respaldos/
+No se abrieron configuración privada ni respaldos.
+
+Informes consultados:
+- INFORME_BLOQUE_4_2B_IMPORTACION_TXT_CAPITULO0.txt
+- INFORME_BLOQUE_4_2A_LECTOR_CAPITULO0.txt
+- INFORME_OPTIMIZACION_GUTENDEX_CAPITULO0.txt
+No se recreó ningún módulo ni se repitió una auditoría general.
+El usuario confirmó pruebas manuales satisfactorias en Chrome de 4.2A/4.2B.
+Ese antecedente se registra como evidencia aportada por el usuario,
+no como una prueba manual nueva realizada en esta intervención.
+
+Se inspeccionaron los modelos/validadores Gutendex, la ficha actual,
+el selector local del lector y las dependencias disponibles.
+
+2. FORMATOS Y VALIDADORES EXISTENTES
+Gutendex entrega un mapa MIME -> URL en formats.
+La documentación contempla text/plain, con o sin parámetros de charset,
+además de HTML y EPUB. No todos los formatos declaran UTF-8:
+text/plain por sí solo no demuestra esa codificación.
+
+El modelo actual reconoce EPUB, HTML y texto plano; gutenbergResource exige:
+- HTTPS.
+- Host exacto gutenberg.org o www.gutenberg.org.
+- Puerto 443 y ausencia de credenciales.
+- Sin espacios, controles ni barras inversas en la URL.
+Estos controles son de seguridad sintáctica; no comprueban autorización
+de acceso, licencia territorial, CORS, integridad del texto ni edición.
+Tampoco vinculan de forma suficiente cualquier ruta de texto con el ID.
+
+book.source genera la ficha canónica:
+https://www.gutenberg.org/ebooks/{id}
+La ficha ya la muestra mediante SelectableText.
+No se modificaron modelos, validadores ni URLs existentes.
+
+Fuente de contrato de metadatos:
+https://gutendex.com/
+Gutendex se documenta como API de metadatos; una URL en formats no constituye
+por sí sola una licencia de contenido o un acuerdo de acceso al servidor.
+
+3. CONDICIONES Y DERECHOS REVISADOS
+Fuentes oficiales consultadas:
+https://www.gutenberg.org/policy/terms_of_use.html
+https://www.gutenberg.org/policy/robot_access.html
+https://www.gutenberg.org/policy/permission.html
+https://www.gutenberg.org/policy/linking.html
+https://www.gutenberg.org/MIRRORS.ALL
+https://www.gutenberg.org/help/mirroring.html
+
+Conclusiones acotadas:
+- Las condiciones del sitio principal restringen automatización y acceso
+  directo a archivos desde sitios ajenos; contemplan supuestos específicos.
+  No se interpretaron esas excepciones como aprobación automática del flujo
+  Gutendex -> descarga desde nuestra aplicación.
+- Las instrucciones de enlaces recomiendan la ficha canónica de la obra,
+  en lugar del archivo concreto.
+- La documentación dirige determinados accesos masivos a mirrors y explica
+  cómo replicar la colección. Esto permite identificar candidatos legítimos,
+  pero no demuestra por sí solo sus cabeceras CORS ni un contrato de servicio
+  para la aplicación.
+- Derechos de la obra y condiciones del servidor son verificaciones distintas.
+  El dato copyright=false de Gutendex se refiere al dominio público en EE. UU.;
+  no acredita libertad de uso de toda edición en cualquier territorio.
+- Deben comprobarse obra, traducción, edición, avisos y licencia del contenido.
+  Un mismo título o ID no sustituye la verificación de la copia concreta.
+No se emitió una conclusión jurídica sobre todas las obras del catálogo.
+
+4. COMPROBACIONES TÉCNICAS REALES, SIN LEER LIBROS COMPLETOS
+Se limitaron los candidatos a dos mirrors HTTPS de la lista oficial:
+- https://gutenberg.pglaf.org/
+- https://mirror.cs.odu.edu/gutenberg/
+Se consultaron sus índices, no se recorrieron sus colecciones ni se hizo scraping.
+
+Ejemplos de recursos comprobados:
+A) https://gutenberg.pglaf.org/3/2/320/320-0.txt
+B) https://mirror.cs.odu.edu/gutenberg/3/2/320/320-0.txt
+
+Solicitudes de prueba con Origin: http://localhost:7357
+
+HEAD:
+A: HTTP 200, Content-Type text/plain, Content-Length 130975.
+B: HTTP 200, Content-Type text/plain, Content-Length 130975.
+Access-Control-Allow-Origin: ausente en ambas respuestas.
+No se observaron redirecciones en esas comprobaciones.
+
+GET con Range bytes=0-0:
+A: HTTP 206, Content-Type text/plain, Content-Length 1,
+   Content-Range bytes 0-0/130975.
+B: HTTP 206, Content-Type text/plain, Content-Length 1,
+   Content-Range bytes 0-0/130975.
+Access-Control-Allow-Origin: ausente en ambas respuestas.
+Las respuestas se cerraron sin leer sus cuerpos.
+No se descargaron ni almacenaron textos completos o fragmentos literarios
+para el proyecto.
+
+También se intentó consultar metadatos de:
+https://gutendex.com/books/320/
+El cliente informó WebException. El límite de esa consulta era de 20 segundos.
+No se obtuvo una respuesta JSON utilizable y no se atribuye una causa concreta
+a ese error ni se inventa un código HTTP 522.
+
+Qué demuestra esta comprobación:
+- Esos dos recursos TXT estaban disponibles por HTTPS en la prueba.
+- Su tamaño informado estaba por debajo de 8 MiB.
+- No se anunció permiso CORS en HEAD ni en el GET limitado para el origen usado.
+
+Qué NO demuestra:
+- No se verificó la decodificación UTF-8 del cuerpo completo.
+- No se cotejaron los textos, checksums o versiones con metadatos actuales.
+- No se probó cada origen, cada archivo ni todos los mirrors.
+- No se ejecutó un fetch real en Chrome ni una solicitud desde Android.
+- No se probó un GET completo; no se extrapolan sus cabeceras como certeza
+  universal a partir de HEAD/Range.
+Los resultados son insuficientes para confirmar una fuente directa compatible,
+no una demostración de que jamás exista otra fuente autorizada.
+
+5. IMPEDIMENTOS PARA HABILITAR LA LECTURA DIRECTA
+En Web, recibir un HTTP 200/206 en un cliente de consola no significa que
+Flutter Web pueda leer el cuerpo desde otro origen. No se confirmó CORS
+utilizable para el origen de prueba en ninguno de los dos candidatos.
+No se utilizaron proxies, modo no-cors, reescritura de cabeceras, simulación
+de Referer ni desactivación de seguridad para eludir esa restricción.
+
+En Android no se aplica la misma política de origen del navegador, pero
+permanecen las condiciones de acceso, derechos y validación de identidad.
+No se habilitó una descarga parcial solo para Android dando por resueltas
+las condiciones de la fuente.
+
+Además, una asignación de mirror no debe hacerse sustituyendo un hostname
+o adivinando un nombre de archivo: las colecciones principal y generada
+pueden usar estructuras y versiones distintas. Coincidir en longitud o título
+no prueba que sea la misma edición.
+No se creó una lista permisiva de hosts ni un servicio con autorización fingida.
+
+6. ALTERNATIVA CONCRETA DISPONIBLE HOY
+Se conserva el flujo ya existente:
+1) En la ficha, copiar o seleccionar el enlace oficial
+   https://www.gutenberg.org/ebooks/{id}.
+2) Abrir esa ficha voluntariamente en el navegador.
+3) Elegir y obtener manualmente un TXT legítimo y compatible, conservando
+   avisos y licencia.
+4) Volver a Capítulo 0 y usar Leer archivo TXT.
+5) El lector identifica ese contenido como Archivo local, sin afirmar que
+   la identidad bibliográfica haya sido verificada.
+
+No se añadió otro botón para abrir enlaces:
+- El enlace canónico seleccionable ya existe.
+- No hay url_launcher u otro lanzador multiplataforma instalado.
+- La apertura externa era opcional y no se añadió una dependencia sin
+  autorización específica.
+No se sustituyó ni alteró Leer archivo TXT.
+
+Para permitir lectura directa sin infraestructura nueva, alternativa futura:
+evaluar con el operador de un mirror existente, por ejemplo gutenberg.pglaf.org,
+un acceso expresamente adecuado a la aplicación, orígenes CORS compatibles,
+límites de solicitudes y un mecanismo verificable de correspondencia de edición.
+Solo si se confirma ese contrato y los derechos de las obras seleccionadas,
+autorizar una implementación aislada con allowlist precisa, streaming acotado,
+UTF-8 estricto, cancelación, timeout, integridad y pruebas sintéticas.
+No se contactó a ningún operador ni se instaló ningún servidor.
+La alternativa no garantiza que el operador conceda dicho acceso.
+
+7. ARCHIVOS Y CÓDIGO
+Único archivo creado en esta intervención:
+INFORME_BLOQUE_4_2C_LECTURA_DIRECTA_CAPITULO0.txt
+
+No se modificaron Dart, tests, pubspec.yaml, lockfile ni configuración.
+No se añadió servicio, botón Leer libro, descarga, caché o dependencia.
+No se copió contenido literario al repositorio.
+Los límites de 8 MiB y 2.097.152 unidades UTF-16 del lector y el flujo manual
+permanecen intactos.
+
+8. PRUEBAS REALES DE ESTA INTERVENCIÓN
+flutter test --no-pub
+Resultado: 263 aprobadas, 1 omitida, 0 fallos, salida 0.
+All tests passed.
+Se ejecutaron las pruebas existentes, no se reutilizó el recuento histórico
+de los informes como si fuera una ejecución nueva.
+No se redujeron casos ni se cambiaron expectativas.
+
+Incluye las pruebas existentes de Reader/selección TXT con fuentes falsas:
+contenido sintético íntegro, formato incompatible, tamaño excesivo,
+UTF-8 inválido, vacío, cancelación, sesiones repetidas, navegación/regreso,
+respuestas obsoletas y liberación de recursos.
+También las regresiones de Gutendex, filtros/paginación, búsqueda simultánea,
+Google Books, Biblioteca, progreso y LEIDO automático.
+
+Omitida: firebase_web_auth_test.dart por su condición existente skip: !kIsWeb.
+No se cambió esa condición ni se ejecutó esa prueba en Chrome.
+
+No se crearon pruebas nuevas de red del lector directo porque no se implementó
+un servicio autorizado. Los casos específicos de descarga (URL no permitida,
+formato ausente, HTTP, timeout, cancelación y streaming con límite) quedan
+pendientes para ese servicio; NO se declaran comprobados por las pruebas de
+importación local o por los tests del repositorio de metadatos.
+Las consultas de cabeceras descritas en la sección 4 son investigación puntual,
+no una batería de tests de descarga ni una prueba real del lector por red.
+
+9. ANALYZE, DIFF Y PRESERVACIÓN
+flutter analyze --no-pub
+Resultado: No issues found! (ran in 40.5s), salida 0.
+git diff --check: sin observaciones, salida 0.
+git diff --name-only y git diff --stat: vacíos.
+El nuevo informe sin seguimiento se inventaría expresamente.
+
+Se registraron hashes SHA-256 iniciales de los archivos existentes y de los
+informes anteriores. La comparación final comprueba que no se modificaron.
+No se inspeccionó el contenido de credenciales ni respaldos para ello.
+Los cuatro elementos sin seguimiento iniciales se conservaron.
+
+Rama y HEAD permanecen sin cambios.
+Sin git add, commit, push, PR, pull, merge, reset o clean.
+Sin cambios en Inicio, buscador simultáneo, Google Books, Biblioteca,
+Perfil/autenticación/Firebase, Maps, Writer, clubes, backend/Neon/Flyway,
+migraciones, lector simulado o configuraciones privadas.
+No se iniciaron servicios ni se realizaron conexiones de cuenta a Firebase/Neon.
+
+10. CIERRE Y LIMITACIONES
+Se completó la revisión y regresión solicitadas, utilizando la salida prevista
+cuando no puede confirmarse una fuente.
+El objetivo funcional de leer por red directamente desde Gutendex NO está
+implementado ni se declara alcanzado.
+La importación TXT y el lector existentes se conservan.
+Chrome: descarga directa no verificada y CORS no confirmado en candidatos.
+Android: sin prueba real de red/descarga ni autorización específica confirmada.
+No se comenzó persistencia de lectura ni otra funcionalidad.
+
+DETENCIÓN DE LA PARTE DE DESCARGA ANTES DE IMPLEMENTARLA.
+No continuar automáticamente con otros trabajos.

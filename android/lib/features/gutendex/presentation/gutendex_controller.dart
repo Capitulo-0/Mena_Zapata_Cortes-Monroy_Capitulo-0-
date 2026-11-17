@@ -4,14 +4,18 @@ import 'package:flutter/foundation.dart';
 
 import '../data/gutendex_repository.dart';
 import '../models/gutendex_models.dart';
+import '../data/gutendex_saved_catalog.dart';
 import 'gutendex_page_cache.dart';
 
 class GutendexController extends ChangeNotifier {
-  GutendexController(this.repository, {
+  GutendexController(
+    this.repository, {
     this.language = GutendexLanguage.spanish,
     GutendexPageCache? cache,
+    this.savedCatalog,
   }) : _cache = cache ?? GutendexPageCache();
   final GutendexRepository repository;
+  final GutendexSavedCatalog? savedCatalog;
   GutendexLanguage language;
   String query = '';
   List<GutendexBook> items = const [];
@@ -30,6 +34,7 @@ class GutendexController extends ChangeNotifier {
   Future<void>? _searchTask;
   GutendexPageKey? _searchKey;
   bool fromSessionCache = false;
+  bool fromSavedCatalog = false;
 
   /// Invalidates pending results immediately, before the UI debounce expires.
   void prepare({String? query, GutendexLanguage? language}) {
@@ -43,6 +48,7 @@ class GutendexController extends ChangeNotifier {
     _searchTask = null;
     _searchKey = null;
     fromSessionCache = false;
+    fromSavedCatalog = false;
     items = const [];
     count = null;
     next = null;
@@ -55,14 +61,25 @@ class GutendexController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> search({String? query, GutendexLanguage? language,
-    bool refresh = false}) {
+  Future<void> search({
+    String? query,
+    GutendexLanguage? language,
+    bool refresh = false,
+  }) {
     if (_closed) return Future<void>.value();
     prepare(query: query, language: language);
-    final key = (query: this.query, language: this.language, page: null as Uri?);
-    if (loading && _searchKey == key && _searchTask != null) return _searchTask!;
+    final key = (
+      query: this.query,
+      language: this.language,
+      page: null as Uri?,
+    );
+    if (loading && _searchKey == key && _searchTask != null) {
+      return _searchTask!;
+    }
     final cached = refresh ? null : _cache.read(key);
-    if (cached != null && hasSearched && error == null) return Future<void>.value();
+    if (cached != null && hasSearched && error == null) {
+      return Future<void>.value();
+    }
     final generation = ++_generation;
     loadingMore = false;
     moreError = null;
@@ -76,14 +93,18 @@ class GutendexController extends ChangeNotifier {
     }
     // A first-page refresh invalidates pending additional pages of this query.
     // Their callers still settle, but their generations cannot change the UI.
-    _pending.removeWhere((page, _) => page.query == key.query &&
-      page.language == key.language && page.page != null);
+    _pending.removeWhere(
+      (page, _) =>
+          page.query == key.query &&
+          page.language == key.language &&
+          page.page != null,
+    );
     loading = true;
     final completion = Completer<void>();
     _searchTask = completion.future;
     _searchKey = key;
     notifyListeners();
-    unawaited(_search(key, generation, completion));
+    unawaited(_search(key, generation, completion, refresh));
     return completion.future;
   }
 
@@ -91,10 +112,16 @@ class GutendexController extends ChangeNotifier {
     final pending = _pending[key];
     if (pending != null) return pending;
     late final Future<GutendexPage> task;
-    task = Future.sync(() => repository.list(
-      query: key.query, language: key.language, next: key.page)).whenComplete(() {
-        if (identical(_pending[key], task)) _pending.remove(key);
-      });
+    task =
+        Future.sync(
+          () => repository.list(
+            query: key.query,
+            language: key.language,
+            next: key.page,
+          ),
+        ).whenComplete(() {
+          if (identical(_pending[key], task)) _pending.remove(key);
+        });
     _pending[key] = task;
     return task;
   }
@@ -107,8 +134,25 @@ class GutendexController extends ChangeNotifier {
     _visited.clear();
   }
 
-  Future<void> _search(GutendexPageKey key, int generation, Completer<void> completion) async {
+  Future<void> _search(
+    GutendexPageKey key,
+    int generation,
+    Completer<void> completion,
+    bool refresh,
+  ) async {
     try {
+      if (!hasSearched && savedCatalog != null) {
+        final saved = await savedCatalog!
+            .read(key.query, key.language)
+            .timeout(const Duration(milliseconds: 500), onTimeout: () => null);
+        if (_closed || generation != _generation) return;
+        if (saved != null) {
+          _applyFirst(saved);
+          fromSavedCatalog = true;
+          notifyListeners();
+          if (!refresh) return;
+        }
+      }
       final page = await _request(key);
       if (_closed || generation != _generation) return;
       // Never combine cached additional pages with a newly fetched first page.
@@ -116,9 +160,14 @@ class GutendexController extends ChangeNotifier {
       _cache.put(key, page);
       _applyFirst(page);
       fromSessionCache = false;
+      fromSavedCatalog = false;
+      if (savedCatalog != null) {
+        unawaited(savedCatalog!.save(key.query, key.language, page));
+      }
     } catch (e) {
       if (_closed || generation != _generation) return;
       error = _message(e);
+      if (hasSearched && !fromSavedCatalog) fromSessionCache = true;
     } finally {
       if (!_closed && generation == _generation) {
         loading = false;
@@ -135,7 +184,8 @@ class GutendexController extends ChangeNotifier {
     if (_closed || loading || loadingMore || target == null) return;
     if (_visited.contains(target)) {
       next = null;
-      moreError = 'Gutendex repitió una página. No se solicitarán más resultados.';
+      moreError =
+          'Gutendex repitió una página. No se solicitarán más resultados.';
       notifyListeners();
       return;
     }
@@ -156,7 +206,8 @@ class GutendexController extends ChangeNotifier {
       next = page.next;
       if (next != null && _visited.contains(next)) {
         next = null;
-        moreError = 'Gutendex repitió una página. No se solicitarán más resultados.';
+        moreError =
+            'Gutendex repitió una página. No se solicitarán más resultados.';
       }
     } catch (e) {
       if (_closed || generation != _generation) return;
@@ -174,7 +225,8 @@ class GutendexController extends ChangeNotifier {
     return List.unmodifiable(books.where((book) => ids.add(book.id)));
   }
 
-  String _message(Object e) => e is GutendexFailure ? e.message
+  String _message(Object e) => e is GutendexFailure
+      ? e.message
       : 'No pudimos consultar Gutendex. Inténtalo nuevamente.';
 
   @override

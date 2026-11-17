@@ -1,0 +1,62 @@
+{
+  "slug": "monte_animas",
+  "title": "El monte de las ánimas",
+  "author": "Gustavo Adolfo Bécquer",
+  "death_year": 1870,
+  "genre": "Cuentos",
+  "edition": "Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.",
+  "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._2.djvu",
+  "rights_evidence": [
+    "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+    "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+    "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+  ],
+  "reviewed_complete": true,
+  "internal_sections": [
+    "I",
+    "II",
+    "III",
+    "IV"
+  ],
+  "sections": [
+    {
+      "section": "Leyenda completa; secciones I, II, III, IV",
+      "page": "El monte de las ánimas",
+      "revision": 1010346,
+      "source_pages": [
+        "Página:Obras de Bécquer - Vol. 2.djvu/77",
+        "Página:Obras de Bécquer - Vol. 2.djvu/78",
+        "Página:Obras de Bécquer - Vol. 2.djvu/79",
+        "Página:Obras de Bécquer - Vol. 2.djvu/80",
+        "Página:Obras de Bécquer - Vol. 2.djvu/81",
+        "Página:Obras de Bécquer - Vol. 2.djvu/82",
+        "Página:Obras de Bécquer - Vol. 2.djvu/83",
+        "Página:Obras de Bécquer - Vol. 2.djvu/84",
+        "Página:Obras de Bécquer - Vol. 2.djvu/85",
+        "Página:Obras de Bécquer - Vol. 2.djvu/86",
+        "Página:Obras de Bécquer - Vol. 2.djvu/87",
+        "Página:Obras de Bécquer - Vol. 2.djvu/88",
+        "Página:Obras de Bécquer - Vol. 2.djvu/89",
+        "Página:Obras de Bécquer - Vol. 2.djvu/90"
+      ],
+      "characters": 15736,
+      "beginning": "EL MONTE DE LAS ÁNIMAS\n\nLa noche de difuntos me despertó á no sé\nqué hora el doble de las campanas; ",
+      "ending": "uir como á una fiera á una mujer hermosa, pálida y desmelenada, que con los pies desnudos y sangrientos, y arrojando gritos de horror, daba vueltas alrededor de la tumba de Alonso.",
+      "text_sha256": "727c85e56fcf9bfe0117673ace08c83c3fdd363f49f6f75f041529a57b9d57b0",
+      "source_snapshot_sha256": "beea4b244f92c6da4bea8d42b04b58279759a846b5e078a7559fbb8654778cb9",
+      "retrieved_at": "2026-11-16T20:22:33.612717+00:00",
+      "permanent_url": "https://es.wikisource.org/w/index.php?oldid=1010346",
+      "history_url": "https://es.wikisource.org/w/index.php?title=El+monte+de+las+%C3%A1nimas&action=history"
+    }
+  ],
+  "id": "wikisource-es-monte_animas",
+  "language": "es",
+  "source": "https://es.wikisource.org/wiki/El_monte_de_las_%C3%A1nimas",
+  "bytes": 17005,
+  "utf16_units": 16516,
+  "sha256": "be23b2e069e3b3d1eb1bff6fb3e99ab4c3b0b28a57def11782988df7a4268940",
+  "literary_body_sha256": "727c85e56fcf9bfe0117673ace08c83c3fdd363f49f6f75f041529a57b9d57b0",
+  "license": "CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público",
+  "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "complete": true
+}
