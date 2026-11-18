@@ -299,27 +299,7 @@ extension _ProfileMarkReadSheet on _ProfileScreenState {
                                       ),
                                       child: Row(
                                         children: [
-                                          ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                            child: Image.network(
-                                              book.cover,
-                                              width: 47,
-                                              height: 66,
-                                              fit: BoxFit.cover,
-                                              errorBuilder: (_, _, _) =>
-                                                  Container(
-                                                width: 47,
-                                                height: 66,
-                                                color: _deepSurfaceColor,
-                                                child: Icon(
-                                                  Icons.menu_book_rounded,
-                                                  color: _goldColor,
-                                                  size: 20,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
+                  LiteraryCover(reference: book.cover, title: book.title, author: book.author, identity: 'profile:${book.id}', width: 47, height: 66),
                                           const SizedBox(width: 11),
                                           Expanded(
                                             child: Column(

@@ -396,10 +396,10 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     String url, {
     required double width,
     required double height,
-    double radius = 8,
+    double radius = 8, String title = '', String author = '',
   }) {
     return HomeNetworkCover(
-      url: url,
+      url: url, title: title, author: author,
       width: width,
       height: height,
       radius: radius,
@@ -1155,7 +1155,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                     child: Row(
                       children: [
                         _networkCover(
-                          previewResults.first['cover'] as String,
+                          previewResults.first['cover'] as String, title: previewResults.first['title'] as String? ?? '', author: previewResults.first['author'] as String? ?? '',
                           width: 44,
                           height: 62,
                         ),
@@ -1524,7 +1524,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _networkCover(book['cover'] as String, width: 78, height: 108),
+            _networkCover(book['cover'] as String, title: book['title'] as String? ?? '', author: book['author'] as String? ?? '', width: 78, height: 108),
             const SizedBox(width: 11),
             Expanded(
               child: Column(

@@ -1,10 +1,7 @@
 part of '../screens/published_story_screen.dart';
 
 extension _PublishedStoryChapters on _PublishedStoryScreenState {
-  Widget _buildChapterCard(
-    BuildContext context,
-    WriterChapter chapter,
-  ) {
+  Widget _buildChapterCard(BuildContext context, WriterChapter chapter) {
     final expanded = _expandedChapterIds.contains(chapter.id);
     final comments = _visibleComments(chapter);
 
@@ -14,9 +11,7 @@ extension _PublishedStoryChapters on _PublishedStoryScreenState {
       decoration: BoxDecoration(
         color: _surfaceColor(context),
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.26),
-        ),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.26)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(
@@ -94,46 +89,44 @@ extension _PublishedStoryChapters on _PublishedStoryScreenState {
             ),
           ),
           const SizedBox(height: 12),
-          Divider(
-            height: 1,
-            color: AppColors.gold.withValues(alpha: 0.15),
-          ),
+          Divider(height: 1, color: AppColors.gold.withValues(alpha: 0.15)),
           const SizedBox(height: 3),
-          InkWell(
-            onTap: () => _toggleChapterComments(chapter),
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.chat_bubble_outline_rounded,
-                    size: 9,
-                    color: Color(0xFFB8A2D9),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _commentCountLabel(chapter),
-                    style: GoogleFonts.inter(
-                      fontSize: 6.5,
-                      color: _textSecondaryColor(context),
+          if (widget.socialActionsEnabled)
+            InkWell(
+              onTap: () => _toggleChapterComments(chapter),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 9,
+                      color: Color(0xFFB8A2D9),
                     ),
-                  ),
-                  const Spacer(),
-                  AnimatedRotation(
-                    turns: expanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOut,
-                    child: Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      size: 13,
-                      color: _textSecondaryColor(context),
+                    const SizedBox(width: 4),
+                    Text(
+                      _commentCountLabel(chapter),
+                      style: GoogleFonts.inter(
+                        fontSize: 6.5,
+                        color: _textSecondaryColor(context),
+                      ),
                     ),
-                  ),
-                ],
+                    const Spacer(),
+                    AnimatedRotation(
+                      turns: expanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOut,
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 13,
+                        color: _textSecondaryColor(context),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
           AnimatedSize(
             duration: const Duration(milliseconds: 260),
             curve: Curves.easeOutCubic,

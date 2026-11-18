@@ -8,14 +8,10 @@ extension _ChapterEditorStoryInfo on _ChapterEditorScreenState {
       decoration: BoxDecoration(
         color: _surfaceColor,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.25),
-        ),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.25)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
-              alpha: _isDarkMode ? 0.10 : 0.035,
-            ),
+            color: Colors.black.withValues(alpha: _isDarkMode ? 0.10 : 0.035),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -23,25 +19,12 @@ extension _ChapterEditorStoryInfo on _ChapterEditorScreenState {
       ),
       child: Row(
         children: [
-          Container(
+          WriterCover(
+            storyId: widget.story.id,
+            coverPath: widget.story.coverPath,
+            title: widget.story.title,
             width: 48,
             height: 64,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: _coverColors(widget.story.coverPath),
-              ),
-              border: Border.all(
-                color: AppColors.gold.withValues(alpha: 0.25),
-              ),
-            ),
-            child: const Icon(
-              Icons.auto_stories_rounded,
-              size: 20,
-              color: Colors.white,
-            ),
           ),
           const SizedBox(width: 11),
           Expanded(
@@ -109,19 +92,5 @@ extension _ChapterEditorStoryInfo on _ChapterEditorScreenState {
         ],
       ),
     );
-  }
-
-  List<Color> _coverColors(String? cover) {
-    switch (cover) {
-      case 'preset:gold':
-        return const [Color(0xFF9A6D2F), Color(0xFF3B2414)];
-      case 'preset:forest':
-        return const [Color(0xFF405A49), Color(0xFF18241E)];
-      case 'preset:night':
-        return const [Color(0xFF34354A), Color(0xFF171821)];
-      case 'preset:classic':
-      default:
-        return const [Color(0xFF7D2430), Color(0xFF35130F)];
-    }
   }
 }

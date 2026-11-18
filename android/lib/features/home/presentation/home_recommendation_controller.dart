@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../data/home_recommendation_repository.dart';
 import '../data/recommendation_titles.dart';
+import '../data/spanish_recommendations.dart';
 
 class HomeRecommendationController extends ChangeNotifier {
   HomeRecommendationController(this.repository);
@@ -61,12 +62,23 @@ class HomeRecommendationController extends ChangeNotifier {
       if (value.candidateSetId != previous.candidateSetId ||
           value.items.any(
             (book) => !previous.items.any(
-              (old) => old['googleVolumeId'] == book['googleVolumeId'],
+              (old) =>
+                  (old['googleVolumeId'] ?? old['freeWorkId']) ==
+                  (book['googleVolumeId'] ?? book['freeWorkId']),
             ),
           )) {
         aiMessage = 'La selección de IA no fue válida. Conservamos las recomendaciones de Biblioteca.';
       } else if (value.aiStatus == 'ENRICHED') {
-        data = _unique(value);
+        data = _unique(
+          HomeRecommendations(
+            candidateSetId: value.candidateSetId,
+            personalized: value.personalized,
+            items: [...value.items, ...previous.items],
+            aiStatus: value.aiStatus,
+            geminiAvailable: value.geminiAvailable,
+            notice: value.notice,
+          ),
+        );
       } else {
         if (!value.geminiAvailable) {
           data = HomeRecommendations(
@@ -101,14 +113,31 @@ class HomeRecommendationController extends ChangeNotifier {
     }
   }
 
-  HomeRecommendations _unique(HomeRecommendations value) => HomeRecommendations(
-    candidateSetId: value.candidateSetId,
-    personalized: value.personalized,
-    items: RecommendationTitles.unique(value.items),
-    aiStatus: value.aiStatus,
-    geminiAvailable: value.geminiAvailable,
-    notice: value.notice,
-  );
+  HomeRecommendations _unique(HomeRecommendations value) {
+    final seenIds = <String>{};
+    final items =
+        RecommendationTitles.unique(
+              value.items.where(SpanishRecommendations.accepts).toList(),
+            )
+            .where((book) {
+              final id =
+                  (book['googleVolumeId'] ?? book['freeWorkId'] ?? book['id'])
+                      ?.toString();
+              return id == null || seenIds.add(id);
+            })
+            .take(5)
+            .toList(growable: false);
+    return HomeRecommendations(
+      candidateSetId: value.candidateSetId,
+      personalized: value.personalized,
+      items: items,
+      aiStatus: value.aiStatus,
+      geminiAvailable: value.geminiAvailable,
+      notice: items.length < 5 && !value.notice.contains('obras verificables')
+          ? '${value.notice} Hay ${items.length} obras verificables en español; no se completa con otros idiomas.'
+          : value.notice,
+    );
+  }
 
   @override
   void dispose() {

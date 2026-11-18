@@ -29,6 +29,7 @@ public final class Recommendations {
         public Unavailable(String status) { super("Gemini unavailable"); this.status = status; }
     }
     public static String reason(String code) {
+        if (code.equals("DISCOVER")) return "Descubrimiento variado en español · Fuente: Google Books";
         if (code.startsWith("AUTHOR:")) return "Comparte autor con tu Biblioteca: " + code.substring(7);
         if (code.startsWith("GENRE:")) return "Relacionado con una categoría de tu Biblioteca: " + code.substring(6);
         return "Exploración general · Fuente: Google Books";

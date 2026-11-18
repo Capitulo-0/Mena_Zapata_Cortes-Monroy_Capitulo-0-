@@ -3,6 +3,10 @@ import 'dart:convert';
 
 import '../../../catalog/data/catalog_repository.dart';
 import '../../data/home_recommendation_repository.dart';
+import '../../data/local_recommendation_fallback.dart';
+import '../../data/recommendation_titles.dart';
+import '../../../gutendex/models/free_work.dart';
+import '../../../gutendex/presentation/screens/free_library_screen.dart';
 import '../home_recommendation_controller.dart';
 import '../../../gutendex/presentation/screens/gutendex_catalog_screen.dart';
 
@@ -124,6 +128,7 @@ class HomeScreenState extends State<HomeScreen> {
   bool _geminiDialogOpen = false;
   BuildContext? _geminiDialogContext;
   int carouselOffset = 0;
+  HomeRecommendations? _visibleRecommendations;
 
   @override
   void initState() {
@@ -133,28 +138,47 @@ class HomeScreenState extends State<HomeScreen> {
 
   String _revision() {
     final catalog = widget.catalogRepository;
-    final scope = widget.isGuest ? 'guest'
-        : catalog is ApiCatalogRepository ? catalog.api.auth.currentUser?.uid ?? ''
+    final scope = widget.isGuest
+        ? 'guest'
+        : catalog is ApiCatalogRepository
+        ? catalog.api.auth.currentUser?.uid ?? ''
         : widget.currentUsername;
-    final personal = !widget.isGuest &&
-        (catalog is ApiCatalogRepository || widget.recommendationRepository != null);
+    final personal =
+        !widget.isGuest &&
+        (catalog is ApiCatalogRepository ||
+            widget.recommendationRepository != null);
     return jsonEncode([
       scope,
       if (personal) widget.catalogBooks,
-      if (personal) widget.statuses.map((key, value) => MapEntry('$key', value.name)),
+      if (personal)
+        widget.statuses.map((key, value) => MapEntry('$key', value.name)),
     ]);
   }
 
   void _bindRecommendations() {
     _recommendationExplanation = null;
+    carouselOffset = 0;
     _recommendationRevision = _revision();
     final catalog = widget.catalogRepository;
-    final uid = catalog is ApiCatalogRepository ? catalog.api.auth.currentUser?.uid : null;
-    final repository = widget.recommendationRepository ??
+    final uid = catalog is ApiCatalogRepository
+        ? catalog.api.auth.currentUser?.uid
+        : null;
+    final remoteRepository =
+        widget.recommendationRepository ??
         (!widget.isGuest && catalog is ApiCatalogRepository && uid != null
             ? ApiHomeRecommendationRepository(catalog.api, uid)
-            : ExplorationRecommendationRepository(catalog, widget.isGuest ? 'guest' : widget.currentUsername));
-    _recommendations = HomeRecommendationController(repository)..addListener(_catalogChanged);
+            : ExplorationRecommendationRepository(
+                catalog,
+                widget.isGuest ? 'guest' : widget.currentUsername,
+              ));
+    final repository = remoteRepository is ApiHomeRecommendationRepository
+        ? LocalRecommendationFallbackRepository(
+            remoteRepository,
+            widget.catalogBooks ?? [],
+          )
+        : remoteRepository;
+    _recommendations = HomeRecommendationController(repository)
+      ..addListener(_catalogChanged);
     unawaited(_recommendations.load());
   }
 
@@ -165,12 +189,18 @@ class HomeScreenState extends State<HomeScreen> {
         oldWidget.catalogRepository != widget.catalogRepository ||
         oldWidget.recommendationRepository != widget.recommendationRepository) {
       _dismissGeminiDialog();
-      _recommendations..removeListener(_catalogChanged)..dispose();
+      _recommendations
+        ..removeListener(_catalogChanged)
+        ..dispose();
       _bindRecommendations();
     }
   }
 
   void _catalogChanged() {
+    if (!identical(_visibleRecommendations, _recommendations.data)) {
+      carouselOffset = 0;
+      _visibleRecommendations = _recommendations.data;
+    }
     if (mounted) setState(() {});
   }
 
@@ -181,14 +211,18 @@ class HomeScreenState extends State<HomeScreen> {
     final route = ModalRoute.of(dialogContext);
     final navigator = Navigator.of(dialogContext);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (navigator.mounted && route != null && route.isActive) navigator.removeRoute(route);
+      if (navigator.mounted && route != null && route.isActive) {
+        navigator.removeRoute(route);
+      }
     });
   }
 
   @override
   void dispose() {
     _dismissGeminiDialog();
-    _recommendations..removeListener(_catalogChanged)..dispose();
+    _recommendations
+      ..removeListener(_catalogChanged)
+      ..dispose();
     super.dispose();
   }
 
@@ -212,7 +246,9 @@ class HomeScreenState extends State<HomeScreen> {
       .toList();
 
   List<Map<String, dynamic>> get books =>
-      (widget.catalogRepository == null ? null : _recommendations.data?.items) ??
+      (widget.catalogRepository == null
+          ? null
+          : _recommendations.data?.items) ??
       widget.catalogBooks ??
       HomeDemoData.books.map(Map<String, dynamic>.from).toList();
 
@@ -268,12 +304,17 @@ class HomeScreenState extends State<HomeScreen> {
                     foregroundColor: AppColors.background,
                     backgroundColor: _deepSurface,
                     side: BorderSide(color: _gold.withValues(alpha: .65)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     minimumSize: const Size(0, 48),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                   ),
                   icon: Icon(Icons.menu_book_rounded, color: _gold),
-                  label: const Text('Catálogo Project Gutenberg'),
+                  label: const Text('Biblioteca gratuita'),
                   onPressed: () => Navigator.of(context).push<void>(
                     MaterialPageRoute<void>(
                       builder: (_) => const GutendexCatalogScreen(),
@@ -291,7 +332,8 @@ class HomeScreenState extends State<HomeScreen> {
                 showBooks: false,
                 explanation: _recommendationExplanation,
                 onShowExplanation: _showRecommendationExplanation,
-                onCloseExplanation: () => setState(() => _recommendationExplanation = null),
+                onCloseExplanation: () =>
+                    setState(() => _recommendationExplanation = null),
                 carouselOffset: carouselOffset,
               ),
               _buildReadingClubs(),
@@ -338,15 +380,25 @@ class HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRecommendedBooks() {
-    final items = _recommendations.data?.items ?? <Map<String, dynamic>>[];
-    final maxOffset = max(0, items.length - 3);
+    final items = RecommendationTitles.unique(
+      _recommendations.data?.items ?? <Map<String, dynamic>>[],
+    ).take(5).toList();
+    final maxOffset = items.isEmpty ? 0 : ((items.length - 1) ~/ 3) * 3;
     final start = min(carouselOffset, maxOffset);
     return RecommendedBooksSection(
-      heading: _recommendations.data?.personalized == true ? 'Recomendado para ti' : 'Exploración general',
+      heading: _recommendations.data?.personalized == true
+          ? 'Recomendado para ti'
+          : 'Exploración general',
       books: items,
       carouselOffset: start,
-      onPrevious: () => setState(() { carouselOffset = max(0, start - 1); _recommendationExplanation = null; }),
-      onNext: () => setState(() { carouselOffset = min(maxOffset, start + 1); _recommendationExplanation = null; }),
+      onPrevious: () => setState(() {
+        carouselOffset = max(0, start - 3);
+        _recommendationExplanation = null;
+      }),
+      onNext: () => setState(() {
+        carouselOffset = min(maxOffset, start + 3);
+        _recommendationExplanation = null;
+      }),
       onBookTap: _showBookDetails,
       onShowExplanation: _showRecommendationExplanation,
     );
@@ -388,6 +440,18 @@ class HomeScreenState extends State<HomeScreen> {
 
   Future<void> _showBookDetails(Map<String, dynamic> book) async {
     if (_openingBook) return;
+    if (book['freeWorkId'] is String) {
+      final matches = freeWorks.where(
+        (work) => work.id == book['freeWorkId'] && work.available,
+      );
+      if (matches.isEmpty) return;
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => FreeWorkDetailScreen(work: matches.first),
+        ),
+      );
+      return;
+    }
     if (book['googleVolumeId'] is String && widget.catalogRepository != null) {
       setState(() => _openingBook = true);
       try {

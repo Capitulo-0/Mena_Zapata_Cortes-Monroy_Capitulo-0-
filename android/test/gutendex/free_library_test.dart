@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:android/core/theme/app_theme.dart';
 import 'package:android/features/gutendex/data/asset_reader_source.dart';
-import 'package:android/features/gutendex/data/gutendex_repository.dart';
 import 'package:android/features/gutendex/models/free_work.dart';
 import 'package:android/features/gutendex/presentation/screens/free_library_screen.dart';
 import 'package:android/features/gutendex/presentation/screens/gutendex_catalog_screen.dart';
@@ -123,7 +122,7 @@ void main() {
     },
   );
   testWidgets(
-    'default entry opens offline and optional remote failure cannot erase local selection',
+    'default entry and detail stay offline with no external catalogue button',
     (tester) async {
       final repo = FakeGutendexRepository();
       await tester.pumpWidget(
@@ -139,20 +138,11 @@ void main() {
         find.byKey(ValueKey('free-work-${freeWorks.first.id}')),
         findsOneWidget,
       );
-      await tester.scrollUntilVisible(
-        find.text('Consultar catálogo en línea'),
-        300,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.tap(find.text('Consultar catálogo en línea'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(repo.calls, hasLength(1));
-      repo.calls.single.result.completeError(
-        const GutendexFailure('Gutendex no disponible HTTP 503'),
-      );
+      expect(find.text('Consultar catálogo en línea'), findsNothing);
+      await tester.tap(find.byKey(ValueKey('free-work-${freeWorks.first.id}')));
       await tester.pumpAndSettle();
-      expect(find.text('Gutendex no disponible HTTP 503'), findsOneWidget);
+      expect(find.byType(FreeWorkDetailScreen), findsOneWidget);
+      expect(repo.calls, isEmpty);
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(find.byType(FreeLibraryScreen), findsOneWidget);

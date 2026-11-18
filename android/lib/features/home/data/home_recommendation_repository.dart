@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import 'spanish_recommendations.dart';
 import '../../catalog/data/catalog_repository.dart';
 
 class HomeRecommendations {
@@ -42,7 +43,13 @@ class ApiHomeRecommendationRepository implements HomeRecommendationRepository {
       final item = Map<String, dynamic>.from(raw as Map);
       final book = Map<String, dynamic>.from(item['book'] as Map);
       final id = book['volumeId'] as String? ?? '';
-      if (id.isEmpty || !seen.add(id)) continue;
+      if (id.isEmpty ||
+          !seen.add(id) ||
+          !SpanishRecommendations.accepts(
+            ApiCatalogRepository.presentation(book),
+          )) {
+        continue;
+      }
       items.add({
         ...ApiCatalogRepository.presentation(book),
         'recommendationReason': item['reason'] as String? ?? '',
@@ -89,13 +96,19 @@ class ExplorationRecommendationRepository
   bool get supportsGemini => false;
   @override
   Future<HomeRecommendations> load() async {
-    final page = await catalog?.search('subject:fiction');
+    final source = catalog;
+    final page = source is ApiCatalogRepository
+        ? await source.searchSpanish('subject:fiction')
+        : await source?.search('subject:fiction');
     final seen = <String>{};
     return HomeRecommendations(
       notice: 'Exploración general · Fuente: Google Books',
       items: (page?.items ?? []).where((book) {
         final id = book['googleVolumeId'] as String?;
-        return id != null && id.isNotEmpty && seen.add(id);
+        return id != null &&
+            id.isNotEmpty &&
+            seen.add(id) &&
+            SpanishRecommendations.accepts(book);
       }).toList(),
     );
   }

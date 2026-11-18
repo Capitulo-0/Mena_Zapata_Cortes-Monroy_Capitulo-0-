@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import 'home_network_cover.dart';
+import '../../data/recommendation_titles.dart';
+import '../../../gutendex/presentation/widgets/free_work_cover.dart';
 import 'home_section_title.dart';
 import 'recommendation_explanation.dart';
 
@@ -30,8 +32,10 @@ class RecommendedBooksSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final maxOffset = max(0, books.length - 3);
-    final visible = books.skip(carouselOffset).take(3).toList();
+    final unique = RecommendationTitles.unique(books).take(5).toList();
+    final maxOffset = unique.isEmpty ? 0 : ((unique.length - 1) ~/ 3) * 3;
+    final start = max(0, min((carouselOffset ~/ 3) * 3, maxOffset));
+    final visible = unique.skip(start).take(3).toList();
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 15),
@@ -44,13 +48,13 @@ class RecommendedBooksSection extends StatelessWidget {
                 Expanded(child: HomeSectionTitle(heading)),
                 _CarouselButton(
                   icon: Icons.chevron_left_rounded,
-                  enabled: carouselOffset > 0,
+                  enabled: start > 0,
                   onTap: onPrevious,
                 ),
                 const SizedBox(width: 6),
                 _CarouselButton(
                   icon: Icons.chevron_right_rounded,
-                  enabled: carouselOffset < maxOffset,
+                  enabled: start < maxOffset,
                   onTap: onNext,
                 ),
               ],
@@ -77,6 +81,9 @@ class RecommendedBooksSection extends StatelessWidget {
                       for (var index = 0; index < visible.length; index++) ...[
                         if (index > 0) const SizedBox(width: spacing),
                         SizedBox(
+                          key: ValueKey(
+                            'recommendation-${RecommendationTitles.identity(visible[index])}',
+                          ),
                           width: cardWidth,
                           child: _RecommendedBookCard(
                             book: visible[index],
@@ -184,12 +191,17 @@ class _RecommendedBookCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  HomeNetworkCover(
-                    url: book['cover'] as String? ?? '',
-                    width: double.infinity,
-                    height: 122,
-                    radius: 0,
-                  ),
+                  if (FreeWorkCover.fromBook(book) case final work?)
+                    FreeWorkCover(work: work)
+                  else
+                    HomeNetworkCover(
+                      url: book['cover'] as String? ?? '',
+                      title: book['title'] as String? ?? '',
+                      author: book['author'] as String? ?? '',
+                      width: double.infinity,
+                      height: 122,
+                      radius: 0,
+                    ),
                   if ((book['recommendationReason'] as String? ?? '')
                       .isNotEmpty)
                     Positioned(
@@ -288,7 +300,9 @@ class _RecommendedBookCard extends StatelessWidget {
                         ),
                       ),
                       child: Text(
-                        book['availability'] == 'GRATIS'
+                        book['recommendationSource'] == 'LOCAL_FREE'
+                            ? 'Gratis · local'
+                            : book['availability'] == 'GRATIS'
                             ? 'Gratis'
                             : 'Lectura externa',
                         maxLines: 2,

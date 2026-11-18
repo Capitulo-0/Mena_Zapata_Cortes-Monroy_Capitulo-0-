@@ -138,7 +138,7 @@ void main() {
       expect(
         find.descendant(
           of: card(104),
-          matching: find.byIcon(Icons.menu_book_rounded),
+          matching: find.byIcon(Icons.auto_stories_outlined),
         ),
         findsOneWidget,
       );
@@ -163,7 +163,7 @@ void main() {
       expect(
         find.descendant(
           of: card(104),
-          matching: find.byIcon(Icons.menu_book_rounded),
+          matching: find.byIcon(Icons.auto_stories_outlined),
         ),
         findsOneWidget,
       );
