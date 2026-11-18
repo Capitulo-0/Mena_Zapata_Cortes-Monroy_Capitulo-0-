@@ -6,15 +6,17 @@ import '../../../reader/models/reader_document.dart';
 import '../../../reader/presentation/screens/text_reader_screen.dart';
 import '../../data/asset_reader_source.dart';
 import '../../models/free_work.dart';
+import '../widgets/free_work_cover.dart';
 
 class FreeLibraryScreen extends StatefulWidget {
   const FreeLibraryScreen({
     super.key,
-    required this.onlineBuilder,
+    this.onlineBuilder,
     this.works = freeWorks,
     this.source = const AssetReaderSource(),
   });
-  final WidgetBuilder onlineBuilder;
+  // Kept optional for compatibility with other catalog callers; no external UI action.
+  final WidgetBuilder? onlineBuilder;
   final List<FreeWork> works;
   final AssetReaderSource source;
   @override
@@ -66,7 +68,7 @@ class _FreeLibraryScreenState extends State<FreeLibraryScreen> {
         ),
         const SizedBox(height: 10),
         Text(
-          'Ediciones verificadas incluidas en la aplicación. No necesitas importar un archivo ni consultar Gutendex.',
+          'Ediciones verificadas incluidas en Capítulo 0. Descubre sus portadas y lee sin conexión, sin importar archivos.',
           style: TextStyle(
             height: 1.5,
             color: AppColors.textSecondaryOf(context),
@@ -188,25 +190,6 @@ class _FreeLibraryScreenState extends State<FreeLibraryScreen> {
               ),
             ),
           ),
-        TextButton.icon(
-          onPressed: () =>
-              Navigator.of(context)
-                  .push<void>(MaterialPageRoute(builder: widget.onlineBuilder)),
-          icon: const Icon(Icons.public),
-          label: const Text(
-            'Consultar catálogo en línea',
-            textAlign: TextAlign.center,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Gutendex es una consulta complementaria y requiere internet. Esta selección local no es el catálogo completo de Project Gutenberg.',
-          style: TextStyle(
-            fontSize: 12,
-            height: 1.5,
-            color: AppColors.textSecondaryOf(context),
-          ),
-        ),
         const SizedBox(height: 24),
       ],
     ),
@@ -222,6 +205,7 @@ AppBar _appBar(BuildContext context, String title) => AppBar(
   ),
 );
 
+/// Compatibility wrapper used by the local catalogue and edition screen.
 class TypographicWorkCover extends StatelessWidget {
   const TypographicWorkCover({
     super.key,
@@ -231,57 +215,7 @@ class TypographicWorkCover extends StatelessWidget {
   final FreeWork work;
   final bool large;
   @override
-  Widget build(BuildContext context) {
-    final variant = work.id.codeUnits.fold<int>(0, (n, c) => n + c) % 2;
-    return Semantics(
-      label: 'Portada tipográfica, no cubierta original: ${work.title}',
-      image: true,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: variant == 0 ? AppColors.deep : AppColors.accent,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.gold),
-        ),
-        child: Padding(
-          padding: EdgeInsets.all(large ? 18 : 7),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.auto_stories_outlined,
-                color: AppColors.gold,
-                size: 24,
-              ),
-              const SizedBox(height: 8),
-              Flexible(
-                child: Text(
-                  work.title,
-                  maxLines: large ? 4 : 3,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.merriweather(
-                    color: AppColors.background,
-                    fontSize: large ? 18 : 10,
-                    height: 1.4,
-                  ),
-                ),
-              ),
-              if (large) ...[
-                const SizedBox(height: 12),
-                Text(
-                  work.author,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.background),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => FreeWorkCover(work: work);
 }
 
 class FreeWorkDetailScreen extends StatefulWidget {
@@ -348,7 +282,7 @@ class _FreeWorkDetailScreenState extends State<FreeWorkDetailScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Representación tipográfica · no es la cubierta original',
+            'Diseño original de Capítulo 0 · no reproduce una cubierta comercial',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 11,

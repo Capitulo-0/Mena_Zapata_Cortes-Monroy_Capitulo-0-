@@ -214,7 +214,7 @@ class _GutendexDetailScreenState extends State<GutendexDetailScreen> {
                   boxShadow: [BoxShadow(color: AppColors.deep.withValues(alpha: .12),
                     blurRadius: 14, offset: const Offset(0, 5))],
                 ),
-                child: GutendexCover(url: book.cover, width: 130, height: 190))),
+                child: GutendexCover(url: book.cover, title: book.displayTitle, author: book.displayAuthors, width: 130, height: 190))),
               const SizedBox(height: 20),
               Text(book.displayTitle, style: GoogleFonts.merriweather(
                 color: AppColors.textPrimaryOf(context), fontSize: 22,

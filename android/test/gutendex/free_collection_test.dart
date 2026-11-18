@@ -165,6 +165,8 @@ void main() {
           150,
           scrollable: find.byType(Scrollable).first,
         );
+        await tester.ensureVisible(read);
+        await tester.pumpAndSettle();
         await tester.tap(read);
         for (
           var i = 0;

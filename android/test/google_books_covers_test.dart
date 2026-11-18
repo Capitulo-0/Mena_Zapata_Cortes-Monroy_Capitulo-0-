@@ -1,3 +1,4 @@
+import 'package:android/core/widgets/literary_cover.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -17,7 +18,10 @@ import 'support/library_fakes.dart' show bookJson;
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(installLocalTestAssets);
-  setUp(() => SharedPreferences.setMockInitialValues({}));
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    LiteraryCover.resetFailures();
+  });
   const url = 'https://books.google.com/books/content?id=fixture&img=1';
   final book = LibraryEntry.parseBook({
     ...bookJson(),
@@ -39,7 +43,7 @@ void main() {
     final image = cover(tester);
     expect(
       (image.image as NetworkImage).webHtmlElementStrategy,
-      WebHtmlElementStrategy.fallback,
+      WebHtmlElementStrategy.prefer,
     );
     expect(image.fit, BoxFit.cover);
     expect(image.errorBuilder, isNotNull);
@@ -48,9 +52,8 @@ void main() {
       context,
       StateError('fixture load failure'),
       null,
-    ) as Container;
-    expect(fallback.child, isA<Icon>());
-    expect((fallback.child as Icon).icon, Icons.menu_book_rounded);
+    );
+    expect(fallback, isA<LayoutBuilder>());
   }
 
   testWidgets(
@@ -71,7 +74,7 @@ void main() {
         ),
       );
       expect(clip.borderRadius, BorderRadius.circular(11));
-      expect(find.byIcon(Icons.menu_book_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.auto_stories_outlined), findsOneWidget);
     },
   );
   testWidgets('empty Home cover still renders original placeholder', (
@@ -81,7 +84,7 @@ void main() {
       app(const HomeNetworkCover(url: '', width: 44, height: 62)),
     );
     await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.menu_book_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.auto_stories_outlined), findsOneWidget);
     expect(tester.getSize(find.byType(HomeNetworkCover)), const Size(44, 62));
   });
   testWidgets('library card retains cover dimensions and open callback', (
@@ -157,7 +160,8 @@ void main() {
         final context = tester.element(find.byWidget(cover(tester)));
         final stack = context.findAncestorWidgetOfExactType<Stack>()!;
         expect(stack.fit, StackFit.expand);
-        expect(stack.children.first, same(cover(tester)));
+        expect(stack.children.first, isA<LiteraryCover>());
+        expect((stack.children.first as LiteraryCover).reference, url);
         expect(stack.children.length, greaterThan(1));
         expect(tester.getSize(find.byWidget(cover(tester))).height, 285);
         Navigator.of(context).pop();

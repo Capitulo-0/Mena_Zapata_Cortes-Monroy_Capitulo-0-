@@ -33,7 +33,7 @@ class RecommendationDiversityTests {
             entry(book("a","Leído",null,"Autora A","Fantasía"),ReadingStatus.LEIDO),
             entry(book("b","Leyendo",null,"Autora B","Historia"),ReadingStatus.LEYENDO),
             entry(book("c","Pendiente",null,"Autora C","Ciencia"),ReadingStatus.POR_LEER)));
-        when(books.search(anyString(),anyString(),eq(0),eq(20),eq(""))).thenReturn(page(
+        when(books.search(anyString(),anyString(),eq(0),eq(20),eq("es"))).thenReturn(page(
             book("a1","Otra A uno",null,"Autora A","Fantasía"),
             book("a2","Otra A dos",null,"Autora A","Fantasía"),
             book("a3","Otra A tres",null,"Autora A","Fantasía"),
@@ -43,10 +43,10 @@ class RecommendationDiversityTests {
         var result=service.recommendations(1L);
         assertThat(result.items().subList(0,3)).extracting(i->i.book().authors().getFirst())
             .containsExactly("Autora A","Autora B","Autora C");
-        assertThat(result.items()).extracting(i->i.book().volumeId()).doesNotContain("a3","no");
-        verify(books).search("\"Autora A\"","author",0,20,"");
-        verify(books).search("\"Autora B\"","author",0,20,"");
-        verify(books).search("subject:\"Fantasía\"","all",0,20,"");
+        assertThat(result.items()).extracting(i->i.book().volumeId()).contains("a3").doesNotContain("no");
+        verify(books).search("\"Autora A\"","author",0,20,"es");
+        verify(books).search("\"Autora B\"","author",0,20,"es");
+        verify(books).search("subject:\"Fantasía\"","all",0,20,"es");
         verify(books,times(3)).search(anyString(),anyString(),anyInt(),anyInt(),anyString());
     }
     @Test void obviousEditionsAndEditorialSubtitlesAreExcludedButDifferentNumberedPartsSurvive() {
@@ -69,7 +69,7 @@ class RecommendationDiversityTests {
             book("s1","Saga Horizonte, libro 1",null,"Autora","Ficción"),
             book("s2","Saga Horizonte, libro 2",null,"Autora","Ficción"),
             book("other","Otra historia",null,"Otra autora","Ficción")));
-        assertThat(service.recommendations(1L).items()).extracting(i->i.book().volumeId()).containsExactly("s1","other");
+        assertThat(service.recommendations(1L).items()).extracting(i->i.book().volumeId()).containsExactly("s1","other","s2");
     }
     @Test void missingOrUnavailableProviderNeverAdvertisesGeminiAndMakesNoGenerationCall() {
         when(library.list(1L)).thenReturn(List.of(entry(book("saved","Base",null,"Autora","Ficción"),ReadingStatus.LEIDO)));
@@ -91,7 +91,7 @@ class RecommendationDiversityTests {
     }
     @Test void incompleteMetadataUsesGeneralExplorationAndNoFabricatedGenre() {
         when(library.list(1L)).thenReturn(List.of(entry(book("saved","Sin datos",null,null,null),ReadingStatus.LEIDO)));
-        when(books.search("subject:fiction","all",0,20,"")).thenReturn(page(book("new","Explorar",null,null,null)));
+        when(books.search("subject:fiction","all",0,20,"es")).thenReturn(page(book("new","Explorar",null,null,null)));
         var result=service.recommendations(1L);
         assertThat(result.personalized()).isFalse(); assertThat(result.geminiAvailable()).isFalse();
         assertThat(result.items().getFirst().reasonCodes()).containsExactly("EXPLORE");

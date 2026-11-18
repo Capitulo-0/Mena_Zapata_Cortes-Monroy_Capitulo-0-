@@ -11,6 +11,8 @@ extension _ChapterEditorFieldsSection on _ChapterEditorScreenState {
         ),
         const SizedBox(height: 7),
         TextField(
+          enabled: !_isSaving,
+          key: const ValueKey('writer-chapter-title'),
           controller: _titleController,
           maxLength: 100,
           textCapitalization: TextCapitalization.sentences,
@@ -37,6 +39,8 @@ extension _ChapterEditorFieldsSection on _ChapterEditorScreenState {
         ),
         const SizedBox(height: 7),
         TextField(
+          enabled: !_isSaving,
+          key: const ValueKey('writer-chapter-content'),
           controller: _contentController,
           minLines: 16,
           maxLines: null,

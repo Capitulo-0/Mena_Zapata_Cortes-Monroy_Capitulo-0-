@@ -35,11 +35,11 @@ class RecommendationUniqueTitleTests {
     }
     @Test void titleIsUniqueAcrossSearchesAndAuthorsAndRichEditionWins() {
         fixture();
-        when(books.search("\"Autora A\"","author",0,20,"")).thenReturn(page(
+        when(books.search("\"Autora A\"","author",0,20,"es")).thenReturn(page(
             book("bare","Café de otoño!","Autora A",false),book("a2","Otra lectura","Autora A",false)));
-        when(books.search("subject:\"Fantasía\"","all",0,20,"")).thenReturn(page(
+        when(books.search("subject:\"Fantasía\"","all",0,20,"es")).thenReturn(page(
             book("rich","CAFE DE OTOÑO (Edición ilustrada)","Autora A",true)));
-        when(books.search("\"Autora B\"","author",0,20,"")).thenReturn(page(
+        when(books.search("\"Autora B\"","author",0,20,"es")).thenReturn(page(
             book("homonym","Café   de otoño","Autora B",false),book("b2","Lectura distinta","Autora B",false)));
         var result=service.recommendations(1L);
         assertThat(result.items()).extracting(i->i.book().volumeId()).containsExactly("rich","b2","a2");

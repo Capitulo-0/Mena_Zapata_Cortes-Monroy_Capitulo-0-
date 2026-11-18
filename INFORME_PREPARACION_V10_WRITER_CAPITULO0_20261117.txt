@@ -1,0 +1,166 @@
+CAPÍTULO 0 — PREPARACIÓN CONTROLADA DE V10 WRITER
+Fecha: 17 de noviembre de 2026.
+Informe NUEVO de esta última etapa. No sustituye los informes anteriores.
+
+1. PUNTO DE PARTIDA CONFIRMADO POR EL USUARIO
+El usuario ejecutó con éxito WriterNeonReadOnlyTests desde su PowerShell backend:
+conexión/autenticación OK, transacción read-only OK, SELECT 1 OK, historial existente,
+V10 no registrada y writer_stories ausente. El usuario confirmó rama
+perfil-v9-notifications y hostname contrastado con Connect.
+Es un resultado comunicado por el usuario; Codex no heredó sus variables.
+
+2. IMPLEMENTACIÓN REALIZADA
+Se creó un ejecutor Flyway independiente de Spring Boot con dos modos explícitos:
+preflight (solo lectura) y apply (aplicación protegida).
+Ambos usan DB_URL, DB_USERNAME y DB_PASSWORD del proceso Java iniciado por la
+PowerShell actual. No requieren psql, Docker ni nuevas dependencias.
+Por defecto, el test operacional se omite: ejecutar la suite normal no migra Neon.
+
+Archivos nuevos:
+backend/src/test/java/com/capitulo0/backend/WriterV10MigrationRunner.java
+backend/src/test/java/com/capitulo0/backend/WriterV10ControlledMigrationTests.java
+backend/src/test/java/com/capitulo0/backend/WriterV10SchemaValidation.java
+backend/src/test/java/com/capitulo0/backend/WriterV10SilentLogCreator.java
+backend/src/test/java/com/capitulo0/backend/WriterV10MigrationRunnerTests.java
+backend/WRITER_V10_CONTROLADA.md
+Este informe.
+
+No se modificó ningún archivo preexistente de Writer, Flutter, backend funcional,
+migraciones, pruebas anteriores o informes. Se conservaron todos los cambios previos.
+El ejecutor nuevo reutiliza WriterJdbcReadOnlyProbe, sin modificarlo.
+
+3. GUARDAS ANTES DE PERMITIR CAMBIOS
+- WRITER_NEON_BRANCH debe ser exactamente perfil-v9-notifications.
+- WRITER_NEON_EXPECTED_HOST debe introducirse de manera independiente, desde Connect.
+- Coincidencia exacta con el host de DB_URL; no acepta URL/ruta/espacios/mayúsculas.
+- Puerto JDBC por defecto o 5432, configuración PostgreSQL/TLS validada.
+- Credenciales embebidas en URL y opciones de logging/sesión no permitidas se rechazan.
+- V1-V9 completas, SUCCESS y checksums/tipos/descripciones válidos por Flyway.
+- V10 es la única pendiente y tiene el nombre de script exacto.
+- No se toleran versiones extra/futuras, repeatables, duplicadas, baseline,
+  missing, fallidas ni fuera de orden.
+- users.id BIGINT NOT NULL y PK de una columna; permisos necesarios para la migración.
+- Tablas/columnas/tipos de cinco entidades existentes validados con SchemaValidator,
+  sin SessionFactory ni generación de DDL.
+- Restricciones no validadas e índices inválidos de public bloquean.
+- writer_stories y nombres previstos de secuencia/índices deben estar ausentes.
+- La verificación emite una huella vinculada a destino y checksums.
+- apply exige confirmación escrita y huella, repite el preflight y aborta si cambió.
+- El datasource de escritura se crea solo tras superar esos controles.
+- Callback Flyway adicional admite exclusivamente V10 y el checksum aprobado.
+- target=10, cleanDisabled=true, createSchemas=false, baselineOnMigrate=false,
+  outOfOrder=false, validateOnMigrate=true, executeInTransaction=true, group=true,
+  mixed=false, sin placeholders ni callbacks automáticos.
+No hay llamadas operacionales a clean, repair, baseline o undo.
+No se modifica manualmente flyway_schema_history.
+
+4. PREVERIFICACIÓN SIN ESCRITURAS
+El datasource read-only usa readOnlyMode=always y verifica en PostgreSQL
+transaction_read_only=on. La protección impide desactivar readOnly y unwrap.
+Flyway info/validate y SchemaValidator usan también esas conexiones protegidas.
+No hay migrate en este modo. Las consultas explícitas son SELECT.
+Los logs de Flyway/driver/Hibernate se silencian y las excepciones se reemplazan
+por códigos seguros sin causas ni mensajes originales con datos de conexión.
+Los artefactos locales de Maven/Surefire sí se actualizan como parte de la ejecución.
+
+La rama no puede acreditarse únicamente por JDBC: el valor esperado debe venir de
+Connect de V9, según la confirmación del usuario. No se consulta la API de Neon.
+Tampoco se presenta esta validación como prueba de todas las reglas/datos del sistema.
+
+5. COMANDO EXACTO: EJECUTAR AHORA EN TU POWERSHELL BACKEND
+$env:WRITER_NEON_BRANCH = 'perfil-v9-notifications'
+$env:WRITER_NEON_EXPECTED_HOST = [System.Net.NetworkCredential]::new('', (Read-Host 'Pega solo el hostname de Connect de Neon V9, sin URL ni puerto' -AsSecureString)).Password
+mvn -o "-Dtest=WriterV10ControlledMigrationTests" "-Dwriter.v10.mode=preflight" test
+
+No obtener WRITER_NEON_EXPECTED_HOST desde DB_URL. Copiarlo directamente de Connect.
+No cambiar a una terminal sin las credenciales. No usar Maven -X.
+El hostname se introduce oculto, no se imprime ni se agrega como argumento Maven.
+Compartir solo las líneas WRITER_V10 y BUILD SUCCESS/FAILURE.
+
+Resultado esperado si todas las condiciones son correctas:
+PREFLIGHT_SOLO_LECTURA=OK
+HOST_INDEPENDIENTE_COINCIDE=OK
+V1_A_V9_Y_CHECKSUMS=OK
+UNICA_PENDIENTE=V10
+ESQUEMA_REQUERIDO=OK
+WRITER_STORIES=NO_EXISTE
+HUELLA=<64 caracteres hexadecimales>
+APTO_PARA_SOLICITAR_AUTORIZACION=SI
+MIGRACIONES_EJECUTADAS=NINGUNA
+
+Esto es una salida esperada, NO un resultado real del preflight obtenido por Codex.
+El resultado real de este ejecutor queda pendiente de ejecutar en la PowerShell
+con credenciales, aunque la comprobación JDBC anterior ya fue exitosa.
+
+6. APLICACIÓN PREPARADA: NO EJECUTAR TODAVÍA
+Después de revisar el resultado real y recibir autorización explícita para V10,
+usar las mismas variables de rama, host y DB_*. Introducir la huella aprobada y
+la frase exacta AUTORIZO_V10_EN_perfil-v9-notifications.
+
+Comando Maven de aplicación:
+mvn -o "-Dtest=WriterV10ControlledMigrationTests" "-Dwriter.v10.mode=apply" test
+
+Variables obligatorias adicionales:
+WRITER_V10_PREFLIGHT_TOKEN: huella del preflight aprobado.
+WRITER_V10_CONFIRMATION: frase exacta anterior, escrita expresamente por el usuario.
+La guía WRITER_V10_CONTROLADA.md contiene el bloque PowerShell completo con prompts
+y limpieza posterior de esas dos variables. No se rellenan automáticamente.
+No iniciar otro migrador/backend ni cambiar scripts durante el proceso.
+
+La aplicación espera exactamente una migración ejecutada (versión 10). Después
+comprueba, en solo lectura, la tabla, historial/checksums y mapping de todas las
+entidades, incluida Writer. Si falla un post-check, revisar historial y tabla antes
+de reintentar: una migración ya confirmada podría haberse aplicado correctamente.
+No se usa reparación automática ni edición del historial para superar fallos.
+
+7. PRUEBAS AISLADAS EJECUTADAS
+Desde backend:
+mvn -o '-Dtest=WriterV10MigrationRunnerTests,WriterV10ControlledMigrationTests,WriterJdbcReadOnlyProbeTests' test
+
+Resultado final: BUILD SUCCESS, exit 0.
+17 aprobadas, 0 fallos, 0 errores, 1 omitida.
+11 pruebas nuevas del ejecutor (5.001 s) y 6 del verificador anterior (2.540 s).
+1 test operacional omitido por no activarse un modo Neon.
+Tiempo Maven: 25.750 s. Se compilaron 39 fuentes de prueba.
+No se suman repeticiones como si fueran casos diferentes.
+
+Cobertura: host/rama inválidos, consentimiento/huella ausentes, huella cambiada,
+planes y estados no permitidos, callback de versión/script/checksum, guardas
+read-only, consultas PostgreSQL con dobles y rollback, permisos/objetos/esquema
+inválidos, Flyway info/validate real sin escrituras, validación de entidades,
+aplicación exclusiva de V10 en memoria, checksums alterados y columna ausente.
+
+La migración V10 SÍ se ejecutó exclusivamente en H2 temporal dentro de una prueba.
+NO se ejecutó V10 en Neon ni en otra base externa.
+H2 no admite los dos índices parciales PostgreSQL de V9. Solo los recursos del
+fixture en memoria convierten esos dos índices a completos. V9 en disco y el
+modo real Neon permanecen intactos; V10 se prueba con su SQL original.
+Se alteró un recurso de prueba, no el historial, para simular un checksum distinto.
+Se compara el historial antes/después del preflight para demostrar que no cambió.
+El conteo de versiones excluye el registro interno de bloqueo que Flyway 12 añade.
+
+Incidencias de desarrollo corregidas: imports Statement ambiguos; configuración
+de logger de Flyway sustituida por un LogCreator silencioso; doble Mockito;
+compatibilidad H2 de índices parciales; lectura de metadatos para reconocer nombres
+de tablas; conteo de versiones frente al registro interno de Flyway. Las pruebas
+fallidas intermedias no se presentan como aprobadas; el resultado final es el indicado.
+Avisos preexistentes JDK/Mockito/deprecaciones no impidieron BUILD SUCCESS.
+
+8. PROTECCIÓN DEL PROYECTO Y ESTADO
+Rama conservada: feature/writer-20261117. HEAD conservado: c690b22.
+No hubo commits, push, merge, rebase, cambio de rama, reset ni clean.
+No se modificaron fuentes de Writer ni de otros módulos, POM o migraciones.
+No se inició Spring Boot ni Flutter. No hubo conexiones de Codex a Neon en esta
+etapa ni cambios de datos/esquema externos. No se imprimieron credenciales.
+git diff --check se ejecutó sin observaciones.
+Los informes anteriores se conservan; este TXT corresponde a la etapa actual.
+
+9. SIGUIENTE PASO
+Ejecutar el preflight del punto 5 y compartir su salida segura.
+Solicitar confirmación explícita para aplicar V10 en perfil-v9-notifications solo
+después de revisar esa salida. La aplicación sigue pendiente de autorización.
+Después: iniciar backend con Flyway desactivado y ddl-auto=validate, ajustar puerto
+8080/CORS para Flutter Web localhost:7357 y comprobar dos cuentas Firebase reales:
+crear historia, guardar dos capítulos, salir/reabrir, recuperar, publicar,
+descubrir/leer con cuenta B, rechazar modificación ajena y retirar/eliminar.
+Los datos de demostración deben ser de prueba y estar autorizados.

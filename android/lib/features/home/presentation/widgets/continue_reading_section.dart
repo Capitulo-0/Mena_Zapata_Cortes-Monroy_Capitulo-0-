@@ -110,7 +110,7 @@ class ContinueReadingSection extends StatelessWidget {
       content = Row(
         key: ValueKey('reading-${current.id}'),
         children: [
-          HomeNetworkCover(url: current.cover, width: 64, height: 88),
+          HomeNetworkCover(url: current.cover, title: current.title, author: current.author, width: 64, height: 88),
           const SizedBox(width: 11),
           Expanded(
             child: Column(

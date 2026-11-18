@@ -1,3 +1,4 @@
+import '../../../../core/widgets/literary_cover.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -217,19 +218,7 @@ class _LibraryBookDetailScreenState extends State<LibraryBookDetailScreen> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            _cover,
-            webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => Container(
-              color: _deep,
-              child: const Icon(
-                Icons.menu_book_rounded,
-                color: AppColors.gold,
-                size: 52,
-              ),
-            ),
-          ),
+          LiteraryCover(reference: _cover, title: widget.book.title, author: widget.book.author, identity: 'detail:$_cover', radius: 0),
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
