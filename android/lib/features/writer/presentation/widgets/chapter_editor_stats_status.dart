@@ -91,10 +91,7 @@ extension _ChapterEditorStatsStatus on _ChapterEditorScreenState {
           ),
           const SizedBox(width: 6),
           Text(
-            _titleController.text.trim().isEmpty &&
-                    _contentController.text.trim().isEmpty
-                ? 'Sin cambios pendientes'
-                : 'Cambios pendientes',
+            !_hasChanges ? 'Versión guardada en tu cuenta' : 'Edición local pendiente de guardar en tu cuenta',
             style: GoogleFonts.inter(
               fontSize: 6.8,
               color: _textSecondaryColor,

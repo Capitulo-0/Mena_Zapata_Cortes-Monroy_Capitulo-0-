@@ -270,7 +270,7 @@ class _GutendexCatalogScreenState extends State<GutendexCatalogScreen> {
                           contentPadding: const EdgeInsets.all(12),
                           leading: GutendexCover(
                             url: book.cover,
-                            title: book.displayTitle,
+                            title: book.displayTitle, author: book.displayAuthors,
                             width: 44,
                             height: 64,
                           ),

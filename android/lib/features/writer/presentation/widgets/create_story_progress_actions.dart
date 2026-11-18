@@ -140,6 +140,7 @@ extension _CreateStoryProgressActions on _CreateStoryScreenState {
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
+          key: const ValueKey('writer-save-story-draft'),
           onPressed: _isSaving
               ? null
               : () {
@@ -147,7 +148,7 @@ extension _CreateStoryProgressActions on _CreateStoryScreenState {
                 },
           icon: const Icon(Icons.save_outlined, size: 13),
           label: Text(
-            _isEditing ? 'Guardar borrador' : 'Guardar borrador',
+            _currentStory?.isPublished == true ? 'Guardar cambios publicados' : 'Guardar borrador',
             style: GoogleFonts.inter(
               fontSize: 7.8,
               fontWeight: FontWeight.w600,

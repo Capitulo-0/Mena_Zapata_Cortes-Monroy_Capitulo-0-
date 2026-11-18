@@ -16,19 +16,8 @@ extension _ManageStoryStatsActions on _ManageStoryScreenState {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _inlineStat(
-            icon: Icons.star_rounded,
-            value:
-                _story.rating > 0 ? _story.rating.toStringAsFixed(1) : '—',
-          ),
-          _statDot(),
-          _inlineStat(
             icon: Icons.public_rounded,
             value: '${_story.publishedChapterCount} publicados',
-          ),
-          _statDot(),
-          _inlineStat(
-            icon: Icons.people_outline_rounded,
-            value: '${_story.followers} seguidores',
           ),
         ],
       ),
@@ -58,20 +47,6 @@ extension _ManageStoryStatsActions on _ManageStoryScreenState {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _statDot() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 7),
-      child: Text(
-        '·',
-        style: GoogleFonts.inter(
-          fontSize: 8,
-          color: AppColors.gold,
-          fontWeight: FontWeight.w700,
-        ),
       ),
     );
   }

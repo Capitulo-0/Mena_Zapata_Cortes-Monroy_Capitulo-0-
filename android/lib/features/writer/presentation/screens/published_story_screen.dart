@@ -1,4 +1,6 @@
+import '../widgets/writer_cover.dart';
 import '../../../../core/session/local_account_scope.dart';
+
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -15,7 +17,6 @@ part '../widgets/published_story_overview.dart';
 part '../widgets/published_story_chapters.dart';
 part '../widgets/published_story_comments.dart';
 part '../widgets/published_story_menus.dart';
-
 
 class _MockChapterComment {
   _MockChapterComment({
@@ -53,6 +54,8 @@ class PublishedStoryScreen extends StatefulWidget {
 
   final WriterStory story;
 
+  bool get socialActionsEnabled => false;
+
   /// Usuario que está usando la app. Se utiliza para respuestas/comentarios
   /// creados por el usuario actual.
   final String currentUsername;
@@ -68,8 +71,8 @@ class PublishedStoryScreen extends StatefulWidget {
 
   String get displayedAuthorUsername =>
       authorUsername?.trim().isNotEmpty == true
-          ? authorUsername!.trim()
-          : currentUsername;
+      ? authorUsername!.trim()
+      : currentUsername;
 
   @override
   State<PublishedStoryScreen> createState() => _PublishedStoryScreenState();
@@ -102,10 +105,9 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
   Color _textPrimaryColor(BuildContext context) =>
       _isDarkMode(context) ? AppColors.darkTextPrimary : AppColors.textPrimary;
 
-  Color _textSecondaryColor(BuildContext context) =>
-      _isDarkMode(context)
-          ? AppColors.darkTextSecondary
-          : AppColors.textSecondary;
+  Color _textSecondaryColor(BuildContext context) => _isDarkMode(context)
+      ? AppColors.darkTextSecondary
+      : AppColors.textSecondary;
 
   Color _headingColor(BuildContext context) =>
       _isDarkMode(context) ? AppColors.darkTextPrimary : AppColors.deep;
@@ -134,42 +136,8 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
     final chapters = _publishedChapters;
     _commentsByChapter = <String, List<_MockChapterComment>>{};
 
-    for (var index = 0; index < chapters.length; index++) {
-      final chapter = chapters[index];
-
-      if (index == 0) {
-        _commentsByChapter[chapter.id] = [
-          _MockChapterComment(
-            id: '${chapter.id}-comment-1',
-            username: '@valencruz',
-            text: 'El comienzo me dejó con mucha intriga.',
-            likes: 13,
-          ),
-          _MockChapterComment(
-            id: '${chapter.id}-comment-2',
-            username: '@edu_dev',
-            text: 'Muy buena atmósfera para iniciar la historia.',
-            likes: 5,
-          ),
-        ];
-      } else if (index == 1) {
-        _commentsByChapter[chapter.id] = [
-          _MockChapterComment(
-            id: '${chapter.id}-comment-1',
-            username: '@lectora_sur',
-            text: 'Me gustó mucho cómo continúa el misterio.',
-            likes: 8,
-          ),
-        ];
-      } else {
-        _commentsByChapter[chapter.id] = [];
-      }
-    }
-
-    for (final comments in _commentsByChapter.values) {
-      for (final comment in comments) {
-        _replyControllers[comment.id] = TextEditingController();
-      }
+    for (final chapter in chapters) {
+      _commentsByChapter[chapter.id] = [];
     }
 
     _loadPersistedReplies();
@@ -224,27 +192,25 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(18, 16, 18, 120),
               sliver: SliverList(
-                delegate: SliverChildListDelegate(
-                  [
-                    _buildSectionTitle(context, 'SINOPSIS'),
-                    const SizedBox(height: 10),
-                    _buildSynopsis(context),
-                    const SizedBox(height: 16),
-                    _buildMetrics(context),
-                    const SizedBox(height: 18),
-                    _buildSectionTitle(context, 'CAPÍTULOS'),
-                    const SizedBox(height: 12),
-                    if (chapters.isEmpty)
-                      _buildEmptyChapters(context)
-                    else
-                      ...chapters.map(
-                        (chapter) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: _buildChapterCard(context, chapter),
-                        ),
+                delegate: SliverChildListDelegate([
+                  _buildSectionTitle(context, 'SINOPSIS'),
+                  const SizedBox(height: 10),
+                  _buildSynopsis(context),
+                  const SizedBox(height: 16),
+                  _buildMetrics(context),
+                  const SizedBox(height: 18),
+                  _buildSectionTitle(context, 'CAPÍTULOS'),
+                  const SizedBox(height: 12),
+                  if (chapters.isEmpty)
+                    _buildEmptyChapters(context)
+                  else
+                    ...chapters.map(
+                      (chapter) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _buildChapterCard(context, chapter),
                       ),
-                  ],
-                ),
+                    ),
+                ]),
               ),
             ),
           ],
@@ -252,5 +218,4 @@ class _PublishedStoryScreenState extends State<PublishedStoryScreen> {
       ),
     );
   }
-
 }

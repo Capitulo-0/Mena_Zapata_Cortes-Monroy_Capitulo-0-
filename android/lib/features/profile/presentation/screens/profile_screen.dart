@@ -1,3 +1,5 @@
+import '../../../../core/widgets/literary_cover.dart';
+import '../../../writer/presentation/widgets/writer_cover.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';

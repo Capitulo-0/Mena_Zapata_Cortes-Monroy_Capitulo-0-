@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../home_recommendation_controller.dart';
+import '../../data/home_recommendation_repository.dart';
 import 'recommended_books_section.dart';
+import '../../data/recommendation_titles.dart';
 import 'recommendation_explanation.dart';
 
 /// Compact controls; individual reasons live on their cards, not in a repeated text block.
@@ -36,6 +38,7 @@ class LibraryRecommendationsSection extends StatefulWidget {
 class _LibraryRecommendationsSectionState
     extends State<LibraryRecommendationsSection> {
   int offset = 0;
+  HomeRecommendations? _visibleSet;
   String? _explanation;
   final _explanationKey = GlobalKey();
 
@@ -99,10 +102,16 @@ class _LibraryRecommendationsSectionState
           ? _explanation
           : widget.explanation;
       final data = controller.data;
-      final items = data?.items ?? <Map<String, dynamic>>[];
+      if (!identical(data, _visibleSet)) {
+        offset = 0;
+        _visibleSet = data;
+      }
+      final items = RecommendationTitles.unique(
+        data?.items ?? <Map<String, dynamic>>[],
+      ).take(5).toList();
       final start = min(
         widget.carouselOffset ?? offset,
-        max(0, items.length - 3),
+        items.isEmpty ? 0 : ((items.length - 1) ~/ 3) * 3,
       );
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -119,18 +128,21 @@ class _LibraryRecommendationsSectionState
               books: items,
               carouselOffset: start,
               onPrevious: () => setState(() {
-                offset = max(0, start - 1);
+                offset = max(0, start - 3);
                 _explanation = null;
               }),
               onNext: () => setState(() {
-                offset = min(max(0, items.length - 3), start + 1);
+                offset = min(
+                  items.isEmpty ? 0 : ((items.length - 1) ~/ 3) * 3,
+                  start + 3,
+                );
                 _explanation = null;
               }),
               onBookTap: widget.onBookTap,
               onShowExplanation: _showExplanation,
             ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -161,8 +173,13 @@ class _LibraryRecommendationsSectionState
                   spacing: 4,
                   children: [
                     Text(
-                      'Google Books',
-                      semanticsLabel: 'Fuente: Google Books',
+                      'Español · ${items.length} obras',
+                      semanticsLabel:
+                          items.any(
+                            (b) => b['recommendationSource'] == 'LOCAL_FREE',
+                          )
+                          ? 'Fuentes: Google Books y Biblioteca gratuita local'
+                          : 'Fuente: Google Books',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,

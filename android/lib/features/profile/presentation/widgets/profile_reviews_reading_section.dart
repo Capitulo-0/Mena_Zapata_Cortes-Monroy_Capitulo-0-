@@ -30,24 +30,7 @@ extension _ProfileReviewsReadingSection on _ProfileScreenState {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(7),
-                    child: Image.network(
-                      book.cover,
-                      width: 52,
-                      height: 74,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        width: 52,
-                        height: 74,
-                        color: _deepSurfaceColor,
-                        child: const Icon(
-                          Icons.menu_book,
-                          color: AppColors.gold,
-                        ),
-                      ),
-                    ),
-                  ),
+                  LiteraryCover(reference: book.cover, title: book.title, author: book.author, identity: 'profile:${book.id}', width: 52, height: 74),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(

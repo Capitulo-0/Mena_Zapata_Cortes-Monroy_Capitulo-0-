@@ -395,7 +395,7 @@ void main() {
       find.byKey(const ValueKey('gutendex-cover-placeholder')),
       findsOneWidget,
     );
-    expect(find.text('Título real'), findsOneWidget);
+    expect(find.text('TÍTULO REAL'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(
       image(Uri.parse('https://www.gutenberg.org/b.jpg')),

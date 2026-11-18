@@ -2,7 +2,6 @@ import '../../../library/data/library_repository.dart';
 import '../../../library/models/library_entry.dart';
 import '../../../library/presentation/controllers/library_controller.dart';
 import '../../../library/presentation/dialogs/add_library_book_dialog.dart';
-import '../../../../core/session/local_account_scope.dart';
 
 import 'dart:async';
 
@@ -30,7 +29,7 @@ import '../../../library/presentation/screens/simulated_reader_screen.dart';
 import '../../../library/presentation/dialogs/reading_record_dialog.dart';
 import '../widgets/main_header.dart';
 import '../../../writer/models/writer_story.dart';
-import '../../../writer/services/writer_local_service.dart';
+import '../../../writer/services/writer_repository.dart';
 import '../../../writer/presentation/screens/writer_screen.dart';
 
 import 'package:android/features/maps/presentation/screens/maps_screen.dart';
@@ -46,6 +45,7 @@ class MainShellScreen extends StatefulWidget {
     this.profileDisplayName,
     this.profileUser,
     this.libraryRepository,
+    this.writerRepository,
     this.catalogRepository,
     this.userSearchRepository,
     this.publicProfileRepository,
@@ -57,6 +57,7 @@ class MainShellScreen extends StatefulWidget {
   });
 
   final bool isGuest;
+  final WriterRepository? writerRepository;
   final LibraryRepository? libraryRepository;
   final CatalogRepository? catalogRepository;
   final UserSearchRepository? userSearchRepository;
@@ -148,10 +149,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
     if (mounted) unawaited(_refreshUnreadNotifications());
   }
 
-  late final WriterLocalService _writerService = WriterLocalService(
-    scope: LocalAccountScope.read(context),
-  );
+
   List<WriterStory> _writerStories = <WriterStory>[];
+  int _writerStoriesRequest = 0;
 
   bool showSettings = false;
   LibraryController? _remoteLibrary;
@@ -257,16 +257,20 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   Future<void> _loadWriterStories() async {
-    final stories = await _writerService.getStories();
-
-    if (!mounted) return;
-
-    setState(() {
-      _writerStories = stories;
-    });
+    if (widget.isGuest || widget.writerRepository == null) return;
+    final request = ++_writerStoriesRequest;
+    try {
+      final stories = await widget.writerRepository!.getStories();
+      if (mounted && request == _writerStoriesRequest) {
+        setState(() => _writerStories = stories);
+      }
+    } catch (_) {
+      // Writer exposes retry/error state; never replace remote data with legacy drafts.
+    }
   }
 
   void _handleWriterStoriesChanged(List<WriterStory> stories) {
+    ++_writerStoriesRequest; // Invalidate the older startup snapshot used by Perfil.
     // No hacemos setState aquí porque WriterScreen está actualmente visible.
     // El cambio se reflejará cuando MainShell cambie de pestaña.
     _writerStories = List<WriterStory>.from(stories);
@@ -1294,6 +1298,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onToggleFavorite: _toggleFavoriteBook,
       ),
       WriterScreen(
+        active: selectedIndex == 2,
+        repository: widget.writerRepository,
         isGuest: widget.isGuest,
         onGuestRestrictedAction: _showGuestAccessDialog,
         currentName: widget.isGuest ? 'Invitado' : _profileName,

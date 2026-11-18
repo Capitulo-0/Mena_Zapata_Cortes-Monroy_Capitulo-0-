@@ -113,8 +113,14 @@ void main() {
         ),
       );
       await ai;
-      expect(controller.data!.items, hasLength(1));
-      expect(controller.data!.items.single['title'], 'Café');
+      expect(controller.data!.items, hasLength(2));
+      expect(controller.data!.items.first['title'], 'Café');
+      expect(
+        controller.data!.items
+            .map((b) => RecommendationTitles.key(b['title'] as String))
+            .toSet(),
+        hasLength(2),
+      );
     },
   );
 

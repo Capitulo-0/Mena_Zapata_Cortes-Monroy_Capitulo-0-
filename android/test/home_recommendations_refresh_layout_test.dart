@@ -114,9 +114,9 @@ void main() {
           await tester.pumpAndSettle();
           final width = tester.getSize(cards().first).width;
           final left = tester.getRect(cards().first).left;
-          void verify(int count) {
+          void verify(int count, {int? expectedVisible}) {
             final visible = cards();
-            expect(visible, hasLength(min(3, count)));
+            expect(visible, hasLength(expectedVisible ?? min(3, count)));
             for (final card in visible) {
               expect(tester.getSize(card).width, closeTo(width, .1));
               expect(
@@ -173,7 +173,7 @@ void main() {
                 find.text(realisticBooks()[4]['title'] as String),
                 findsOneWidget,
               );
-              verify(5);
+              verify(5, expectedVisible: 2);
               await tester.tap(find.byIcon(Icons.chevron_left_rounded));
               await tester.pumpAndSettle();
               verify(5);

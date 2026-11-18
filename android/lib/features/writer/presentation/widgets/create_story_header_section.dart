@@ -51,7 +51,7 @@ extension _CreateStoryHeaderSection on _CreateStoryScreenState {
             ),
             if (_isEditing) ...[
               const SizedBox(width: 8),
-              _buildStatusPill(widget.story!.isPublished),
+              _buildStatusPill(_currentStory!.isPublished),
             ],
           ],
         ),

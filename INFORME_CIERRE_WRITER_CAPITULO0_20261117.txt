@@ -1,0 +1,397 @@
+CAPÍTULO 0 — CIERRE DE IMPLEMENTACIÓN WRITER
+Fecha: 17 de noviembre de 2026. Entorno: Windows / PowerShell.
+Raíz: C:\Users\co.mena\Mena_Zapata_Cortes-Monroy_Capitulo-0-
+Se continuó desde INFORME_RECUPERACION_WRITER_CAPITULO0_20261117.txt y los cambios recuperados.
+
+1. RESUMEN EJECUTIVO
+Se cerró el flujo de código para crear/editar historias y capítulos, guardar en la
+API, publicar/retirar, descubrir obras de otros autores y leerlas. Se implementó
+recuperación local de texto pendiente del editor y se conectó el perfil al
+repositorio remoto. No se reconstruyó el CRUD ya existente.
+
+Validaciones finales: análisis Flutter sin observaciones, 22 pruebas específicas
+Writer aprobadas, suite ampliada de 45 aprobadas (incluye esas pruebas) y 11 pruebas
+backend aprobadas con H2. Son 56 casos distintos verificados entre ambas plataformas;
+las repeticiones no se suman. Compilación Web debug realizada correctamente.
+No se validó el recorrido real Firebase + Spring Boot + Neon: las credenciales no
+están disponibles aquí y no fue posible confirmar la rama autorizada de Neon.
+No se aplicó V10 ni se hicieron escrituras o consultas en Neon.
+“Flujo implementado y probado en aislamiento” no equivale a “Neon operativo”.
+
+2. PROTECCIÓN DEL TRABAJO Y ARCHIVOS
+Inicio: feature/writer-20261117, HEAD c690b22; se registró git status --short.
+Se conservaron todos los cambios rastreados y archivos sin seguimiento.
+Respaldo previo:
+respaldos/writer_cierre_20261117_101402/
+Incluye android/lib/features/writer/, android/test/writer/, app.dart,
+main_shell_screen.dart, paquete Java writer, V10 y WriterPersistenceTests.
+Solo se copiaron fuentes/pruebas, sin configuración, claves ni variables.
+Se compararon hashes contra ese respaldo para identificar los cambios de esta etapa.
+
+Archivos NUEVOS de esta ejecución:
+android/lib/features/writer/models/writer_publication.dart
+android/lib/features/writer/services/writer_draft_store.dart
+android/lib/features/writer/presentation/screens/writer_community_screen.dart
+android/lib/features/writer/presentation/screens/writer_legacy_screen.dart
+android/test/writer/writer_closure_test.dart
+android/test/writer/writer_shell_test.dart
+Este informe de cierre.
+
+Archivos existentes EDITADOS en esta ejecución:
+android/lib/features/home/presentation/screens/main_shell_screen.dart
+android/lib/features/writer/services/writer_api_repository.dart
+android/lib/features/writer/services/writer_repository.dart
+android/lib/features/writer/presentation/screens/chapter_editor_screen.dart
+android/lib/features/writer/presentation/screens/create_story_screen.dart
+android/lib/features/writer/presentation/screens/manage_story_screen.dart
+android/lib/features/writer/presentation/screens/published_story_screen.dart
+android/lib/features/writer/presentation/screens/writer_screen.dart
+android/lib/features/writer/presentation/widgets/chapter_editor_preview_actions.dart
+android/lib/features/writer/presentation/widgets/chapter_editor_stats_status.dart
+android/lib/features/writer/presentation/widgets/create_story_cover_section.dart
+android/lib/features/writer/presentation/widgets/create_story_progress_actions.dart
+android/lib/features/writer/presentation/widgets/manage_story_chapters_section.dart
+android/lib/features/writer/presentation/widgets/manage_story_stats_actions.dart
+android/lib/features/writer/presentation/widgets/published_story_chapters.dart
+android/lib/features/writer/presentation/widgets/published_story_header_hero.dart
+android/lib/features/writer/presentation/widgets/published_story_overview.dart
+android/lib/features/writer/presentation/widgets/writer_story_card_section.dart
+backend/src/main/java/com/capitulo0/backend/writer/WriterController.java
+backend/src/main/java/com/capitulo0/backend/writer/WriterService.java
+backend/src/main/java/com/capitulo0/backend/writer/WriterStoryRepository.java
+backend/src/test/java/com/capitulo0/backend/WriterPersistenceTests.java
+
+Se conservaron sin editar en esta ejecución, entre otros, los cambios recuperados
+de app.dart, writer_story.dart, writer_flow_test.dart, WriterDocument.java,
+WriterStoryEntity.java y V10. Continúan siendo parte del trabajo pendiente de commit.
+No se modificaron fuentes de Maps, Biblioteca, EPUB, Gutendex ni Gemini.
+La integración del shell solo cambió la lectura de historias Writer y sus imports.
+Se ejecutaron pruebas de regresión existentes de Biblioteca sin editar esos tests.
+Las herramientas actualizaron sus artefactos habituales en build/, .dart_tool/
+y backend/target/. No se publicaron ni desplegaron.
+
+3. FUNCIONALIDADES IMPLEMENTADAS
+3.1 Flujo privado existente conservado
+CapituloCeroApp inyecta ApiWriterRepository con UID de cuenta; MainShell lo entrega
+a Writer. Writer transmite el mismo repositorio a formularios/administración/editor.
+Crear metadatos, presets de portada, guardar borrador, crear/editar varios capítulos,
+editar la historia sin perder capítulos, recuperar guardados desde API, eliminar
+capítulos/historias con confirmación y control de revisión siguen funcionando.
+Los errores no se muestran como un guardado exitoso.
+
+3.2 Publicación consistente
+Se eligió edición en vivo, sin snapshots separados:
+- Una historia draft mantiene todos sus capítulos isPublished=false.
+- Una published mantiene todos isPublished=true.
+- Guardar cambios de una publicada valida que exista al menos un capítulo y que
+  TODOS tengan título y contenido no vacíos. Cambios válidos quedan visibles al guardar.
+- No se puede eliminar el último capítulo ni vaciar contenido manteniendo published.
+- Para trabajar con texto incompleto, retirar primero la historia a borrador.
+- Publicar valida completitud y marca todos los capítulos; retirar desmarca todos.
+- El servidor normaliza las marcas aunque el cliente mande flags inconsistentes.
+- Se conservan propiedad, transacciones y revisiones optimistas del agregado.
+- Cambiar status mediante el endpoint común de guardar sigue rechazado.
+
+Flutter eliminó controles individuales de publicación que inducían a confusión.
+En el editor aparece “Guardar capítulo” o “Guardar cambios publicados” y se explica
+la visibilidad inmediata. La edición de metadatos publicada ya no dice “borrador
+guardado”. No se muestra confirmación si setPublished falla.
+Se añadió validación cliente antes de eliminar el último capítulo de una publicada;
+el backend conserva la validación definitiva contra clientes alternativos.
+
+3.3 Recuperación del editor de capítulos
+WriterDraftStore guarda título, contenido, ID, orden y revisión base en
+SharedPreferences. La clave incluye UID, historia y capítulo; los capítulos nuevos
+tienen una clave de recuperación propia. Las escrituras se ordenan y la cola se
+libera al quedar inactiva. No se guardan tokens ni credenciales.
+El UID viaja explícitamente de Writer a ManageStory y al editor, porque las rutas
+Navigator nuevas no heredan automáticamente el LocalAccountScope del shell.
+Ese caso se cubre con una prueba que recorre las rutas reales de Writer.
+
+Al reabrir, el usuario elige recuperar texto o usar la versión guardada. El botón
+Atrás no descarta esa copia sin elección explícita. Recuperar no envía datos.
+Se muestra que es una edición local pendiente, distinta del guardado en la cuenta.
+Si la revisión base no coincide con la historia recibida, se bloquea guardar:
+se puede copiar el texto para combinarlo con la versión actual. Seguir editando
+conserva la revisión antigua en la copia, sin atribuirle la revisión nueva.
+Ante fallo de API se conserva el texto y la copia; después de confirmación remota
+se intenta limpiar solo esa copia. Elegir la versión guardada la descarta
+explícitamente. Los errores de almacenamiento se informan sin borrar el servidor.
+Una revisión que cambia después de abrir el editor también sigue protegida por 409.
+
+Límites: almacenamiento de texto local de la app, sin cifrado ni garantía de
+durabilidad absoluta ante corte de energía antes de completar la escritura.
+No sincroniza entre dispositivos ni reemplaza respaldo del sistema. Borrar datos
+del navegador/app borra esta recuperación. No se añadió recuperación de formularios
+de metadatos aún no guardados. No hay fusión automática de conflictos.
+
+3.4 Lectura principal y borradores antiguos
+MainShellScreen._loadWriterStories usa widget.writerRepository para cuentas
+autenticadas; no vuelve a introducir historias de SharedPreferences en el perfil.
+Writer y perfil derivan de la misma fuente remota; onStoriesChanged mantiene la
+lista del shell después de administrar/publicar/retirar.
+Si el backend falla, no se inventa una sincronización usando datos locales.
+
+“Consultar borradores locales anteriores” abre una pantalla de SOLO LECTURA de la
+cuenta actual. Se pueden seleccionar/copiar sinopsis y textos para crear una
+historia nueva explícitamente. No importa, elimina ni sobrescribe nada.
+La clave legacy sin UID se conserva intacta y no se muestra como propiedad de una
+cuenta: requiere revisión manual local de procedencia antes de cualquier importación.
+No se asignan automáticamente borradores a otro usuario al iniciar sesión.
+
+4. PERSISTENCIA REAL Y ESTADO DE NEON
+Se comprobó únicamente presencia, sin valores, de DB_URL/DB_USERNAME/DB_PASSWORD
+en Process, User y Machine: AUSENTES en los tres ámbitos accesibles.
+Una variable en otra terminal PowerShell no se hereda hacia atrás en este proceso.
+No se recuperaron claves desde el historial ni se pidió copiarlas al chat.
+No existe prueba de qué credenciales tiene otra terminal/IDE/servidor.
+Por tanto no se inició un Spring Boot conectado a una BD externa.
+
+La única ejecución de Spring Boot de esta etapa ocurrió dentro de JUnit, perfil
+test, con datasource H2 en memoria y FirebaseTokenVerifier simulado.
+Los logs confirmaron jdbc:h2:mem:writer-closure. No se conectó a Neon.
+Sigue desconocido si la conexión externa apunta a perfil-v9-notifications;
+tampoco puede certificarse el estado de producción a partir de este entorno.
+La persistencia JPA y lectura entre solicitudes están verificadas con H2; persistir
+entre dispositivos/reinicios reales en Neon continúa pendiente.
+
+5. MIGRACIÓN V10
+V10__create_writer_stories.sql permanece sin modificaciones.
+Define writer_stories con PK identity, story_key único, owner_id FK users(id)
+ON DELETE CASCADE, payload TEXT, timestamps con zona, revision e índice
+(owner_id,updated_at). Capítulos y status viven en JSON dentro de payload;
+no existe tabla separada writer_chapters ni status indexado.
+Compatible por revisión con users(id) BIGINT de V2; sin versión V10 duplicada.
+Las nuevas funciones no requieren alterar esta estructura ni otra migración.
+
+Estado de ejecución V10 en Neon: DESCONOCIDO; no se consultó flyway_schema_history
+por falta de conexión/identificación de rama. SQL probado solo en H2 temporal:
+mapping Hibernate compatible, FK rechaza propietario inexistente y cascade funciona.
+No certifica todas las migraciones sobre PostgreSQL ni el esquema externo efectivo.
+El backend normal tiene Flyway habilitado; NO arrancarlo para “probar conexión”
+antes de comprobar rama y esquema. V10 puede ejecutarse automáticamente al arrancar.
+
+Operación que requerirá autorización posterior, una vez confirmada la rama:
+aplicar V10 en perfil-v9-notifications, creando tabla/FK/índice y la entrada de
+Flyway correspondiente; además, autorizar los datos de prueba de dos cuentas.
+No se solicita ni presupone esa autorización mientras el destino sea desconocido.
+No usar production. No se hizo ninguna migración ni escritura sobre Neon.
+
+6. FLUJO COMUNITARIO
+Nuevo GET /api/writer/stories autenticado:
+- Devuelve obras publicadas de OTROS propietarios, ordenadas por actualización.
+- Incluye id, título, sinopsis, género, portada, nombre/username de autor,
+  fecha de actualización y cantidad de capítulos publicados.
+- No devuelve email, UID Firebase, ownerId, texto privado ni borradores.
+- El nombre procede de User; hay texto neutro si no tiene displayName.
+- Respuesta limitada a 100 obras. Como V10 usa payload TEXT, por ahora se filtra
+  status en el servicio tras cargar historias de otros propietarios.
+  Es suficiente para el cierre del proyecto, pero falta paginación/consulta
+  indexada para escalar; no se modificó una migración de estado desconocido.
+
+GET /api/writer/stories/{id} continúa autenticado, devuelve solo capítulos
+publicados y rechaza una historia retirada con 404.
+POST/DELETE siguen bajo /api/me/writer/stories y validan propietario.
+No existe ruta comunitaria que permita editar contenido de otro autor.
+
+Flutter: Writer -> “Leer obras de la comunidad” -> catálogo -> seleccionar obra
+-> lectura con PublishedStoryScreen y autor correcto.
+Antes de abrir se vuelve a pedir al servidor la obra: no abre desde una copia
+obsoleta del catálogo si ya fue retirada. Carga, error, reintento, vacío y lectura
+tienen estados propios. Al regresar del lector se recarga el listado; también
+al entrar al catálogo, deslizar para actualizar o pulsar Actualizar.
+Una publicación/retirada se refleja en la siguiente consulta. No hay push en tiempo
+real entre dispositivos; una lectura ya abierta conserva su snapshot hasta salir.
+El autor ve sus obras propias en “Mis historias”, no en el listado de otros autores.
+Se reutilizaron tipografías/colores literarios, tarjetas, presets y lector existente;
+la prueba comunitaria incluye 320x568 y el flujo privado mantiene sus tres tamaños.
+
+7. ACCIONES SIMULADAS
+Se ocultaron puntos de entrada a reportes, compartir y comentarios/likes que no
+tienen servicio real. Las implementaciones históricas permanecen en archivos,
+pero socialActionsEnabled=false impide su acceso desde el lector.
+No se muestran seguidores ni puntuaciones Writer sin un sistema real de métricas.
+Se conservan solo cantidades derivadas del contenido, como capítulos/palabras.
+El favorito del lector solo se ofrece cuando existe callback del contexto
+correspondiente; la nueva comunidad no presenta un favorito puramente de memoria.
+No se añadieron servicios sociales complejos.
+La portada disponible es un preset; el mensaje de subida mediante URL se corrigió.
+No se implementó carga de imágenes ni enlace público compartible.
+
+8. PRUEBAS Y COMANDOS EJECUTADOS
+A) Desde android:
+flutter analyze --no-pub
+Última ejecución: exit 0; “No issues found!” (12.5 s).
+
+flutter test --no-pub test/writer/
+Última ejecución: exit 0, 22 aprobadas, 0 fallidas/omitidas (18 s del runner).
+Distribución: writer_flow_test.dart 9; writer_closure_test.dart 11;
+writer_shell_test.dart 2.
+
+flutter test --no-pub test/writer/ test/auth_session_test.dart test/local_account_storage_test.dart test/library_regression_test.dart
+Ejecución amplia exitosa: exit 0, 45 aprobadas, 0 fallidas/omitidas (34 s).
+Incluye las 22 Writer, 13 sesión, 1 aislamiento local y 9 regresiones existentes
+de Biblioteca/navegación. No se alteraron fuentes ni pruebas de Biblioteca.
+
+Cobertura nueva: recuperación tras destruir/recrear editor; copia conservada con
+error de red y limpiada tras guardado confirmado; separación por cuenta; copia
+antigua bloqueada; persistir nuevas ediciones sin cambiar revisión base;
+descartar solo por elección; alcance de cuenta cruzando Navigator; catálogo/lector,
+autor, retirada entre consultas, obra retirada antes de abrir; API con Bearer;
+rechazo de lista de capítulos parcialmente corrupta; publicación rechazada sin
+éxito falso; perfil remoto; legacy de solo lectura y datos originales conservados.
+La protección de Atrás durante recuperación forma parte de la prueba final.
+Se mantienen pruebas privadas en 320x568, 360x640 y 390x844.
+
+B) Desde backend, comando exacto PowerShell:
+mvn -o '-Dtest=WriterPersistenceTests' '-Dspring.datasource.url=jdbc:h2:mem:writer-closure;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE' '-Dspring.datasource.username=sa' '-Dspring.datasource.password=' '-Dspring.datasource.driver-class-name=org.h2.Driver' '-Dspring.flyway.enabled=false' test
+Resultado final exit 0, BUILD SUCCESS; 11 aprobadas, 0 fallos/errores/omitidas.
+Última suite 47.80 s; Maven 1:18 min. La primera ejecución después de los cambios
+recompiló 75 fuentes de producción y 31 de pruebas; no fue solo una inspección.
+La repetición final recompiló las pruebas modificadas. No se usó clean.
+JUnit confirma perfil test; clase fija ddl-auto=create-drop sobre H2. V10 se ejecuta
+por ScriptUtils en OTRO H2 temporal de la prueba de esquema, nunca en Neon.
+Resultado guardado por Surefire en:
+backend/target/surefire-reports/com.capitulo0.backend.WriterPersistenceTests.txt
+
+Cobertura: CRUD entre solicitudes, dos capítulos, propietario ajeno, invitados,
+conflictos obsoletos, creadores concurrentes, CORS, esquema V10/FK/cascade, catálogo
+sin borradores ni datos sensibles, autor real de fixture, retirada y normalización,
+edición publicada en vivo, rechazo de cero capítulos/contenido vacío con rollback.
+Firebase simulado en estas pruebas: no certifica un ID token real del despliegue.
+
+C) Compilación Web:
+flutter build web --no-pub --debug --dart-define-from-file=config/firebase_web.local.json --dart-define=API_BASE_URL=http://localhost:8080
+Exit 0; Built build/web; compilación 236.3 s. Wasm dry run también terminó exitoso.
+Se usó configuración CLIENTE local sin imprimir su contenido. No se incluyeron
+credenciales de base de datos ni Admin en la app.
+Actualización final con la última protección del borrador:
+flutter build web --no-pub --debug --no-wasm-dry-run --dart-define-from-file=config/firebase_web.local.json --dart-define=API_BASE_URL=http://localhost:8080
+Exit 0, Built build/web, 104.8 s. Artefacto final: android/build/web/main.dart.js.
+Es compilación debug local, no despliegue ni validación real del login.
+No se ejecutó build APK, suite completa de todos los módulos ni test de escritura
+Neon. No se afirma éxito de esas comprobaciones no realizadas.
+
+D) git diff --check
+Ejecutado sin salida, exit 0.
+
+Incidencias durante el desarrollo, ya corregidas:
+- El análisis inicial detectó errores de callbacks/label y caracteres de código
+  en la nueva pantalla; corregidos antes de las validaciones finales.
+- El spinner de restauración seguía animando mientras esperaba el diálogo:
+  pumpAndSettle agotó el tiempo. Se separó carga de elección, se ajustó la cola y
+  el caso pasó. Una ejecución inicial se interrumpió; no cuenta como aprobada.
+- Una prueba aislada de recuperación también falló por ese estado antes de corregirlo.
+- Primera ejecución amplia: 42 aprobadas y 1 fallida por intentar insertar un String
+  en una lista tipada Map del fixture. Se construyó correctamente una lista dañada.
+- Otra ejecución: 43 aprobadas y error de carga de writer_shell_test por import
+  faltante de PlatformViewCreatedCallback; corregido con flutter/services.dart.
+- Se corrigieron cuatro observaciones de llaves del analizador.
+- Un reemplazo inicial no encontró un texto con tilde por codificación PowerShell;
+  se fijó UTF-8 y se aplicó el cambio; no se perdió el respaldo.
+Las ejecuciones finales exitosas sustituyen esas incidencias; no se esconden.
+Advertencias JDK/Jansi/Unsafe/Mockito y deprecaciones preexistentes no hicieron
+fallar Maven. No se tocaron fuentes de Google Books para silenciarlas.
+
+9. PENDIENTES Y LÍMITES REALES
+Prioridad 1: hacer accesibles las credenciales en el proceso que lanza Java,
+confirmar endpoint/rama perfil-v9-notifications, revisar Flyway y esquema en modo
+solo lectura y solicitar autorización concreta antes de migración/datos fixture.
+Prioridad 2: ejecutar flujo integrado con dos cuentas reales, CORS/origen/Firebase
+del mismo proyecto, reinicio de backend y recarga de app para certificar Neon.
+No está probado en esta sesión y no debe presentarse como tal en la defensa.
+Después: paginación/indexado de comunidad si crece el catálogo, recuperación de
+metadatos, fusión asistida de conflictos, importación explícita legacy si hace falta.
+Subida de portadas, redes sociales, reportes, comentarios, puntuaciones y enlace
+web público no forman parte del cierre funcional implementado.
+La recuperación local es de mejor esfuerzo y sin cifrado. Nunca reemplaza una
+confirmación del servidor. La interfaz de perfil no añade un panel de error remoto
+propio: Writer ofrece reintento y sus estados; no se rediseñó el perfil.
+ApiClient común conserva mensajes HTTP genéricos para algunos errores 400;
+las reglas de publicación se explican en UI y el 409 de Writer mantiene su aviso.
+No se modificó el cliente compartido de otros módulos.
+
+10. INSTRUCCIONES EXACTAS PARA PROBAR WRITER
+10.1 Precondiciones externas antes de iniciar servicios reales
+En la terminal que YA contiene DB_URL, DB_USERNAME y DB_PASSWORD, comprobar
+únicamente presencia con:
+foreach ($name in 'DB_URL','DB_USERNAME','DB_PASSWORD') {
+  Write-Output ($name + ': ' + (-not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name,'Process'))))
+}
+No hacer echo de los valores. Lanzar Java desde ESA terminal o configurar el
+entorno heredado del IDE. No copiar secretos al chat ni al repositorio.
+Para Firebase, usar FIREBASE_PROJECT_ID y credenciales Admin/ADC fuera del repo
+según configuración existente. Debe coincidir con el proyecto cliente.
+
+Comprobar rama en consola Neon y asociar de forma segura el endpoint de esa
+conexión con perfil-v9-notifications. El nombre de base de datos/hostname por sí
+solo no demuestra el nombre de rama. No usar production.
+Desde una conexión de esa rama confirmada, ejecutar solo lectura:
+BEGIN TRANSACTION READ ONLY;
+SELECT version, description, success FROM flyway_schema_history ORDER BY installed_rank;
+SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name='writer_stories';
+SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema='public' AND table_name='writer_stories' ORDER BY ordinal_position;
+ROLLBACK;
+Si V10 falta, detener el inicio normal y autorizar su aplicación específica.
+Si V10 figura aplicada, revisar que success=true y estructura compatible.
+Estos pasos NO se ejecutaron en esta sesión.
+
+10.2 Arrancar backend SOLO tras confirmar esquema y autorizar datos de prueba
+Desde raíz/backend, en el proceso con variables correctas y ADC:
+$env:APP_CORS_ALLOWED_ORIGINS='http://localhost:7357'
+mvn spring-boot:run '-Dspring-boot.run.arguments=--spring.flyway.enabled=false --spring.jpa.hibernate.ddl-auto=validate'
+Flyway desactivado evita migración automática; validate no crea tablas. Debe estar
+aplicado el esquema previamente; no es un comando para saltarse V10.
+Las operaciones Writer de la demostración SÍ escribirán datos: solo rama de prueba
+confirmada y datos autorizados. No ejecutar esta instrucción sobre destino dudoso.
+
+10.3 Flutter Web
+Desde raíz/android:
+flutter run -d chrome --web-hostname=localhost --web-port=7357 --dart-define-from-file=config/firebase_web.local.json --dart-define=API_BASE_URL=http://localhost:8080
+El archivo local debe tener la configuración cliente Firebase Web existente,
+correspondiente al mismo proyecto; no mostrar sus valores ni versionar secretos.
+Para dispositivo Android físico se requiere una URL del backend alcanzable desde
+ese dispositivo; localhost apunta al propio dispositivo. Este informe valida Web,
+no garantiza la configuración de red Android.
+
+10.4 Recorrido manual con DOS cuentas y dos perfiles de navegador
+A) Iniciar sesión A. Writer -> Crear historia. Completar título, género, sinopsis
+y elegir portada preset. Guardar borrador. Volver -> Administrar.
+B) Crear dos capítulos completos, guardar cada uno. Editar uno, guardar. Salir de
+Writer y volver; recargar app y comprobar texto/revisión desde el servidor.
+C) Publicar historia con confirmación. En sesión B -> Writer -> Leer obras de la
+comunidad. Actualizar, abrir la obra; verificar título, autor y capítulos.
+D) A edita una publicada y guarda contenido completo: B vuelve/actualiza y lo lee.
+Intentar vaciar capítulo o borrar el último manteniendo publicada debe rechazarse.
+E) A -> Volver a borrador. B actualiza catálogo: desaparece. Abrir por ruta de
+lectura retirada debe devolver 404; no permite modificar una obra ajena.
+F) A vuelve a publicar o elimina su historia con confirmación; verificar desaparición.
+G) Recuperación: A abre un capítulo y escribe SIN guardar. Dejar finalizar la copia
+local, cerrar/reabrir app. Abrir mismo capítulo, elegir Recuperar texto. El texto
+aún no está guardado en la cuenta hasta pulsar Guardar.
+H) Conflicto: mantener una edición pendiente en un navegador y guardar una nueva
+versión en otra sesión A. Recuperar copia antigua: guardado bloqueado por revisión;
+copiar texto, reabrir el capítulo actual y combinar conscientemente. No sobrescribir.
+I) Consultar borradores locales anteriores: copiar manualmente si se requieren;
+verificar que no se suben ni se eliminan automáticamente.
+Este recorrido manual real queda pendiente; los equivalentes aislados sí se probaron.
+
+11. ESTADO FINAL DE GIT
+Rama conservada: feature/writer-20261117. HEAD conservado: c690b22.
+Referencia local origin/develop conocida: 4b426d7; no fetch/pull para actualizarla.
+Quedan 22 archivos rastreados modificados contra HEAD, incluyendo los cambios
+anteriores. Los fuentes Java Writer y servicios/tests nuevos siguen sin seguimiento;
+no se agregaron al índice. También siguen los artefactos y respaldos previos.
+Se crearon solo los fuentes/pruebas de cierre listados y este informe, además del
+respaldo y los artefactos normales de verificación. No se borraron borradores.
+No hubo reset, clean, rebase, checkout, merge, commit ni push.
+El informe de recuperación original se conservó. No se hizo publicación/despliegue.
+
+12. BLOQUEOS PARA INTERVENCIÓN MANUAL
+- Credenciales disponibles en la terminal/proceso que ejecutará Java; no compartir
+  sus valores por chat. Las aprobaciones de comandos locales no proporcionan DB_*.
+- Confirmación independiente de rama Neon perfil-v9-notifications.
+- Lectura del historial Flyway/esquema y autorización específica si falta V10.
+- Autorización de datos de prueba y cuentas Firebase reales para validación integral.
+No se arriesgó producción para eliminar estos bloqueos. El código y las pruebas
+quedan listos para continuar directamente con esa validación, sin rehacer Writer.

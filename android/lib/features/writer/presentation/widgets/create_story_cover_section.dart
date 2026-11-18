@@ -1,6 +1,36 @@
 part of '../screens/create_story_screen.dart';
 
 extension _CreateStoryCoverSection on _CreateStoryScreenState {
+  Future<void> _pickOwnCover() async {
+    if (_pickingCover || _isSaving) {
+      return;
+    }
+    _updateState(() => _pickingCover = true);
+    try {
+      final selection = await (widget.coverPicker ?? WriterCoverPicker())
+          .pick();
+      if (mounted && selection != null) {
+        _updateState(() => _localCoverPreview = selection);
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error is FormatException
+                  ? error.message.toString()
+                  : 'No se pudo seleccionar la imagen.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        _updateState(() => _pickingCover = false);
+      }
+    }
+  }
+
   Future<void> _chooseCover() async {
     final selectedCover = await showModalBottomSheet<String>(
       context: context,
@@ -24,7 +54,7 @@ extension _CreateStoryCoverSection on _CreateStoryScreenState {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Por ahora puedes elegir una portada base. Más adelante conectaremos la carga de imágenes.',
+                  'Elige una portada base. Noche conserva el azul de las historias existentes.',
                   style: GoogleFonts.inter(
                     fontSize: 10,
                     height: 1.45,
@@ -62,7 +92,7 @@ extension _CreateStoryCoverSection on _CreateStoryScreenState {
                       child: _buildCoverOption(
                         bottomSheetContext,
                         id: 'preset:night',
-                        label: 'Noche',
+                        label: 'Noche · azul',
                       ),
                     ),
                   ],
@@ -74,10 +104,13 @@ extension _CreateStoryCoverSection on _CreateStoryScreenState {
       },
     );
 
-    if (selectedCover == null || !mounted) return;
+    if (selectedCover == null || !mounted) {
+      return;
+    }
 
     _updateState(() {
       _selectedCover = selectedCover;
+      _localCoverPreview = null;
     });
   }
 
@@ -102,9 +135,7 @@ extension _CreateStoryCoverSection on _CreateStoryScreenState {
                 end: Alignment.bottomRight,
                 colors: colors,
               ),
-              border: Border.all(
-                color: AppColors.gold.withValues(alpha: 0.35),
-              ),
+              border: Border.all(color: AppColors.gold.withValues(alpha: 0.35)),
             ),
             child: const Center(
               child: Icon(
@@ -129,22 +160,11 @@ extension _CreateStoryCoverSection on _CreateStoryScreenState {
     );
   }
 
-  List<Color> _coverColors(String? cover) {
-    switch (cover) {
-      case 'preset:gold':
-        return const [Color(0xFF9A6D2F), Color(0xFF3B2414)];
-      case 'preset:forest':
-        return const [Color(0xFF405A49), Color(0xFF18241E)];
-      case 'preset:night':
-        return const [Color(0xFF34354A), Color(0xFF171821)];
-      case 'preset:classic':
-      default:
-        return const [Color(0xFF7D2430), Color(0xFF35130F)];
-    }
-  }
+  List<Color> _coverColors(String? cover) => WriterCover.colors(cover);
 
   bool get _hasUnsavedChanges {
-    return _titleController.text != _initialTitle ||
+    return _localCoverPreview != null ||
+        _titleController.text != _initialTitle ||
         _synopsisController.text != _initialSynopsis ||
         _selectedGenre != _initialGenre ||
         _selectedCover != _initialCover;
@@ -154,22 +174,46 @@ extension _CreateStoryCoverSection on _CreateStoryScreenState {
     return Column(
       children: [
         Center(child: _buildLargeCoverPreview()),
+        TextButton.icon(
+          key: const ValueKey('writer-upload-cover'),
+          onPressed: _pickingCover || _isSaving ? null : _pickOwnCover,
+          icon: _pickingCover
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.add_photo_alternate_outlined),
+          label: const Text('Subir mi portada'),
+        ),
+        const Text(
+          'JPEG, PNG o WebP · hasta 5 MB. Sólo previsualización: almacenamiento compartido aún no configurado.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 10),
+        ),
+        if (_localCoverPreview != null) ...[
+          const Text(
+            'Imagen local pendiente · no se ha subido ni guardado.',
+            key: ValueKey('writer-cover-preview-notice'),
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 11),
+          ),
+          TextButton(
+            onPressed: () => _updateState(() => _localCoverPreview = null),
+            child: const Text('Descartar vista previa'),
+          ),
+        ],
         const SizedBox(height: 10),
         OutlinedButton.icon(
           onPressed: _chooseCover,
           icon: const Icon(Icons.auto_awesome_rounded, size: 14),
           label: Text(
             _hasCover ? 'Cambiar portada' : 'Elegir portada',
-            style: GoogleFonts.inter(
-              fontSize: 8,
-              fontWeight: FontWeight.w700,
-            ),
+            style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w700),
           ),
           style: OutlinedButton.styleFrom(
             foregroundColor: _headingColor,
-            side: BorderSide(
-              color: AppColors.gold.withValues(alpha: 0.55),
-            ),
+            side: BorderSide(color: AppColors.gold.withValues(alpha: 0.55)),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(9),
@@ -178,12 +222,9 @@ extension _CreateStoryCoverSection on _CreateStoryScreenState {
         ),
         const SizedBox(height: 5),
         Text(
-          'Añade una imagen mediante URL',
+          'Elige una portada literaria predefinida',
           textAlign: TextAlign.center,
-          style: GoogleFonts.inter(
-            fontSize: 6.8,
-            color: _textSecondaryColor,
-          ),
+          style: GoogleFonts.inter(fontSize: 6.8, color: _textSecondaryColor),
         ),
       ],
     );
@@ -195,9 +236,7 @@ extension _CreateStoryCoverSection on _CreateStoryScreenState {
       height: 136,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.48),
-        ),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.48)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
@@ -207,7 +246,7 @@ extension _CreateStoryCoverSection on _CreateStoryScreenState {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: _hasCover
+      child: (_hasCover || _localCoverPreview != null)
           ? _buildPresetCover()
           : Container(
               color: _surfaceColor,
@@ -217,10 +256,7 @@ extension _CreateStoryCoverSection on _CreateStoryScreenState {
                 children: [
                   const Text(
                     '✦',
-                    style: TextStyle(
-                      color: AppColors.gold,
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: AppColors.gold, fontSize: 14),
                   ),
                   const SizedBox(height: 22),
                   Text(
@@ -244,39 +280,15 @@ extension _CreateStoryCoverSection on _CreateStoryScreenState {
     );
   }
 
-  Widget _buildPresetCover() {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: _coverColors(_selectedCover),
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.auto_stories_rounded,
-            color: Colors.white,
-            size: 26,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            _hasTitle ? _titleController.text.trim().toUpperCase() : 'TU HISTORIA',
-            maxLines: 4,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.cinzel(
-              fontSize: 7,
-              height: 1.3,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildPresetCover() => _localCoverPreview != null
+      ? Image.memory(
+          _localCoverPreview!.bytes,
+          fit: BoxFit.cover,
+          gaplessPlayback: false,
+        )
+      : WriterCover(
+          storyId: _storyId,
+          coverPath: _selectedCover,
+          title: _titleController.text,
+        );
 }

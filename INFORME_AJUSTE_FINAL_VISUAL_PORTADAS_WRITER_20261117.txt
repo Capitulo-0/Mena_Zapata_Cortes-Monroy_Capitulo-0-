@@ -1,0 +1,108 @@
+CAPÍTULO 0 — AJUSTE FINAL VISUAL Y PORTADAS WRITER
+17-11-2026 | feature/writer-20261117 | HEAD c690b22
+
+1. CAUSA REAL: HECHOS Y LO QUE TODAVÍA NO PUEDE AFIRMARSE
+La implementación anterior no demostró la corrección del caso real: sus pruebas de portadas aislaban WriterCover y una serialización, sin recorrer juntas la respuesta API, las tarjetas de Writer, Mis obras del Perfil y el detalle, ni verificar la pestaña autenticada. Declarar cerrado el fallo con esa evidencia fue insuficiente.
+
+En el código recuperado de esta intervención el preset que el formulario guarda para Noche/azul es exactamente preset:night. La paleta original se conserva: #34354A y #171821. WriterCover ya estaba conectado en las distintas vistas, y con una misma referencia exacta sus gradientes deben coincidir. NO se ha leído la fila real de «El secreto de la biblioteca» ni obtenido una respuesta autenticada de su API durante este trabajo. Por tanto, NO se afirma que su coverPath real sea preset:night, preset:blue, nulo u otro valor. Se pidió únicamente ese campo mediante la pregunta de aclaración, sin tokens. Falta ese contraste para atribuir definitivamente el incidente concreto.
+
+Problemas verificables corregidos:
+a) El resolver comparaba presets literalmente: espacios/capitalización y alias azules no reconocidos terminaban en el marrón de referencia desconocida. Ahora hay una resolución canónica común; se mantienen los cuatro IDs oficiales y se aceptan preset:blue/preset:azul como alias de night. La compatibilidad de estos alias se implementó defensivamente: no es evidencia de que existan en Neon. No se reescribieron registros antiguos.
+b) Las cargas asíncronas de Writer aceptaban todas las respuestas, incluso si una petición anterior terminaba después de otra nueva. Eso permitía reemplazar una portada actualizada con una instantánea anterior; el detalle volvía a consultar por ID y podía mostrar datos más recientes.
+c) La carga inicial del MainShell podía sobrescribir los datos de obras del Perfil después de recibir una actualización de Writer. Se invalida ahora esa carga anterior cuando Writer confirma datos nuevos.
+
+Las pruebas nuevas fuerzan respuesta antigua sin portada después de una nueva con portada azul y comprueban que las tarjetas y la notificación a Perfil conservan la azul. Esto verifica la corrección de esa carrera; no prueba por sí mismo que esa carrera causó el incidente de la historia real.
+
+2. CORRECCIONES Y RASTRO DE PORTADAS
+WriterCover.canonical interpreta los presets en todos los consumidores; colores, referencia y claves de imagen usan la misma resolución. Las referencias de imagen válidas siguen pasando por LiteraryCover; no se sustituyen por otra obra. El preset válido se distingue con una clave writer-preset-..., mientras la referencia inválida conserva fallback neutral. El título y autor que se muestran son los propios.
+
+La API y modelos conservan coverPath de forma persistente; no se introdujo un estado en memoria como sustituto de la persistencia. Se verifican respuestas de lista, catálogo y lectura con el mismo campo; también cambio desde formulario, guardado por ApiWriterRepository y recarga con una instancia nueva. Las pruebas son de transporte API simulado: no son escrituras Neon ni una segunda integración Firebase real.
+
+Cada carga de Writer lleva generación; sólo la respuesta más reciente actualiza la lista. MainShell invalida su instantánea inicial cuando recibe historias actualizadas. El cambio de main_shell_screen.dart es mínimo y exclusivo de la sincronización Writer/Perfil.
+
+3. CÓDIGO EFECTIVAMENTE SERVIDO Y CÓMO COMPROBARLO
+Se consultaron por HTTP local los módulos Dart que sirve localhost:7357, sin autenticación ni headers privados. Antes de editar, el servidor ya ofrecía WriterCover y sus llamadas desde Writer/Perfil; eso impide afirmar que TODO el servidor estaba en la implementación original. No se inspeccionó la memoria/caché de la pestaña del usuario.
+Al terminar, la consulta a writer_screen.dart.lib.js en 7357 devolvió:
+WriterCover presente: true.
+Marca 20261117-portadas-v2 presente: false.
+WriterHeader nuevo presente: false.
+Por tanto, el proceso abierto aún NO estaba sirviendo esta última intervención. No se detuvo ni se reinició ese proceso ajeno. La compilación principal nueva sí contiene la marca, según la comprobación final indicada abajo.
+
+Se agregó al menú ⋮ «Comprobar portadas y versión»: muestra Writer 20261117-portadas-v2, título y referencia preset original recibida en la lista más su interpretación. Oculta URLs personalizadas para no revelar parámetros sensibles. Es una inspección de los datos ya cargados; no escribe ni consulta Neon por separado. Si no aparece esa marca después de reiniciar Flutter, no se está observando esta versión. Si lista y detalle difieren después de eso, conservar los campos exactos de ambas respuestas para continuar el diagnóstico, sin copiar tokens.
+
+4. ENCABEZADO CON REFERENCIA DIRECTA A MI BIBLIOTECA
+Se leyó LibraryHeader y LibraryStatusCounters; NO se cambió el diseño de Biblioteca. WriterHeader replica Cinzel 18, peso 700, espaciado .8, botón circular + de 48 px marrón/dorado, menú con borde dorado y radio 12, y descripción discreta Merriweather 9.5. Debajo se muestran Mis obras y Comunidad; Comunidad abre la pantalla existente y al volver actualiza las historias.
+Los contadores Historias/Publicadas/Borradores usan superficies, bordes, separaciones de 7 px y radios de 11 inspirados en Biblioteca. Son accesos a los filtros; se conservan también Todas/Publicadas/Borradores dentro de Mis obras. No se duplica el botón de crear; + abre CreateStoryScreen. Los borradores antiguos permanecen accesibles en ⋮, junto con actualizar e inspección de portadas. Se conservan carga/error/reintento/vacío y acciones de administración.
+
+5. SUBIR MI PORTADA: ESTADO REAL
+No se encontró integración firebase_storage, configuración storageBucket en FirebaseWebConfiguration, reglas Storage versionadas ni servicio de objetos integrado en Writer/backend. firebase-admin por sí solo no acredita un bucket disponible ni sus permisos. No se inspeccionó/activó infraestructura de la consola, facturación ni reglas externas.
+
+Implementado de forma segura hasta el límite verificable:
+- Botón Subir mi portada, en creación y edición, abre file_picker 11 ya instalado.
+- Lectura por stream y límite de 5 MiB antes de acumular el archivo completo; formatos JPEG, PNG y WebP comprobados por firma real y decodificador.
+- Máximo 4096 px por lado y 16 megapíxeles, con descriptor previo y decodificación real; errores visibles y cancelación sin cambiar la portada.
+- Previsualización en memoria, identificada expresamente como local/no subida/no guardada. No se guarda base64/bytes en JSON ni SharedPreferences.
+- Guardar/Continuar con una imagen local pendiente no envía escrituras: muestra que falta almacenamiento privado y pide volver a un preset. Descartar vista previa o seleccionar un preset recupera el flujo normal. La referencia de servidor anterior se conserva.
+- Cambios locales pendientes activan la confirmación al salir.
+
+NO IMPLEMENTADO: subida compartida persistente, lectura de foto propia desde otra cuenta, modificación de portada por objeto remoto y autorización Storage. No se simula éxito. Por tanto, las fotos propias no cumplen todavía el flujo completo solicitado. La validación cliente implementada no sustituye validación futura backend/reglas.
+
+6. CONFIGURACIÓN EXTERNA NECESARIA PARA IMÁGENES PROPIAS
+Confirmar primero si Firebase Storage ya está disponible en el proyecto y su plan, sin activar servicios de pago automáticamente. Definir bucket de pruebas y permisos explícitos antes de usarlo. Recomendación: objetos privados e inmutables por UID/historia/versión; escritura sólo del propietario Firebase con comprobación de propiedad en backend y límites de tamaño/formato también del lado servidor. Re-encodear imágenes y quitar EXIF.
+Persistir en Neon sólo una clave estable/versión de objeto; no un token de descarga público permanente ni binarios en JSON. Debido a que el estado published vive en PostgreSQL, las reglas Storage por sí solas no pueden consultar Neon: hace falta un endpoint autenticado backend que verifique propietario o publicación antes de entregar la imagen/autorizar acceso. Para borradores, sólo propietario; para obras publicadas, lectura comunitaria conforme a esa comprobación. Evitar URLs públicas permanentes de borradores. Definir expiración/invalidation al retirar y caché aislada por cuenta; claves nuevas al cambiar portada. Revisar y autorizar reglas/bucket antes de desplegar. Ninguna de esas configuraciones fue cambiada aquí.
+
+7. PRUEBAS EJECUTADAS
+- flutter analyze --no-pub: sin problemas: No issues found (55.2 s), incluyendo las doce pruebas nuevas.
+- Suite amplia (mismo comando reproducible abajo): 327 aprobadas, 0 fallos, All tests passed, 4 min 44 s. Incluye Writer, Biblioteca, Gutendex/offline, Home y regresiones de portadas/usuario. Esa ejecución cargó las primeras diez pruebas del nuevo archivo.
+- flutter test --no-pub test/writer/writer_cover_screens_test.dart: 12 aprobadas, 0 fallos (20 s). Incluye después las dos pruebas adicionales de editar desde formulario real y bloqueo de cuenta distinta. Este grupo se solapa con la suite amplia: NO sumar como si fueran 339 pruebas distintas.
+- Nuevas coberturas: portada API exacta preset:night, con espacios y alias azul, renderizado real de Writer/Perfil/Administración/Comunidad/lector, gradiente exacto y ausencia de fallback inválido; edición/guardado/recarga de repositorio nuevo; respuesta antigua tardía; menú/versión/+ y navegación a 320/360/390; formato falso, archivo excesivo y cabecera dañada; foto válida previsualizada pero sin petición de escritura; peticiones privadas bloqueadas al cambiar UID.
+- Pruebas iniciales fallidas: API FilePicker.platform no existe en versión 11 (se cambió al método estático existente); harness de Perfil sin Scaffold y luego pestaña aún no construida (se ajustó el arnés a Material y desplazamiento reales); temporización de apertura del menú con carga pendiente (se corrigió la sincronización de prueba). No se ignoraron ni se declararon exitosas esas ejecuciones.
+- No se ejecutaron tests backend en este bloque; no cambió código backend. Las 46 pruebas H2 del informe anterior son evidencia previa, no un resultado nuevo.
+- Compilación principal: flutter build web --no-pub --debug --no-wasm-dry-run --dart-define-from-file=config/firebase_web.local.json --dart-define=API_BASE_URL=http://localhost:8086 → Built build/web, 291.5 s.
+- Compilación de revisión aislada: flutter build web --no-pub --debug --no-wasm-dry-run --target=tool/writer_v2_visual.dart --output=build/writer_v2_visual → Built build/writer_v2_visual, 149.1 s.
+- git diff --check: sin errores de espacios; advertencia informativa LF/CRLF de Windows en archivo Biblioteca de la intervención anterior.
+
+Comando suite amplia, desde android, PowerShell:
+$tests=@('test/writer/','test/cover_identity_spanish_test.dart','test/google_books_covers_test.dart','test/gutendex/','test/local_account_storage_test.dart','test/catalog_test.dart')
+$tests+=@(Get-ChildItem test -File -Filter 'library*_test.dart' | ForEach-Object { 'test/'+$_.Name })
+$tests+=@(Get-ChildItem test -File -Filter 'home_recommendations*_test.dart' | ForEach-Object { 'test/'+$_.Name })
+flutter test --no-pub @tests
+
+8. EVIDENCIA VISUAL Y LÍMITES
+Chrome headless aislado, sin la sesión Firebase del usuario: seis capturas de pantallas reales importadas por un arnés visual claramente marcado PRUEBA LOCAL. Writer a 320/360/390; Comunidad, Administración y lectura a 390. Archivos locales android/tool/writer_v2_visual/writer_320.png, writer_360.png, writer_390.png, community_390.png, manage_390.png, reader_390.png y evidence.json. La portada de prueba es explícitamente preset:night; no se atribuye a una lectura real de Neon. No son capturas antes/después de la cuenta del usuario. No se crearon registros ni datos en backend.
+Se inspeccionaron las seis capturas: encabezado legible sin desbordamiento a 320/360/390 y misma paleta azul en tarjeta, comunidad, administración y lectura. La galería tiene ribbon DEBUG además de PRUEBA LOCAL; la aplicación principal ya tiene debugShowCheckedModeBanner=false. No se atribuye la tipografía de sustitución de la galería a la configuración de producción..
+El Perfil se verificó con el widget real y su pestaña Mis obras en pruebas; no se generó captura Chrome de Perfil. La revisión aislada desactiva descarga dinámica de fuentes y puede usar fuentes de sustitución; el código de producción conserva GoogleFonts y los estilos de Biblioteca. Verificar las fuentes en la sesión normal.
+
+9. PASOS EXACTOS PARA COMPROBAR EN LA APLICACIÓN REAL
+1) En la terminal que YA ejecuta flutter run, pulsar R mayúscula (hot restart completo); después Ctrl+F5 en Chrome. Si se necesita relanzar manualmente ese proceso, usar desde android:
+flutter run -d chrome --web-port=7357 --dart-define-from-file=config/firebase_web.local.json --dart-define=API_BASE_URL=http://localhost:8086
+No iniciar otra instancia sobre el mismo puerto. No reiniciar el backend ni aplicar V10.
+2) Abrir Writer → ⋮ → Comprobar portadas y versión. Debe aparecer 20261117-portadas-v2. Anotar SÓLO Referencia API e Interpretación de «El secreto de la biblioteca». No copiar headers/tokens ni URLs firmadas.
+3) Comparar su portada en Mis obras, Perfil/Mis obras, Administrar, comunidad y lectura. Recargar y comprobar desde la segunda cuenta sin editar los datos existentes.
+4) Sólo si se autoriza un cambio de datos de prueba, editar una portada de una historia de prueba, guardar y repetir comparación/recarga. No se hizo sobre registros reales durante este trabajo.
+5) + debe abrir creación; Comunidad abre el catálogo real; ⋮ conserva los borradores locales; filtros y contadores cambian el listado.
+6) Subir mi portada debe mostrar selector y previsualización, indicar que es local y bloquear guardado. Descartarla o elegir un preset debe restaurar el flujo normal. Si aparece éxito de subida, no corresponde al comportamiento implementado.
+7) Probar 320/360/390 px y tamaños reales de móvil. Si la historia real sigue marrón, entregar la referencia preset exacta y comparar respuesta de GET lista frente a GET detalle: la causa específica sigue pendiente hasta ese contraste autenticado.
+
+10. ARCHIVOS Y ESTADO DE GIT
+Rama conservada feature/writer-20261117; HEAD c690b22. Se preservaron todos los cambios previos y archivos sin seguimiento. Respaldo: respaldos/ajuste_writer_20261117_172451 (incluye la copia previa de main_shell y de la lista de commit). Sin git add, commit, push, merge, rebase, reset, clean o cambio de rama. No migraciones ni escrituras Neon. No cambios Maps, Biblioteca, EPUB, Gutendex o recomendaciones en este bloque, excepto sincronización mínima de obras Writer en MainShell.
+Lista selectiva actualizada: ARCHIVOS_COMMIT_PORTADAS_WRITER_20261117.txt; incluye archivos nuevos de esta etapa y conserva el desarrollo Writer anterior. No usar git add . ni git add -A. Excluir respaldos/, tool/ visual, perfiles Chrome, logs, capturas, build/, configuraciones Firebase locales y .bak. Escaneo acotado de marcadores de claves privadas/Google en código y documentación propuestos: 0 archivos señalados; sin imprimir valores. No sustituye revisar credenciales antes del commit.
+
+Archivos funcionales/de pruebas modificados en ESTA etapa:
+android/lib/features/writer/presentation/widgets/writer_cover.dart
+android/lib/features/writer/presentation/widgets/writer_header.dart
+android/lib/features/writer/presentation/widgets/writer_overview_section.dart
+android/lib/features/writer/presentation/screens/writer_screen.dart
+android/lib/features/home/presentation/screens/main_shell_screen.dart
+android/lib/features/writer/presentation/screens/create_story_screen.dart
+android/lib/features/writer/presentation/widgets/create_story_cover_section.dart
+android/lib/features/writer/presentation/widgets/create_story_preview_section.dart
+android/lib/features/writer/services/writer_cover_picker.dart
+android/test/writer/writer_cover_screens_test.dart
+
+Documentos: INFORME_AJUSTE_FINAL_VISUAL_PORTADAS_WRITER_20261117.txt y ARCHIVOS_COMMIT_PORTADAS_WRITER_20261117.txt
+
+SHA256 compilación principal build/web/main.dart.js: 181ed23a7fb3bebc640aee756b75f44581359f45d3b1e656a2f5450097428178
+Marca nueva presente en compilación principal: True
+
+Cierre: se conservaron los procesos del usuario en 7357 y 8086. Se cerraron únicamente el servidor 7380 y Chrome aislado 9234 creados para esta revisión. Lista selectiva final: 98 rutas. Índice Git sin archivos agregados. Verificación autenticada del coverPath real pendiente; no se declara cerrado ese criterio de aceptación con pruebas aisladas.

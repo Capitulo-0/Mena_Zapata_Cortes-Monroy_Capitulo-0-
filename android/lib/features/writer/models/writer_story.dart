@@ -13,10 +13,12 @@ class WriterStory {
     required this.createdAt,
     required this.updatedAt,
     this.coverPath,
+    this.revision = 0,
     this.followers = 0,
     this.rating = 0,
   });
 
+  final int revision;
   final String id;
   final String title;
   final String synopsis;
@@ -52,6 +54,7 @@ class WriterStory {
   }
 
   WriterStory copyWith({
+    int? revision,
     String? id,
     String? title,
     String? synopsis,
@@ -67,6 +70,7 @@ class WriterStory {
   }) {
     return WriterStory(
       id: id ?? this.id,
+      revision: revision ?? this.revision,
       title: title ?? this.title,
       synopsis: synopsis ?? this.synopsis,
       genre: genre ?? this.genre,
@@ -83,6 +87,7 @@ class WriterStory {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'revision': revision,
       'title': title,
       'synopsis': synopsis,
       'genre': genre,
@@ -113,6 +118,7 @@ class WriterStory {
 
     return WriterStory(
       id: json['id'] as String? ?? '',
+      revision: (json['revision'] as num?)?.toInt() ?? 0,
       title: json['title'] as String? ?? '',
       synopsis: json['synopsis'] as String? ?? '',
       genre: json['genre'] as String? ?? '',
