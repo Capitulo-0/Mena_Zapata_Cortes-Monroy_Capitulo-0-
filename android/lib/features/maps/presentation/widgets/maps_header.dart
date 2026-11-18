@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class MapsHeader extends StatelessWidget {
-  const MapsHeader({
-    super.key,
-    required this.currentName,
-  });
+  const MapsHeader({super.key, required this.currentName});
 
   final String currentName;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final userName = currentName.trim().toUpperCase();
 
     return Container(
       width: double.infinity,
@@ -19,6 +17,7 @@ class MapsHeader extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Titulo principal.
           Text(
             'PUNTOS LECTORES',
             style: GoogleFonts.cinzel(
@@ -28,29 +27,40 @@ class MapsHeader extends StatelessWidget {
               color: theme.colorScheme.onSurface,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            'Bibliotecas, cafeterías, ferias y eventos literarios cerca de ti,',
-            style: GoogleFonts.merriweather(
-              fontSize: 8,
-              fontStyle: FontStyle.italic,
-              fontWeight: FontWeight.w400,
-              color: theme.colorScheme.onSurfaceVariant.withValues(
-                alpha: 0.78,
-              ),
+
+          const SizedBox(height: 5),
+
+          // Descripcion y nombre del usuario en un solo bloque.
+          Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text:
+                      'Bibliotecas, cafeterías, ferias y eventos '
+                      'literarios cerca de ti, ',
+                  style: GoogleFonts.merriweather(
+                    fontSize: 9.5,
+                    fontStyle: FontStyle.italic,
+                    fontWeight: FontWeight.w400,
+                    height: 1.5,
+                    color: theme.colorScheme.onSurfaceVariant.withValues(
+                      alpha: 0.85,
+                    ),
+                  ),
+                ),
+                TextSpan(
+                  text: '$userName ✦',
+                  style: GoogleFonts.cinzel(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                    height: 1.5,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 1),
-          Text(
-            '${currentName.trim().toUpperCase()} ✦',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.cinzel(
-              fontSize: 8,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
-              color: theme.colorScheme.onSurface,
-            ),
+            softWrap: true,
           ),
         ],
       ),

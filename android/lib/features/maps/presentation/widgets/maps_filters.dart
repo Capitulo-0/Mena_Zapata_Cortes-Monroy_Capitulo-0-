@@ -34,60 +34,88 @@ class MapsFilters extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Clubes literarios del usuario.
             if (hasJoinedClubs) ...[
               _FilterChip(
                 label: 'Mis clubes',
-                icon: Icons.groups_2_outlined,
+                emoji: '👥',
                 selected: showJoinedClubs,
                 onTap: onJoinedClubsTap,
               ),
               const SizedBox(width: 6),
             ],
+
+            // Todos los lugares disponibles.
             _FilterChip(
               label: 'Todos',
-              icon: Icons.public,
+              emoji: '🌍',
               selected: !showJoinedClubs && selectedFilter == null,
               onTap: () => onFilterTap(null),
             ),
+
             const SizedBox(width: 6),
+
+            // Bibliotecas.
             _FilterChip(
               label: 'Bibliotecas',
-              icon: Icons.local_library_outlined,
+              emoji: '📚',
               selected:
                   !showJoinedClubs && selectedFilter == MapPointType.library,
               onTap: () => onFilterTap(MapPointType.library),
             ),
+
             const SizedBox(width: 6),
+
+            // Cafeterias.
             _FilterChip(
               label: 'Cafés',
-              icon: Icons.local_cafe_outlined,
-              selected:
-                  !showJoinedClubs && selectedFilter == MapPointType.cafe,
+              emoji: '☕',
+              selected: !showJoinedClubs && selectedFilter == MapPointType.cafe,
               onTap: () => onFilterTap(MapPointType.cafe),
             ),
+
             const SizedBox(width: 6),
+
+            // Librerias.
             _FilterChip(
-              label: 'Ferias',
-              icon: Icons.menu_book_outlined,
+              label: 'Librerías',
+              emoji: '📖',
               selected:
-                  !showJoinedClubs && selectedFilter == MapPointType.bookFair,
-              onTap: () => onFilterTap(MapPointType.bookFair),
+                  !showJoinedClubs && selectedFilter == MapPointType.bookstore,
+              onTap: () => onFilterTap(MapPointType.bookstore),
             ),
-            const SizedBox(width: 8),
-            _FilterChip(
-              label: 'Eventos',
-              icon: Icons.auto_stories_outlined,
-              selected: !showJoinedClubs &&
-                  selectedFilter == MapPointType.literaryEvent,
-              onTap: () => onFilterTap(MapPointType.literaryEvent),
-            ),
+
             const SizedBox(width: 6),
+
+            // Museos.
+            _FilterChip(
+              label: 'Museos',
+              emoji: '🏛️',
+              selected:
+                  !showJoinedClubs && selectedFilter == MapPointType.museum,
+              onTap: () => onFilterTap(MapPointType.museum),
+            ),
+
+            const SizedBox(width: 6),
+
+            // Centros culturales.
             _FilterChip(
               label: 'Cultura',
-              icon: Icons.account_balance_outlined,
-              selected: !showJoinedClubs &&
+              emoji: '🎭',
+              selected:
+                  !showJoinedClubs &&
                   selectedFilter == MapPointType.culturalCenter,
               onTap: () => onFilterTap(MapPointType.culturalCenter),
+            ),
+
+            const SizedBox(width: 6),
+
+            // Parques.
+            _FilterChip(
+              label: 'Parques',
+              emoji: '🌳',
+              selected: !showJoinedClubs && selectedFilter == MapPointType.park,
+              onTap: () => onFilterTap(MapPointType.park),
             ),
           ],
         ),
@@ -99,13 +127,13 @@ class MapsFilters extends StatelessWidget {
 class _FilterChip extends StatelessWidget {
   const _FilterChip({
     required this.label,
-    required this.icon,
+    required this.emoji,
     required this.selected,
     required this.onTap,
   });
 
   final String label;
-  final IconData icon;
+  final String emoji;
   final bool selected;
   final VoidCallback onTap;
 
@@ -115,13 +143,20 @@ class _FilterChip extends StatelessWidget {
       selected: selected,
       showCheckmark: false,
       onSelected: (_) => onTap(),
-      avatar: Icon(
-        icon,
-        size: 16,
-        color: selected
-            ? AppColors.deepOf(context)
-            : AppColors.goldOf(context),
+
+      // Emoji a color, independiente del tema visual.
+      avatar: SizedBox(
+        width: 18,
+        height: 20,
+        child: Center(
+          child: Text(
+            emoji,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 16, height: 1.2),
+          ),
+        ),
       ),
+
       label: Text(
         label,
         maxLines: 1,
@@ -134,18 +169,19 @@ class _FilterChip extends StatelessWidget {
               : AppColors.textPrimaryOf(context),
         ),
       ),
+
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
       labelPadding: const EdgeInsets.symmetric(horizontal: 2),
       selectedColor: AppColors.goldOf(context),
       backgroundColor: AppColors.surfaceOf(context),
+
       side: BorderSide(
         color: selected
             ? AppColors.goldOf(context)
             : AppColors.goldOf(context).withValues(alpha: 0.28),
       ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-      ),
+
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
     );
   }
 }

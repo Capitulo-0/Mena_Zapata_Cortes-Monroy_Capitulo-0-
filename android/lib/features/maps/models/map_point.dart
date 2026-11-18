@@ -13,6 +13,8 @@ class MapPoint {
     this.schedule,
     this.date,
     this.isFree = true,
+    this.showAdmission = true,
+    this.osmUrl,
   });
 
   final String id;
@@ -24,4 +26,6 @@ class MapPoint {
   final String? schedule;
   final String? date;
   final bool isFree;
+  final bool showAdmission;
+  final String? osmUrl;
 }
