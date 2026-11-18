@@ -25,6 +25,9 @@ import 'package:android/features/library/presentation/widgets/reading_status_fie
 import 'support/auth_fakes.dart';
 import 'support/library_fakes.dart';
 import 'library_regression_test.dart' show installLocalTestAssets;
+import 'epub/epub_import_widgets_test.dart' show MemoryStore;
+
+import 'package:android/features/library/presentation/widgets/library_header.dart';
 
 class _Maps extends GoogleMapsFlutterPlatform {
   @override
@@ -77,13 +80,31 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  Future<void> openOptions(WidgetTester tester) async {
+    await tester.tap(find.byKey(const ValueKey('library-options')));
+    await tester.pumpAndSettle();
+    for (final title in [
+      'Crear lista',
+      'Exportar mi biblioteca',
+      'Exportar mi lista',
+    ]) {
+      expect(find.text(title), findsOneWidget);
+    }
+  }
+
+  Future<void> refreshLibrary(WidgetTester tester) async {
+    await openOptions(tester);
+    await tester.tap(find.byKey(const ValueKey('library-refresh')));
+    await tester.pumpAndSettle();
+  }
+
   testWidgets(
     'adds SQL catalog book using existing library flow and reload restores progress',
     (tester) async {
       await tester.pumpWidget(shell());
       await tester.pumpAndSettle();
       await openLibrary(tester);
-      await tester.tap(find.text('Añadir libro manualmente'));
+      await tester.tap(find.byKey(const ValueKey('library-add')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Ver catálogo'));
       await tester.pumpAndSettle();
@@ -192,7 +213,7 @@ void main() {
       await tester.pumpWidget(shell());
       await tester.pumpAndSettle();
       await openLibrary(tester);
-      await tester.tap(find.text('Añadir libro manualmente'));
+      await tester.tap(find.byKey(const ValueKey('library-add')));
       await tester.pumpAndSettle();
       expect(find.byType(Form), findsOneWidget);
       expect(find.text('Ver catálogo'), findsOneWidget);
@@ -241,7 +262,7 @@ void main() {
   );
 
   testWidgets(
-    'bar only in Library; startup and refresh feed Profile and annual challenge',
+    'no sync strip; header menu refresh still feeds Profile and annual challenge',
     (tester) async {
       await tester.pumpWidget(shell());
       await tester.pumpAndSettle();
@@ -251,13 +272,14 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(LibrarySyncBar), findsNothing);
       await openLibrary(tester);
-      expect(find.byType(LibrarySyncBar), findsOneWidget);
-      expect(find.text('Añadir libro manualmente'), findsOneWidget);
+      expect(find.byType(LibrarySyncBar), findsNothing);
+      expect(find.text('Mi biblioteca sincronizada'), findsNothing);
+      expect(find.byTooltip('Añadir libro'), findsOneWidget);
       expect(repository.calls.where((c) => c == 'list').length, 1);
       repository.store[901] = LibraryEntry.fromJson(
         entryJson(status: 'LEIDO', page: 300),
       );
-      await tester.tap(find.byTooltip('Recargar biblioteca'));
+      await refreshLibrary(tester);
       await tester.pumpAndSettle();
       expect(repository.calls.where((c) => c == 'list').length, 2);
       final library = tester.widget<LibraryScreen>(find.byType(LibraryScreen));
@@ -292,10 +314,10 @@ void main() {
     await tester.pumpWidget(shell());
     await tester.pumpAndSettle();
     await openLibrary(tester);
-    expect(find.byTooltip('Recargar biblioteca'), findsOneWidget);
+    expect(find.byKey(const ValueKey('library-options')), findsOneWidget);
     expect(find.text('Reintentar'), findsOneWidget);
     repository.listFailure = null;
-    await tester.tap(find.byTooltip('Recargar biblioteca'));
+    await refreshLibrary(tester);
     await tester.pumpAndSettle();
     expect(
       tester.widget<LibraryScreen>(find.byType(LibraryScreen)).dataAvailable,
@@ -309,7 +331,7 @@ void main() {
     await tester.pumpWidget(shell());
     await tester.pumpAndSettle();
     await openLibrary(tester);
-    await tester.tap(find.text('Añadir libro manualmente'));
+    await tester.tap(find.byKey(const ValueKey('library-add')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Guardar y añadir'));
     await tester.pumpAndSettle();
@@ -333,7 +355,7 @@ void main() {
     expect(repository.calls.where((c) => c == 'create').length, 1);
     expect(repository.store.keys, [902]);
     // Selecting an already added catalog book must remain idempotent.
-    await tester.tap(find.text('Añadir libro manualmente'));
+    await tester.tap(find.byKey(const ValueKey('library-add')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ver catálogo'));
     await tester.pumpAndSettle();
@@ -345,74 +367,168 @@ void main() {
       2,
     ); // failed attempt plus recovery
   });
-  for (final scale in [1.0, 2.0]) {
-    testWidgets(
-      'sync controls fit 320px at text scale $scale and keep busy guards',
-      (tester) async {
-        final source = _DelayedLibrary(auth, memory);
-        final controller = LibraryController(source);
-        addTearDown(controller.dispose);
-        await controller.load();
-        var opened = 0;
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: AppTheme.light,
-            home: MediaQuery(
-              data: MediaQueryData(textScaler: TextScaler.linear(scale)),
-              child: Scaffold(
-                body: Align(
-                  alignment: Alignment.topLeft,
-                  child: SizedBox(
-                    width: 320,
-                    child: AnimatedBuilder(
-                      animation: controller,
-                      builder: (_, _) => LibrarySyncBar(
-                        controller: controller,
-                        onAdd: () => opened++,
-                      ),
+  for (final size in [
+    const Size(320, 568),
+    const Size(360, 640),
+    const Size(390, 844),
+  ]) {
+    for (final scale in [1.0]) {
+      testWidgets(
+        'compact header $size text scale $scale keeps permissions refresh and retry',
+        (tester) async {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          final source = _DelayedLibrary(auth, memory);
+          final controller = LibraryController(source);
+          addTearDown(controller.dispose);
+          await controller.load();
+          var opened = 0;
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: AppTheme.light,
+              home: MediaQuery(
+                data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+                child: Scaffold(
+                  body: AnimatedBuilder(
+                    animation: controller,
+                    builder: (_, _) => LibraryScreen(
+                      syncController: controller,
+                      onAddBook: () => opened++,
+                      epubStore: MemoryStore(),
+                      dataAvailable: controller.loaded,
+                      books: const [],
+                      statuses: const {},
+                      progresses: const {},
+                      reviews: const {},
+                      favorites: const {},
+                      currentName: 'Lector',
+                      currentUsername: '@lector',
+                      onOpenProfile: () {},
+                      onStatusChanged: (_, _) {},
+                      onProgressChanged: (_, _) {},
+                      onReviewSaved: (_, _) {},
+                      onToggleFavorite: (_) {},
                     ),
                   ),
                 ),
               ),
             ),
+          );
+          await tester.pumpAndSettle();
+          expect(find.byType(LibrarySyncBar), findsNothing);
+          expect(find.text('Mi biblioteca sincronizada'), findsNothing);
+          expect(find.text('Actualizar'), findsNothing);
+          expect(find.text('MI BIBLIOTECA'), findsOneWidget);
+          final add = find.byKey(const ValueKey('library-add'));
+          expect(tester.getRect(add).height, greaterThanOrEqualTo(48));
+          expect(
+            tester.getRect(add).center.dy,
+            tester
+                .getRect(find.byKey(const ValueKey('library-options')))
+                .center
+                .dy,
+          );
+          expect(
+            tester.getRect(find.text('MI BIBLIOTECA')).right,
+            lessThanOrEqualTo(tester.getRect(add).left),
+          );
+          await tester.tap(add);
+          expect(opened, 1);
+          final beforeRefresh = source.calls.where((c) => c == 'list').length;
+          await refreshLibrary(tester);
+          expect(
+            source.calls.where((c) => c == 'list').length,
+            beforeRefresh + 1,
+          );
+          source.pendingList = Completer<List<LibraryEntry>>();
+          final loading = controller.load();
+          await tester.pump();
+          expect(tester.widget<IconButton>(add).onPressed, isNull);
+          expect(find.byType(LinearProgressIndicator), findsOneWidget);
+          await tester.tap(find.byKey(const ValueKey('library-options')));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 400));
+          final refresh = find.byKey(const ValueKey('library-refresh'));
+          expect(tester.widget<ListTile>(refresh).enabled, isFalse);
+          expect(tester.widget<ListTile>(refresh).onTap, isNull);
+          source.pendingList!.complete([]);
+          await loading;
+          source.pendingList = null;
+          await tester.pumpAndSettle();
+          expect(tester.widget<ListTile>(refresh).enabled, isTrue);
+          Navigator.of(tester.element(refresh)).pop();
+          await tester.pumpAndSettle();
+          source.listFailure = ApiFailure.forStatus(503);
+          await controller.load();
+          await tester.pumpAndSettle();
+          expect(
+            find.byKey(const ValueKey('library-sync-error')),
+            findsOneWidget,
+          );
+          expect(find.text('Mi biblioteca sincronizada'), findsNothing);
+          expect(find.text('Reintentar'), findsOneWidget);
+          source.listFailure = null;
+          await tester.tap(find.text('Reintentar'));
+          await tester.pumpAndSettle();
+          expect(
+            find.byKey(const ValueKey('library-sync-error')),
+            findsNothing,
+          );
+          expect(tester.widget<IconButton>(add).onPressed, isNotNull);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+
+  for (final size in [
+    const Size(320, 568),
+    const Size(360, 640),
+    const Size(390, 844),
+  ]) {
+    testWidgets('title and both header actions fit $size at text scale 2', (
+      tester,
+    ) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      var addCalls = 0, menuCalls = 0;
+      Widget header(bool enabled) => MaterialApp(
+        theme: AppTheme.light,
+        home: MediaQuery(
+          data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.all(16),
+              child: LibraryHeader(
+                currentName: 'Lector',
+                onAddTap: enabled ? () => addCalls++ : null,
+                onOptionsTap: () => menuCalls++,
+              ),
+            ),
           ),
-        );
-        await tester.pumpAndSettle();
-        expect(tester.takeException(), isNull);
-        await tester.tap(find.text('Añadir libro manualmente'));
-        expect(opened, 1);
-        source.pendingList = Completer<List<LibraryEntry>>();
-        final loading = controller.load();
-        await tester.pump();
-        expect(controller.loading, true);
-        expect(
-          tester
-              .widget<IconButton>(
-                find.byWidgetPredicate(
-                  (widget) =>
-                      widget is IconButton &&
-                      widget.tooltip == 'Recargar biblioteca',
-                ),
-              )
-              .onPressed,
-          isNull,
-        );
-        final addButton = tester.widget<TextButton>(
-          find.widgetWithText(TextButton, 'Añadir libro manualmente'),
-        );
-        expect(addButton.onPressed, isNull);
-        expect(find.byType(LinearProgressIndicator), findsOneWidget);
-        expect(tester.takeException(), isNull);
-        source.pendingList!.complete([]);
-        await loading;
-        source.pendingList = null;
-        source.listFailure = ApiFailure.forStatus(503);
-        await controller.load();
-        await tester.pumpAndSettle();
-        expect(find.text('Reintentar'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      },
-    );
+        ),
+      );
+      await tester.pumpWidget(header(true));
+      await tester.pumpAndSettle();
+      expect(find.text('MI BIBLIOTECA'), findsOneWidget);
+      await tester.tap(find.byTooltip('Añadir libro'));
+      await tester.tap(find.byTooltip('Opciones de biblioteca'));
+      expect(addCalls, 1);
+      expect(menuCalls, 1);
+      await tester.pumpWidget(header(false));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<IconButton>(find.byKey(const ValueKey('library-add')))
+            .onPressed,
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+    });
   }
 
   testWidgets('guest never invokes injected private repository', (
@@ -422,7 +538,13 @@ void main() {
     await tester.pumpAndSettle();
     await openLibrary(tester);
     expect(repository.calls, isEmpty);
-    expect(find.text('Añadir libro manualmente'), findsNothing);
+    expect(find.text('Añadir libro'), findsNothing);
+    expect(
+      tester
+          .widget<IconButton>(find.byKey(const ValueKey('library-add')))
+          .onPressed,
+      isNull,
+    );
     expect(
       tester.widget<LibraryScreen>(find.byType(LibraryScreen)).statuses,
       isEmpty,

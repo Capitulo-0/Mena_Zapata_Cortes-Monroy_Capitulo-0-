@@ -1,0 +1,165 @@
+CAPÍTULO 0 — PULIDO VISUAL PUNTUAL DEL HOME
+Fecha: 16 de noviembre de 2026
+
+1. SEGURIDAD Y ALCANCE
+Antes de editar se comprobaron:
+- Rama: feature/integraciones-biblioteca-perfil.
+- HEAD: bc85613 feat: implementar lector TXT real e importacion local.
+- git status --short: trabajo local previo de Gutendex 4.3A, Home/Gemini, pruebas, informes, archivos nuevos, respaldos y configuración privada.
+
+Se preservó ese trabajo. Solo se inspeccionaron los widgets necesarios, AppColors y las pruebas pertinentes. No se repitió una auditoría general.
+
+No hubo pull, merge, reset, clean, checkout, cambio de rama, git add, commit, push o PR. Sin acceso a credenciales, cambios de configuración privada, instalaciones, backend, migraciones o datos reales.
+
+2. BOTÓN CATÁLOGO PROJECT GUTENBERG
+Se modificó exclusivamente su presentación en Home:
+- Fondo café oscuro adaptativo mediante AppColors.deepOf.
+- Texto crema AppColors.background.
+- Icono de libro dorado mediante AppColors existentes.
+- Borde dorado delicado y esquinas de 12 px.
+- Altura mínima de 48 px y padding equilibrado, sin una altura máxima que corte textos.
+- Márgenes exteriores existentes conservados.
+
+El texto sigue siendo Catálogo Project Gutenberg. Su key y el callback Navigator/MaterialPageRoute hacia GutendexCatalogScreen permanecen iguales. No se modificaron pantalla interna, controlador, datos ni solicitudes Gutendex.
+
+3. EXPLICACIÓN CONTEXTUAL DE RECOMENDACIONES
+Se sustituyeron los dos SnackBar de información:
+- Motivo de cada tarjeta.
+- Información general del pie.
+
+Ahora se muestra un único panel contextual junto al carrusel:
+- Fondo crema, borde café y texto café oscuro.
+- Hasta tres líneas con ellipsis para mantenerlo breve.
+- Botón Cerrar explicación con área de control estándar y etiqueta accesible.
+- Un motivo nuevo reemplaza al anterior, sin acumular párrafos.
+- No repite el título del libro ni genera texto.
+- El contenido es exactamente el motivo/aviso real recibido por la interfaz.
+- Aparece solo bajo petición; al cerrarlo desaparece del flujo.
+- Se cierra visualmente al cambiar de grupo del carrusel o contexto de Biblioteca/cuenta.
+- El desplazamiento exterior puede llevarlo suavemente a la vista cuando se abre.
+- Al formar parte del flujo del Home, no se superpone a navegación, clubes ni botones.
+- No contiene scroll interno.
+
+En las pruebas de tamaños/temas y escalas 1/1,5 la altura del panel no supera 112 px. No se impone esa cifra como recorte fijo: el límite de líneas permite respetar el escalado de texto.
+
+Los tooltips de los iconos de información también utilizan el acabado crema/café local, evitando el fondo negro en esa presentación. No se modificó el tema global.
+
+Accesibilidad:
+- Semantics con liveRegion para anunciar la explicación.
+- Texto completo conservado en el widget, aunque visualmente use ellipsis.
+- Controles de información y cierre con tooltip.
+- Botón de cierre enfocable y activable con teclado; comprobado con Enter.
+- No se trasladan ni eliminan las acciones de fichas o Actualizar.
+
+Solo se añadió estado visual transitorio para la explicación. No se modificaron algoritmos, controladores de datos, repositorios, ranking, deduplicación o preferencias.
+
+4. ATRIBUCIÓN GOOGLE BOOKS
+Se conserva el texto Google Books como referencia de fuente:
+- Tipografía de 11 px, peso moderado y espaciado fino.
+- Color secundario de alto contraste derivado de AppColors.
+- Semántica Fuente: Google Books.
+- Es texto de atribución, no un botón principal.
+- Permanece visible también cuando se muestra la identificación Selección con Gemini.
+- Información y Actualizar se conservan.
+
+Se siguió la instrucción de preservar la atribución existente sin cambiar enlaces. No se retiró ningún enlace ni comportamiento externo; las fichas y sus mecanismos existentes permanecen intactos.
+
+5. ARCHIVOS DE ESTA INTERVENCIÓN
+Modificados:
+- android/lib/features/home/presentation/widgets/library_recommendations_section.dart
+- android/lib/features/home/presentation/screens/home_screen.dart
+- android/lib/features/home/presentation/widgets/recommended_books_section.dart
+
+Nuevos:
+- android/lib/features/home/presentation/widgets/recommendation_explanation.dart
+- android/test/home_visual_polish_test.dart
+- INFORME_PULIDO_VISUAL_HOME_CAPITULO0.txt
+
+La modificación en recommended_books_section.dart afecta únicamente al control que presenta la explicación. Se preservan IntrinsicHeight, la fila de tarjetas, altura natural, portada, límites de líneas, tamaños de letra, Flexible de valoración y controles del carrusel del bloque anti-overflow.
+
+6. PRUEBAS EJECUTADAS
+Verificación específica existente:
+flutter test --no-pub test/home_recommendations_defense_test.dart test/home_recommendations_overflow_test.dart test/home_recommendations_test.dart test/home_gutendex_navigation_test.dart
+Resultado: 53 aprobadas, cero fallos, salida 0.
+
+Pruebas nuevas:
+flutter test --no-pub test/home_visual_polish_test.dart
+Resultado: 18 aprobadas, cero fallos, salida 0.
+
+Matriz nueva:
+- 320x568, 360x640, 390x844 y 430x932.
+- Claro y oscuro.
+- Escalas de texto 1 y 1,5.
+- Dieciséis combinaciones, más dos casos de teclado/semántica y atribución tras selección de IA.
+
+Se comprueban:
+- Texto, colores, visibilidad y callback habilitado del acceso Gutendex.
+- Panel con colores crema/café y texto real.
+- Un solo panel, cierre y sustitución del contenido.
+- Ausencia de SnackBar al pulsar la información.
+- No superposición del panel con barra inferior flotante de prueba ni ReadingClubsSection.
+- Altura controlada del panel.
+- Semantics.liveRegion y cierre mediante Enter.
+- Google Books preservado en resultados normales y enriquecidos.
+- Actualizar conservado.
+- Sin acción Gemini adicional en el cuerpo.
+- Sin apertura accidental de ficha al pulsar información.
+- Ninguna nueva carga de recomendaciones ni solicitud de IA por abrir/cerrar la explicación.
+- Ausencia real de excepciones de layout mediante tester.takeException().
+
+Las pruebas de navegación Gutendex existentes verifican entrada y regreso. La suite completa conserva también navegación a ficha, regreso, títulos únicos, Gemini de cabecera y la matriz anti-overflow de 24 casos con escalas 1 / 1,3 / 1,5.
+
+RESULTADO FINAL COMPLETO:
+flutter test --no-pub
+369 aprobadas, 1 omitida, 0 fallos. All tests passed.
+Salida 0. Duración del runner: 01:58.
+La referencia previa era 351 aprobadas y una omitida; se añadieron 18 casos nuevos.
+
+flutter analyze --no-pub
+No issues found!
+Salida 0. Duración final informada: 15,5 segundos.
+
+git diff --check
+Salida 0, sin errores de espacios.
+Los avisos LF/CRLF de Git no motivaron normalización global.
+
+La única prueba omitida es la existente firebase_web_auth_test.dart, Chrome Google uses Firebase popup without invoking native Google SDK, con skip: !kIsWeb. No se añadieron omisiones.
+
+No se modificó ningún archivo de pruebas anterior para obtener estos resultados. No se ocultaron excepciones, warnings de taps ni errores de overflow.
+
+7. PRESERVACIÓN VERIFICADA
+Se registraron huellas SHA-256 de 544 archivos previos no sensibles antes de editar. La comparación posterior detectó cambios únicamente en los tres archivos de presentación enumerados arriba. El resto conserva sus huellas.
+
+Confirmaciones:
+- Backend completo intacto.
+- Algoritmo, datos, deduplicación y APIs de recomendaciones intactos.
+- Integración Gemini, diálogo y único icono de cabecera intactos.
+- Gutendex 4.3A, catálogo interno y pruebas intactos.
+- Lector TXT, Biblioteca persistente y Perfil intactos.
+- Writer, clubes y Maps intactos.
+- Firebase, Neon, Flyway, progreso LEIDO y tema global intactos.
+- Informes anteriores, respaldos y configuración privada no modificados por esta intervención.
+- Sin dependencias nuevas ni cambios en pubspec/lockfiles/pom.
+
+El diff normal contra HEAD sigue incluyendo los cambios locales anteriores. Las huellas iniciales permiten distinguir este pulido de ese trabajo acumulado.
+
+8. REVISIÓN BREVE EN CHROME
+1) Recargar completamente la aplicación con la configuración habitual.
+2) Revisar el acceso Catálogo Project Gutenberg: café oscuro, texto crema, icono dorado y esquinas redondeadas. Abrir y regresar para comprobar la misma navegación.
+3) Probar 320x568, 360x640, 390x844 y 430x932, en claro y oscuro.
+4) Pulsar información en una recomendación: debe aparecer un panel crema junto al carrusel, sin aviso negro flotante. Verificar el texto real y su cierre.
+5) Pulsar información del pie: debe reemplazar el contenido del mismo panel, sin acumular explicaciones.
+6) Comprobar que la barra inferior, clubes y Actualizar no quedan cubiertos. El Home puede desplazarse suavemente para mostrar el panel.
+7) Usar Tab/Enter para información y Cerrar explicación. Con lector de pantalla, comprobar el anuncio de la explicación.
+8) Verificar Google Books como atribución pequeña y legible, también si existen resultados ya seleccionados por Gemini.
+9) Recorrer el carrusel y abrir una ficha; regresar y confirmar ausencia de overflow y títulos duplicados.
+10) Confirmar que el único acceso Gemini sigue en la cabecera.
+
+9. LÍMITES Y CIERRE
+Esta versión se verificó mediante tests Flutter, fuentes locales de prueba y datos sintéticos controlados. La confirmación visual de la usuaria en Chrome corresponde al bloque anterior. Falta revisar manualmente este pulido en Chrome y en dispositivos reales.
+
+La semántica y el teclado se comprobaron en tests; no se certificó un lector de pantalla físico concreto. No se realizaron llamadas reales a proveedores, cambios de claves ni validaciones de conectividad externas.
+
+El panel es contextual y breve; puede aumentar moderadamente el alto de su sección mientras está abierto. No es un overlay y no introduce párrafos permanentes bajo las tarjetas.
+
+Rama y HEAD conservados. Sin commit, push ni PR. No se comenzó otra tarea.

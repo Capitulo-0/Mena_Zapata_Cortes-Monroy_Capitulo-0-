@@ -1,0 +1,162 @@
+[
+  {
+    "slug": "rima_1885_11",
+    "title": "Rima XI",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XI, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Yo soy ardiente, yo soy morena, Verso final: No puedo amarte.—¡Oh, ven; ven tú!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XI",
+        "beginning": "XI\n\nYo soy ardiente, yo soy morena,\nYo soy el símbolo de la pasión;\nDe ansia de goces mi alma está l",
+        "ending": "ardo un tesoro.\n—¿A mí me llamas?—No; no es á tí.\n\n—Yo soy un sueño, un imposible,\nVano fantasma de niebla y luz;\nSoy incorpórea, soy intangible;\nNo puedo amarte.—¡Oh, ven; ven tú!",
+        "extraction": "poem:XI",
+        "reviewed_headings": [
+          "XI"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_12",
+    "title": "Rima XII",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Porque son, niña, tus ojos Verso final: Que un blanco armiño sujetan.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XII",
+        "beginning": "XII\n\nPorque son, niña, tus ojos\nVerdes como el mar, te quejas:\nVerdes los tienen las náyades,\nVerdes",
+        "ending": " quejas,\nPorque tus ojos\nCrees que la afean:\nPues no lo creas;\nQue, entre las rubias pestañas,\nJunto á las sienes, semejan\nBroches de esmeralda y oro,\nQue un blanco armiño sujetan.",
+        "extraction": "poem:XII",
+        "reviewed_headings": [
+          "XII"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_13",
+    "title": "Rima XIII",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XIII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Tu pupila es azul, y cuando ríes, Verso final: ¡Una perdida estrella!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XIII",
+        "beginning": "XIII\n\nTu pupila es azul, y cuando ríes,\nSu claridad suave me recuerda\nEl trémulo fulgor de la mañana",
+        "ending": "a\nSe me figuran gotas de rocío\nSobre una violeta.\n\nTu pupila es azul, y si en su fondo\nComo un punto de luz radia una idea,\nMe parece en el cielo de la tarde\n¡Una perdida estrella!",
+        "extraction": "poem:XIII",
+        "reviewed_headings": [
+          "XIII"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_14",
+    "title": "Rima XIV",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XIV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Te ví un punto, y, flotando ante mis ojos Verso final: Pero adonde me arrastran, no lo sé.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XIV",
+        "beginning": "XIV\n\nTe ví un punto, y, flotando ante mis ojos\nLa imagen de tus ojos se quedó,\nComo la mancha oscura",
+        "ending": "\nDe par en par abiertos sobre mí.\n\nY sé que hay fuegos fátuos que en la noc\nLlevan al caminante á perecer:\nYo me siento arrastrado por tus ojos,\nPero adonde me arrastran, no lo sé.",
+        "extraction": "poem:XIV",
+        "reviewed_headings": [
+          "XIV"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_15",
+    "title": "Rima XV",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Cendal flotante de leve bruma, Verso final: De una visión!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XV",
+        "beginning": "XV\n\nCendal flotante de leve bruma,\nRizada cinta de blanca espuma,\nRumor sonoro\nDe arpa de oro,\nBeso ",
+        "ending": "e algo mejor,\nEso soy yo.\n\n¡Yo, que á tus ojos en mi agonía\nLos ojos vuelvo de noche y día;\nYo, que incansable corro y demente\nTras una sombra, tras la hija ardiente\nDe una visión!",
+        "extraction": "poem:XV",
+        "reviewed_headings": [
+          "XV"
+        ]
+      }
+    ]
+  }
+]

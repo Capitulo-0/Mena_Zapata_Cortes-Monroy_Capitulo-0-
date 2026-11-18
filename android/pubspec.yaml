@@ -24,6 +24,12 @@ dependencies:
   latlong2: 0.10.1
   url_launcher: ^6.3.3
   geolocator: 13.0.4
+  flutter_epub_viewer: 2.2.1
+  archive: 4.7.1
+  crypto: 3.0.7
+  xml: 7.0.1
+  path_provider: 2.1.6
+  web: 1.1.2
 
 dev_dependencies:
   flutter_test:
@@ -36,3 +42,4 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/free_works/

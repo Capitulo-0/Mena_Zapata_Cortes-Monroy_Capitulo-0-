@@ -1,0 +1,144 @@
+[
+  {
+    "slug": "monte_animas",
+    "title": "El monte de las ánimas",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Cuentos",
+    "edition": "Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._2.djvu",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "reviewed_complete": true,
+    "internal_sections": [
+      "I",
+      "II",
+      "III",
+      "IV"
+    ],
+    "sections": [
+      {
+        "label": "Leyenda completa; secciones I, II, III, IV",
+        "page": "El monte de las ánimas",
+        "beginning": "EL MONTE DE LAS ÁNIMAS",
+        "ending": "daba vueltas alrededor de la tumba de Alonso."
+      }
+    ]
+  },
+  {
+    "slug": "maese_perez",
+    "title": "Maese Pérez el organista",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Cuentos",
+    "edition": "Obras de Gustavo A. Bécquer, tomo 1, 1885. Transcripción del escaneo de Wikisource.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._1.djvu",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "reviewed_complete": true,
+    "internal_sections": [
+      "I",
+      "II",
+      "III",
+      "IV"
+    ],
+    "sections": [
+      {
+        "label": "Leyenda completa; secciones I, II, III, IV",
+        "page": "Maese Pérez el organista",
+        "beginning": "MAESE PÉREZ EL ORGANISTA",
+        "ending": "el alma de maese Pérez."
+      }
+    ]
+  },
+  {
+    "slug": "ojos_verdes",
+    "title": "Los ojos verdes",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Cuentos",
+    "edition": "Obras de Gustavo A. Bécquer, tomo 1, 1885. Transcripción del escaneo de Wikisource.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._1.djvu",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "reviewed_complete": true,
+    "internal_sections": [
+      "I",
+      "II",
+      "III"
+    ],
+    "sections": [
+      {
+        "label": "Leyenda completa; secciones I, II, III",
+        "page": "Los ojos verdes",
+        "beginning": "LOS OJOS VERDES",
+        "ending": "hasta espirar en las orillas."
+      }
+    ]
+  },
+  {
+    "slug": "ajorca_oro",
+    "title": "La ajorca de oro",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Cuentos",
+    "edition": "Obras de Gustavo A. Bécquer, tomo 1, 1885. Transcripción del escaneo de Wikisource.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._1.djvu",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "reviewed_complete": true,
+    "internal_sections": [
+      "I",
+      "II",
+      "III"
+    ],
+    "sections": [
+      {
+        "label": "Leyenda completa; secciones I, II, III",
+        "page": "La ajorca de oro",
+        "beginning": "LA AJORCA DE ORO",
+        "ending": "El infeliz estaba loco."
+      }
+    ]
+  },
+  {
+    "slug": "miserere",
+    "title": "El miserere",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Cuentos",
+    "edition": "Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._2.djvu",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "reviewed_complete": true,
+    "internal_sections": [
+      "I",
+      "II",
+      "III"
+    ],
+    "sections": [
+      {
+        "label": "Leyenda completa; secciones I, II, III",
+        "page": "El miserere (Bécquer)",
+        "beginning": "EL MISERERE",
+        "ending": "¿Quién sabe si no serán una locura?"
+      }
+    ]
+  }
+]

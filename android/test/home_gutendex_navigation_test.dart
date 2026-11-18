@@ -75,6 +75,12 @@ void main() {
           await tester.tap(entry);
           await tester.pumpAndSettle();
           expect(find.byType(GutendexCatalogScreen), findsOneWidget);
+          expect(requests, isEmpty, reason: 'Local library must not query Gutendex on first opening');
+          expect(find.text('Obras completas para leer aquí'), findsOneWidget);
+          final online = find.text('Consultar catálogo en línea');
+          await tester.scrollUntilVisible(online, 300, scrollable: find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first);
+          await tester.tap(online);
+          await tester.pumpAndSettle();
           expect(requests.single.path, '/books/');
           expect(find.text('Obra fixture 1'), findsOneWidget);
           expect(tester.takeException(), isNull);
@@ -89,6 +95,8 @@ void main() {
           await tester.pumpAndSettle();
           expect(find.byType(GutendexDetailScreen), findsOneWidget);
           expect(requests.last.path, '/books/1/');
+          await tester.pageBack();
+          await tester.pumpAndSettle();
           await tester.pageBack();
           await tester.pumpAndSettle();
           await tester.pageBack();
