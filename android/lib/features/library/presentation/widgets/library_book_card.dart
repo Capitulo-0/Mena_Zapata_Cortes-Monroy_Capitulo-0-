@@ -1,3 +1,4 @@
+import '../../../../core/widgets/literary_cover.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -57,7 +58,7 @@ class LibraryBookCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Cover(url: book.cover, width: 62, height: 88),
+            LiteraryCover(key: ValueKey('library-cover-${book.id}:${book.googleVolumeId}'), reference: book.cover, title: book.title, author: book.author, identity: 'library:${book.id}:${book.googleVolumeId}', width: 62, height: 88),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -434,44 +435,6 @@ class _ProgressBar extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Cover extends StatelessWidget {
-  const _Cover({
-    required this.url,
-    required this.width,
-    required this.height,
-  });
-
-  final String url;
-  final double width;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: Image.network(
-          url,
-          webHtmlElementStrategy: WebHtmlElementStrategy.fallback,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) {
-            return Container(
-              color: AppColors.deepOf(context),
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.menu_book_rounded,
-                color: AppColors.gold,
-              ),
-            );
-          },
         ),
       ),
     );

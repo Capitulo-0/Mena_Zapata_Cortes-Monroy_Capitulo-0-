@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'core/theme/app_theme.dart';
+import 'features/writer/services/writer_api_repository.dart';
+import 'features/writer/services/writer_repository.dart';
 
 import 'core/network/api_client.dart';
 import 'core/session/local_account_scope.dart';
@@ -27,9 +29,11 @@ class CapituloCeroApp extends StatefulWidget {
     super.key,
     required this.session,
     this.libraryRepositoryFactory,
+    this.writerRepositoryFactory,
   });
 
   final LibraryRepository Function(String uid)? libraryRepositoryFactory;
+  final WriterRepository Function(String uid)? writerRepositoryFactory;
   final SessionController session;
 
   @override
@@ -203,6 +207,7 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
           key: ValueKey(scope),
           uid: scope,
           child: MainShellScreen(
+            writerRepository: guest ? null : widget.writerRepositoryFactory?.call(scope) ?? ApiWriterRepository(_accountApi, ownerUid: scope),
             isGuest: guest,
             profileUser: widget.session.user,
             accountRepository: guest ? null : _accountRepository,

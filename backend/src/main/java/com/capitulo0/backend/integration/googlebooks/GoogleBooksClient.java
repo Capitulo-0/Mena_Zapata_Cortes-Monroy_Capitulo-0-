@@ -38,9 +38,17 @@ public class GoogleBooksClient {
     private long budgetWindow=0;
     private int budgetUsed=0;
     // Small bounded process-local cache and request budget; no bulk catalog persistence.
-    private synchronized JsonNode get(UriComponentsBuilder uri) {
+    private static final ThreadLocal<Long> recommendationDeadline = new ThreadLocal<>();
+    public static <T> T withinRecommendationDeadline(long deadline, java.util.function.Supplier<T> action) {
+        Long previous = recommendationDeadline.get();
+        recommendationDeadline.set(deadline);
+        try { return action.get(); }
+        finally { if(previous==null) recommendationDeadline.remove(); else recommendationDeadline.set(previous); }
+    }
+    private JsonNode get(UriComponentsBuilder uri) {
         String cacheKey=uri.build().encode().toUriString();
         long now=System.currentTimeMillis();
+        synchronized(cache) {
         var cached=cache.get(cacheKey);
         if(cached!=null && cached.expires()>now) return cached.data();
         cache.entrySet().removeIf(entry -> entry.getValue().expires()<=now);
@@ -49,9 +57,14 @@ public class GoogleBooksClient {
 
         if(apiKey.isBlank()) throw new ApiException(HttpStatus.SERVICE_UNAVAILABLE,"Catálogo externo no configurado");
         budgetUsed++;
+        }
+        Long deadline=recommendationDeadline.get();
+        long remainingMs=deadline==null?timeout.toMillis():Math.min(1500, (deadline-System.nanoTime())/1_000_000);
+        if(remainingMs<=0) throw unavailable();
+        Duration requestTimeout=Duration.ofMillis(Math.min(timeout.toMillis(),remainingMs));
         uri.queryParam("key",apiKey);
         try {
-            var request=HttpRequest.newBuilder(uri.build().encode().toUri()).timeout(timeout)
+            var request=HttpRequest.newBuilder(uri.build().encode().toUri()).timeout(requestTimeout)
                 .header("Accept","application/json").GET().build();
             var response=http.send(request,HttpResponse.BodyHandlers.ofString());
             if(response.statusCode()==404) throw ApiException.notFound("Volumen");
@@ -61,8 +74,10 @@ public class GoogleBooksClient {
             if(response.body().length()>4_000_000) throw new ApiException(HttpStatus.BAD_GATEWAY,"Respuesta externa no válida");
             var result=json.readTree(response.body());
             if(!result.isObject() || result.has("error")) throw new ApiException(HttpStatus.BAD_GATEWAY,"Respuesta externa no válida");
+            synchronized(cache) {
             if(cache.size()>=128) cache.remove(cache.keySet().iterator().next());
-            cache.put(cacheKey,new Cached(result,now+60_000));
+            cache.put(cacheKey,new Cached(result,System.currentTimeMillis()+60_000));
+            }
             return result;
         } catch(ApiException ex) { throw ex; }
         catch(InterruptedException ex) { Thread.currentThread().interrupt(); throw unavailable(); }
@@ -83,7 +98,25 @@ public class GoogleBooksClient {
         return new GoogleBook(id,title,text(v,"subtitle"),strings(v.path("authors")),
             plain(text(v,"description")),text(v,"publisher"),text(v,"publishedDate"),pages>0?pages:null,
             strings(v.path("categories")),text(v,"language"),Map.copyOf(identifiers),
-            safeUrl(text(v.path("imageLinks"),"thumbnail")),safeUrl(text(v,"infoLink")));
+            cover(v.path("imageLinks"),id),safeUrl(text(v,"infoLink")));
+    }
+    private static String cover(JsonNode links,String id) {
+        for(String size:List.of("medium","thumbnail","smallThumbnail")) {
+            String cover=verifiedCoverUrl(text(links,size),id); if(cover!=null) return cover;
+        }
+        return null;
+    }
+    public static String verifiedCoverUrl(String value,String id) {
+        String safe=safeUrl(value); if(safe==null) return null;
+        try {
+            var uri=URI.create(safe);
+            if(!uri.getHost().equals("books.google.com") && !uri.getHost().endsWith(".googleusercontent.com")) return null;
+            var query=UriComponentsBuilder.fromUri(uri).build().getQueryParams();
+            var ids=query.get("id");
+            if(id!=null && ((uri.getHost().equals("books.google.com") && ids==null) ||
+                (ids!=null && (ids.size()!=1 || !java.net.URLDecoder.decode(ids.getFirst(),java.nio.charset.StandardCharsets.UTF_8).equals(id))))) return null;
+            return safe;
+        } catch(Exception invalid) { return null; }
     }
     private static List<String> strings(JsonNode node) {
         var result=new ArrayList<String>();

@@ -55,16 +55,97 @@ class RecommendationTitles {
         present('publisher');
   }
 
+  static String? isbn(Object? raw) {
+    var value = (raw?.toString() ?? '')
+        .replaceAll(RegExp(r'[\s-]'), '')
+        .toUpperCase();
+    if (RegExp(r'^[0-9]{9}[0-9X]$').hasMatch(value)) {
+      var sum = 0;
+      for (var i = 0; i < 10; i++) {
+        sum += (10 - i) * (value[i] == 'X' ? 10 : int.parse(value[i]));
+      }
+      if (sum % 11 != 0) return null;
+      value = '978${value.substring(0, 9)}';
+      var check = 0;
+      for (var i = 0; i < 12; i++) {
+        check += int.parse(value[i]) * (i.isEven ? 1 : 3);
+      }
+      return '$value${(10 - check % 10) % 10}';
+    }
+    if (!RegExp(r'^[0-9]{13}$').hasMatch(value)) return null;
+    var sum = 0;
+    for (var i = 0; i < 13; i++) {
+      sum += int.parse(value[i]) * (i.isEven ? 1 : 3);
+    }
+    return sum % 10 == 0 ? value : null;
+  }
+
+  static Set<String> identities(Map<String, dynamic> book) {
+    final keys = <String>{};
+    final metadata = book['googleBooks'];
+    final google = book['googleVolumeId'];
+    final local = book['freeWorkId'];
+    if (google is String && google.isNotEmpty) keys.add('google:$google');
+    if (local is String && local.isNotEmpty) keys.add('local:$local');
+    final identifiers = [
+      book['isbn'],
+      if (metadata is Map && metadata['identifiers'] is Map)
+        ...(metadata['identifiers'] as Map).values,
+    ];
+    for (final raw in identifiers) {
+      final valid = isbn(raw);
+      if (valid != null) keys.add('isbn:$valid');
+    }
+    final title = key(book['title']?.toString() ?? '');
+    if (title.isNotEmpty) {
+      // Keep the conservative unique-title policy as well as title/author aliases.
+      keys.add('title:$title');
+      keys.add(
+        'work:$title|${key((book['authorReal'] ?? book['author'])?.toString() ?? '')}',
+      );
+    }
+    return keys;
+  }
+
+  static String identity(Map<String, dynamic> book) =>
+      (book['freeWorkId'] is String
+      ? 'local:${book['freeWorkId']}'
+      : book['googleVolumeId'] is String
+      ? 'google:${book['googleVolumeId']}'
+      : 'work:${key(book['title']?.toString() ?? '')}|${key(book['author']?.toString() ?? '')}');
+
   static List<Map<String, dynamic>> unique(List<Map<String, dynamic>> books) {
-    final byTitle = <String, Map<String, dynamic>>{};
-    for (final book in books) {
-      final title = key(book['title'] as String? ?? '');
-      if (title.isEmpty) continue;
-      final previous = byTitle[title];
-      if (previous == null || _quality(book) > _quality(previous)) {
-        byTitle[title] = book;
+    final valid = books
+        .where((b) => key(b['title']?.toString() ?? '').isNotEmpty)
+        .toList();
+    final parent = List.generate(valid.length, (i) => i);
+    int root(int index) {
+      while (parent[index] != index) {
+        parent[index] = parent[parent[index]];
+        index = parent[index];
+      }
+      return index;
+    }
+
+    final first = <String, int>{};
+    for (var i = 0; i < valid.length; i++) {
+      for (final alias in identities(valid[i])) {
+        final previous = first[alias];
+        if (previous == null) {
+          first[alias] = i;
+        } else {
+          final a = root(i), b = root(previous);
+          if (a != b) parent[a > b ? a : b] = a < b ? a : b;
+        }
       }
     }
-    return List.unmodifiable(byTitle.values);
+    final winners = <int, Map<String, dynamic>>{};
+    for (var i = 0; i < valid.length; i++) {
+      final group = root(i), previous = winners[group];
+      if (previous == null || _quality(valid[i]) > _quality(previous)) {
+        winners[group] = valid[i];
+      }
+    }
+    return List.unmodifiable(winners.values);
   }
 }

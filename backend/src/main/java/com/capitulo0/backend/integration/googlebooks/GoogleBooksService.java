@@ -4,7 +4,12 @@ import org.springframework.stereotype.Service;
 import com.capitulo0.backend.common.exception.ApiException;
 @Service
 public class GoogleBooksService {
-    public record Page(List<GoogleBook> items, int totalItems, int startIndex, int maxResults, Integer nextStartIndex) {}
+    public record Page(List<GoogleBook> items, int totalItems, int startIndex, int maxResults, Integer nextStartIndex,
+                       int receivedItems, int rejectedLanguage, int rejectedMetadata) {
+        public Page(List<GoogleBook> items, int totalItems, int startIndex, int maxResults, Integer nextStartIndex) {
+            this(items, totalItems, startIndex, maxResults, nextStartIndex, items.size(), 0, 0);
+        }
+    }
     private final GoogleBooksClient client;
     public GoogleBooksService(GoogleBooksClient client) { this.client=client; }
     public Page search(String query,String mode,int start,int size,String language) {
@@ -19,15 +24,21 @@ public class GoogleBooksService {
             throw new ApiException(org.springframework.http.HttpStatus.BAD_GATEWAY,"Respuesta externa incompleta");
         }
         var results=new ArrayList<GoogleBook>();
+        int rejectedLanguage=0, rejectedMetadata=0;
         for(var node:data.path("items")) {
-            try { results.add(GoogleBooksClient.map(node)); } catch(ApiException ignored) { }
+            try {
+                var book=GoogleBooksClient.map(node);
+                if(!"es".equals(language) || SpanishBooks.accepts(book)) results.add(book);
+                else rejectedLanguage++;
+            } catch(ApiException ignored) { rejectedMetadata++; }
         }
         results.sort(Comparator.comparing(book -> !"es".equals(book.language())));
         int total=Math.max(0,data.path("totalItems").asInt(0));
         int received=data.path("items").isArray()?data.path("items").size():0;
-        return new Page(List.copyOf(results),total,start,size,received==size && start+received<total?start+received:null);
+        return new Page(List.copyOf(results),total,start,size,received==size && start+received<total?start+received:null,received,rejectedLanguage,rejectedMetadata);
     }
-    public GoogleBook detail(String id) { validateId(id); return GoogleBooksClient.map(client.volume(id)); }
+    public GoogleBook detail(String id) { validateId(id); var book=GoogleBooksClient.map(client.volume(id));
+        if(!id.equals(book.volumeId())) throw new ApiException(org.springframework.http.HttpStatus.BAD_GATEWAY,"Identidad externa inconsistente"); return book; }
     public static void validateId(String id) {
         if(id==null || !id.matches("[A-Za-z0-9_-]{1,128}")) throw ApiException.invalid("Identificador de volumen no válido");
     }

@@ -18,10 +18,14 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
         const menuWidth = 160.0;
         const menuHeight = 88.0;
 
-        final left = (tapPosition.dx - menuWidth)
-            .clamp(12.0, size.width - menuWidth - 12.0);
-        final top = (tapPosition.dy + 5)
-            .clamp(12.0, size.height - menuHeight - 24.0);
+        final left = (tapPosition.dx - menuWidth).clamp(
+          12.0,
+          size.width - menuWidth - 12.0,
+        );
+        final top = (tapPosition.dy + 5).clamp(
+          12.0,
+          size.height - menuHeight - 24.0,
+        );
 
         return Stack(
           children: [
@@ -77,11 +81,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                         color: AppColors.accent,
                         onTap: () {
                           Navigator.of(dialogContext).pop();
-                          _showHideCommentDialog(
-                            context,
-                            chapter,
-                            comment,
-                          );
+                          _showHideCommentDialog(context, chapter, comment);
                         },
                       ),
                     ],
@@ -92,12 +92,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
           ],
         );
       },
-      transitionBuilder: (
-        dialogContext,
-        animation,
-        secondaryAnimation,
-        child,
-      ) {
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
         return FadeTransition(
           opacity: animation,
           child: ScaleTransition(
@@ -121,10 +116,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 13,
-          vertical: 11,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
         child: Row(
           children: [
             Icon(icon, size: 14, color: color),
@@ -233,7 +225,9 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
                                     border: Border.all(
-                                      color: AppColors.gold.withValues(alpha: 0.36),
+                                      color: AppColors.gold.withValues(
+                                        alpha: 0.36,
+                                      ),
                                     ),
                                   ),
                                   child: Icon(
@@ -300,13 +294,19 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                                   ),
                                   decoration: BoxDecoration(
                                     color: selected
-                                        ? AppColors.accent.withValues(alpha: 0.07)
+                                        ? AppColors.accent.withValues(
+                                            alpha: 0.07,
+                                          )
                                         : _backgroundColor(dialogContext),
                                     borderRadius: BorderRadius.circular(9),
                                     border: Border.all(
                                       color: selected
-                                          ? AppColors.accent.withValues(alpha: 0.40)
-                                          : AppColors.gold.withValues(alpha: 0.20),
+                                          ? AppColors.accent.withValues(
+                                              alpha: 0.40,
+                                            )
+                                          : AppColors.gold.withValues(
+                                              alpha: 0.20,
+                                            ),
                                     ),
                                   ),
                                   child: Row(
@@ -319,7 +319,9 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                                             fontWeight: selected
                                                 ? FontWeight.w700
                                                 : FontWeight.w500,
-                                            color: _textPrimaryColor(dialogContext),
+                                            color: _textPrimaryColor(
+                                              dialogContext,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -386,16 +388,17 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                                         this.context,
                                         title: 'Comentario reportado',
                                         eyebrow: 'MODERACIÓN',
-                                        message:
-                                            'Gracias. El reporte fue registrado para revisión de moderación.',
+                                        message: 'Gracias. El reporte fue registrado para revisión de moderación.',
                                       );
                                     },
                               style: FilledButton.styleFrom(
                                 backgroundColor: AppColors.accent,
-                                disabledBackgroundColor:
-                                    AppColors.accent.withValues(alpha: 0.32),
+                                disabledBackgroundColor: AppColors.accent
+                                    .withValues(alpha: 0.32),
                                 foregroundColor: AppColors.background,
-                                padding: const EdgeInsets.symmetric(vertical: 11),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 11,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(9),
                                 ),
@@ -419,23 +422,12 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
           ),
         );
       },
-      transitionBuilder: (
-        dialogContext,
-        animation,
-        secondaryAnimation,
-        child,
-      ) {
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
         return FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOut,
-          ),
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: ScaleTransition(
             scale: Tween<double>(begin: 0.96, end: 1).animate(
-              CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              ),
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
             ),
             child: child,
           ),
@@ -514,8 +506,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                           ),
                         ),
                         InkWell(
-                          onTap: () =>
-                              Navigator.of(dialogContext).pop(false),
+                          onTap: () => Navigator.of(dialogContext).pop(false),
                           borderRadius: BorderRadius.circular(999),
                           child: Container(
                             width: 28,
@@ -592,8 +583,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                               side: BorderSide(
                                 color: AppColors.gold.withValues(alpha: 0.34),
                               ),
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 10),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
                             ),
                             child: Text(
                               'Cancelar',
@@ -612,8 +602,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                             style: FilledButton.styleFrom(
                               backgroundColor: AppColors.accent,
                               foregroundColor: AppColors.background,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 10),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
                             ),
                             child: Text(
                               'Ocultar comentario',
@@ -633,23 +622,12 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
           ),
         );
       },
-      transitionBuilder: (
-        dialogContext,
-        animation,
-        secondaryAnimation,
-        child,
-      ) {
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
         return FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOut,
-          ),
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: ScaleTransition(
             scale: Tween<double>(begin: 0.96, end: 1).animate(
-              CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              ),
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
             ),
             child: child,
           ),
@@ -788,27 +766,16 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
           ),
         );
       },
-      transitionBuilder: (
-        dialogContext,
-        animation,
-        secondaryAnimation,
-        child,
-      ) {
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
         final curved = CurvedAnimation(
           parent: animation,
           curve: Curves.easeOutBack,
         );
 
         return FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOut,
-          ),
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: ScaleTransition(
-            scale: Tween<double>(
-              begin: 0.88,
-              end: 1,
-            ).animate(curved),
+            scale: Tween<double>(begin: 0.88, end: 1).animate(curved),
             child: child,
           ),
         );
@@ -823,17 +790,11 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
       decoration: BoxDecoration(
         color: _surfaceColor(context),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.25),
-        ),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.25)),
       ),
       child: Column(
         children: [
-          const Icon(
-            Icons.menu_book_outlined,
-            size: 31,
-            color: AppColors.gold,
-          ),
+          const Icon(Icons.menu_book_outlined, size: 31, color: AppColors.gold),
           const SizedBox(height: 9),
           Text(
             'Aún no hay capítulos publicados',
@@ -927,24 +888,13 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
           ],
         );
       },
-      transitionBuilder: (
-        dialogContext,
-        animation,
-        secondaryAnimation,
-        child,
-      ) {
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
         return FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOut,
-          ),
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: ScaleTransition(
             alignment: Alignment.topRight,
             scale: Tween<double>(begin: 0.96, end: 1).animate(
-              CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              ),
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
             ),
             child: child,
           ),
@@ -973,8 +923,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
           builder: (context, setDialogState) {
             return Dialog(
               backgroundColor: Colors.transparent,
-              insetPadding:
-                  const EdgeInsets.symmetric(horizontal: 24),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 24),
               child: Container(
                 width: double.infinity,
                 constraints: const BoxConstraints(maxWidth: 390),
@@ -997,23 +946,19 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                   absorbing: isSending,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
                             width: 42,
                             height: 42,
                             decoration: BoxDecoration(
-                              color: AppColors.accent
-                                  .withValues(alpha: 0.08),
+                              color: AppColors.accent.withValues(alpha: 0.08),
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: AppColors.accent
-                                    .withValues(alpha: 0.20),
+                                color: AppColors.accent.withValues(alpha: 0.20),
                               ),
                             ),
                             child: const Icon(
@@ -1025,15 +970,13 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   'MODERACIÓN',
                                   style: GoogleFonts.cinzel(
                                     fontSize: 7.2,
-                                    fontWeight:
-                                        FontWeight.w700,
+                                    fontWeight: FontWeight.w700,
                                     letterSpacing: 0.65,
                                     color: AppColors.accent,
                                   ),
@@ -1041,14 +984,10 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                                 const SizedBox(height: 4),
                                 Text(
                                   'Reportar publicación',
-                                  style:
-                                      GoogleFonts.merriweather(
+                                  style: GoogleFonts.merriweather(
                                     fontSize: 14,
-                                    fontWeight:
-                                        FontWeight.w700,
-                                    color: _headingColor(
-                                      dialogContext,
-                                    ),
+                                    fontWeight: FontWeight.w700,
+                                    color: _headingColor(dialogContext),
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -1057,40 +996,28 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                                   style: GoogleFonts.inter(
                                     fontSize: 7.5,
                                     height: 1.4,
-                                    color:
-                                        _textSecondaryColor(
-                                      dialogContext,
-                                    ),
+                                    color: _textSecondaryColor(dialogContext),
                                   ),
                                 ),
                               ],
                             ),
                           ),
                           InkWell(
-                            onTap: () =>
-                                Navigator.of(dialogContext)
-                                    .pop(),
-                            customBorder:
-                                const CircleBorder(),
+                            onTap: () => Navigator.of(dialogContext).pop(),
+                            customBorder: const CircleBorder(),
                             child: Container(
                               width: 28,
                               height: 28,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: AppColors.gold
-                                      .withValues(
-                                    alpha: 0.34,
-                                  ),
+                                  color: AppColors.gold.withValues(alpha: 0.34),
                                 ),
                               ),
                               child: Icon(
                                 Icons.close_rounded,
                                 size: 15,
-                                color:
-                                    _textSecondaryColor(
-                                  dialogContext,
-                                ),
+                                color: _textSecondaryColor(dialogContext),
                               ),
                             ),
                           ),
@@ -1098,86 +1025,56 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                       ),
                       const SizedBox(height: 14),
                       ...reasons.map((reason) {
-                        final selected =
-                            selectedReason == reason;
+                        final selected = selectedReason == reason;
 
                         return Padding(
-                          padding:
-                              const EdgeInsets.only(
-                            bottom: 7,
-                          ),
+                          padding: const EdgeInsets.only(bottom: 7),
                           child: InkWell(
                             onTap: () {
                               setDialogState(() {
                                 selectedReason = reason;
                               });
                             },
-                            borderRadius:
-                                BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(10),
                             child: AnimatedContainer(
-                              duration: const Duration(
-                                milliseconds: 170,
-                              ),
+                              duration: const Duration(milliseconds: 170),
                               width: double.infinity,
-                              padding:
-                                  const EdgeInsets.symmetric(
+                              padding: const EdgeInsets.symmetric(
                                 horizontal: 11,
                                 vertical: 10,
                               ),
                               decoration: BoxDecoration(
                                 color: selected
-                                    ? AppColors.accent
-                                        .withValues(
-                                          alpha: 0.08,
-                                        )
-                                    : _backgroundColor(
-                                        dialogContext,
-                                      ),
-                                borderRadius:
-                                    BorderRadius.circular(10),
+                                    ? AppColors.accent.withValues(alpha: 0.08)
+                                    : _backgroundColor(dialogContext),
+                                borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
                                   color: selected
-                                      ? AppColors.accent
-                                          .withValues(
-                                            alpha: 0.42,
-                                          )
-                                      : AppColors.gold
-                                          .withValues(
-                                            alpha: 0.22,
-                                          ),
+                                      ? AppColors.accent.withValues(alpha: 0.42)
+                                      : AppColors.gold.withValues(alpha: 0.22),
                                 ),
                               ),
                               child: Row(
                                 children: [
                                   Icon(
                                     selected
-                                        ? Icons
-                                            .radio_button_checked_rounded
-                                        : Icons
-                                            .radio_button_unchecked_rounded,
+                                        ? Icons.radio_button_checked_rounded
+                                        : Icons.radio_button_unchecked_rounded,
                                     size: 15,
                                     color: selected
                                         ? AppColors.accent
-                                        : _textSecondaryColor(
-                                            dialogContext,
-                                          ),
+                                        : _textSecondaryColor(dialogContext),
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       reason,
-                                      style:
-                                          GoogleFonts.inter(
+                                      style: GoogleFonts.inter(
                                         fontSize: 8,
                                         fontWeight: selected
-                                            ? FontWeight
-                                                .w700
-                                            : FontWeight
-                                                .w500,
-                                        color:
-                                            _textPrimaryColor(
-                                          dialogContext,
-                                        ),
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        color: _textPrimaryColor(dialogContext),
                                       ),
                                     ),
                                   ),
@@ -1194,9 +1091,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                           fontSize: 6.7,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.45,
-                          color: _textSecondaryColor(
-                            dialogContext,
-                          ),
+                          color: _textSecondaryColor(dialogContext),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -1207,45 +1102,30 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                         maxLength: 300,
                         style: GoogleFonts.inter(
                           fontSize: 7.5,
-                          color: _textPrimaryColor(
-                            dialogContext,
-                          ),
+                          color: _textPrimaryColor(dialogContext),
                         ),
                         decoration: InputDecoration(
-                          hintText:
-                              'Cuéntanos brevemente qué ocurrió...',
+                          hintText: 'Cuéntanos brevemente qué ocurrió...',
                           counterText: '',
                           filled: true,
-                          fillColor:
-                              _backgroundColor(dialogContext),
+                          fillColor: _backgroundColor(dialogContext),
                           hintStyle: GoogleFonts.inter(
                             fontSize: 7.2,
-                            color: _textSecondaryColor(
-                              dialogContext,
-                            ),
+                            color: _textSecondaryColor(dialogContext),
                           ),
-                          contentPadding:
-                              const EdgeInsets.symmetric(
+                          contentPadding: const EdgeInsets.symmetric(
                             horizontal: 11,
                             vertical: 10,
                           ),
-                          enabledBorder:
-                              OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(9),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(9),
                             borderSide: BorderSide(
-                              color: AppColors.gold
-                                  .withValues(alpha: 0.28),
+                              color: AppColors.gold.withValues(alpha: 0.28),
                             ),
                           ),
-                          focusedBorder:
-                              OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(9),
-                            borderSide:
-                                const BorderSide(
-                              color: AppColors.gold,
-                            ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(9),
+                            borderSide: const BorderSide(color: AppColors.gold),
                           ),
                         ),
                       ),
@@ -1262,67 +1142,48 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                                   });
 
                                   await Future<void>.delayed(
-                                    const Duration(
-                                      milliseconds: 1000,
-                                    ),
+                                    const Duration(milliseconds: 1000),
                                   );
 
                                   if (!dialogContext.mounted) {
                                     return;
                                   }
 
-                                  Navigator.of(dialogContext)
-                                      .pop();
+                                  Navigator.of(dialogContext).pop();
 
                                   if (!mounted) return;
 
-                                  ScaffoldMessenger.of(
-                                    this.context,
-                                  ).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Reporte enviado para revisión.',
-                                      ),
-                                    ),
-                                  );
+                                  ScaffoldMessenger.of(this.context)
+                                      .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Reporte enviado para revisión.',
+                                          ),
+                                        ),
+                                      );
                                 },
                           style: FilledButton.styleFrom(
-                            backgroundColor:
-                                AppColors.accent,
-                            disabledBackgroundColor:
-                                isSending
-                                    ? Colors.grey.shade600
-                                    : AppColors.accent
-                                        .withValues(
-                                          alpha: 0.30,
-                                        ),
-                            foregroundColor:
-                                AppColors.background,
-                            disabledForegroundColor:
-                                isSending
-                                    ? Colors.white
-                                    : AppColors.background
-                                        .withValues(
-                                          alpha: 0.72,
-                                        ),
+                            backgroundColor: AppColors.accent,
+                            disabledBackgroundColor: isSending
+                                ? Colors.grey.shade600
+                                : AppColors.accent.withValues(alpha: 0.30),
+                            foregroundColor: AppColors.background,
+                            disabledForegroundColor: isSending
+                                ? Colors.white
+                                : AppColors.background.withValues(alpha: 0.72),
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                           child: isSending
                               ? Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment
-                                          .center,
-                                  mainAxisSize:
-                                      MainAxisSize.min,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     const SizedBox(
                                       width: 14,
                                       height: 14,
-                                      child:
-                                          CircularProgressIndicator(
+                                      child: CircularProgressIndicator(
                                         strokeWidth: 1.8,
                                         color: Colors.white,
                                       ),
@@ -1330,11 +1191,9 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                                     const SizedBox(width: 7),
                                     Text(
                                       'Enviando reporte...',
-                                      style:
-                                          GoogleFonts.inter(
+                                      style: GoogleFonts.inter(
                                         fontSize: 7.8,
-                                        fontWeight:
-                                            FontWeight.w800,
+                                        fontWeight: FontWeight.w800,
                                       ),
                                     ),
                                   ],
@@ -1343,8 +1202,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                                   'Enviar reporte',
                                   style: GoogleFonts.inter(
                                     fontSize: 8,
-                                    fontWeight:
-                                        FontWeight.w800,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
                         ),
@@ -1467,10 +1325,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                     Row(
                       children: [
                         Expanded(
-                          child: _shareOption(
-                            dialogContext,
-                            label: 'X · X',
-                          ),
+                          child: _shareOption(dialogContext, label: 'X · X'),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
@@ -1488,23 +1343,12 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
           ),
         );
       },
-      transitionBuilder: (
-        dialogContext,
-        animation,
-        secondaryAnimation,
-        child,
-      ) {
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
         return FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOut,
-          ),
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: ScaleTransition(
             scale: Tween<double>(begin: 0.96, end: 1).animate(
-              CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              ),
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
             ),
             child: child,
           ),
@@ -1513,10 +1357,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
     );
   }
 
-  Widget _shareOption(
-    BuildContext context, {
-    required String label,
-  }) {
+  Widget _shareOption(BuildContext context, {required String label}) {
     return InkWell(
       onTap: null,
       borderRadius: BorderRadius.circular(10),
@@ -1526,9 +1367,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
         decoration: BoxDecoration(
           color: _backgroundColor(context),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: AppColors.gold.withValues(alpha: 0.34),
-          ),
+          border: Border.all(color: AppColors.gold.withValues(alpha: 0.34)),
         ),
         child: Text(
           label,
@@ -1541,20 +1380,5 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
         ),
       ),
     );
-  }
-
-
-  List<Color> _coverColors(String? cover) {
-    switch (cover) {
-      case 'preset:gold':
-        return const [Color(0xFF9A6D2F), Color(0xFF3B2414)];
-      case 'preset:forest':
-        return const [Color(0xFF405A49), Color(0xFF18241E)];
-      case 'preset:night':
-        return const [Color(0xFF34354A), Color(0xFF171821)];
-      case 'preset:classic':
-      default:
-        return const [Color(0xFF7D2430), Color(0xFF35130F)];
-    }
   }
 }

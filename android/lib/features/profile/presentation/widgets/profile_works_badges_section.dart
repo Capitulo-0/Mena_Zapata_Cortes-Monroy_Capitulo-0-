@@ -176,68 +176,10 @@ extension _ProfileWorksBadgesSection on _ProfileScreenState {
     );
   }
 
-  Widget _buildWriterStoryCover(WriterStory story) {
-    final cover = story.coverPath?.trim() ?? '';
-    final hasNetworkCover =
-        cover.startsWith('http://') || cover.startsWith('https://');
+  Widget _buildWriterStoryCover(WriterStory story) => WriterCover(storyId: story.id,
+    coverPath: story.coverPath, title: story.title, width: 50, height: 70);
 
-    return Container(
-      width: 50,
-      height: 70,
-      decoration: BoxDecoration(
-        color: _deepSurfaceColor,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: AppColors.gold.withValues(alpha: 0.35)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: hasNetworkCover
-          ? Image.network(
-              cover,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _writerStoryCoverPlaceholder(story),
-            )
-          : _writerStoryCoverPlaceholder(story),
-    );
-  }
 
-  Widget _writerStoryCoverPlaceholder(WriterStory story) {
-    return Container(
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            _deepSurfaceColor,
-            _deepSurfaceColor.withValues(alpha: 0.78),
-          ],
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.auto_stories_rounded,
-            color: AppColors.gold,
-            size: 18,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            story.title.trim().isEmpty ? 'TU OBRA' : story.title.toUpperCase(),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.cinzel(
-              color: AppColors.background,
-              fontSize: 4.8,
-              fontWeight: FontWeight.w700,
-              height: 1.25,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _publishedWorkBadge() {
     return Container(

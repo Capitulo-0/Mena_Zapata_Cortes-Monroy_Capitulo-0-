@@ -7,14 +7,10 @@ extension _WriterStoryCardSection on _WriterScreenState {
       decoration: BoxDecoration(
         color: _surfaceColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.34),
-        ),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.34)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(
-              alpha: _isDarkMode ? 0.14 : 0.055,
-            ),
+            color: Colors.black.withValues(alpha: _isDarkMode ? 0.14 : 0.055),
             blurRadius: 13,
             offset: const Offset(0, 5),
           ),
@@ -38,6 +34,7 @@ extension _WriterStoryCardSection on _WriterScreenState {
                 child: SizedBox(
                   height: 32,
                   child: FilledButton(
+                    key: ValueKey('writer-manage-${story.id}'),
                     onPressed: () => _openManageStory(story),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.accent,
@@ -66,79 +63,14 @@ extension _WriterStoryCardSection on _WriterScreenState {
     );
   }
 
-  Widget _buildCover(WriterStory story) {
-    final cover = story.coverPath?.trim() ?? '';
-    final hasNetworkCover =
-        cover.startsWith('http://') || cover.startsWith('https://');
-
-    return Container(
-      width: 78,
-      height: 108,
-      decoration: BoxDecoration(
-        color: _deepColor,
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.38),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.10),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: hasNetworkCover
-          ? Image.network(
-              cover,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _buildCoverPlaceholder(story),
-            )
-          : _buildCoverPlaceholder(story),
-    );
-  }
-
-  Widget _buildCoverPlaceholder(WriterStory story) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            _deepColor,
-            _deepColor.withValues(alpha: 0.76),
-          ],
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.auto_stories_rounded,
-            color: AppColors.gold,
-            size: 24,
-          ),
-          const SizedBox(height: 7),
-          Text(
-            story.title.trim().isEmpty
-                ? 'TU HISTORIA'
-                : story.title.toUpperCase(),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: GoogleFonts.cinzel(
-              color: AppColors.background,
-              fontSize: 6.5,
-              height: 1.3,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildCover(WriterStory story) => WriterCover(
+    key: ValueKey('writer-cover-${story.id}'),
+    storyId: story.id,
+    coverPath: story.coverPath,
+    title: story.title,
+    width: 78,
+    height: 108,
+  );
 
   Widget _buildStoryInformation(WriterStory story) {
     return SizedBox(
@@ -173,10 +105,7 @@ extension _WriterStoryCardSection on _WriterScreenState {
             story.genre.trim().isEmpty ? 'Sin género' : story.genre,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              color: _textSecondaryColor,
-              fontSize: 7.5,
-            ),
+            style: GoogleFonts.inter(color: _textSecondaryColor, fontSize: 7.5),
           ),
           const SizedBox(height: 7),
           Row(
@@ -184,43 +113,9 @@ extension _WriterStoryCardSection on _WriterScreenState {
               _microMeta('${story.chapterCount} capítulos'),
               _dotSeparator(),
               _microMeta('${story.totalWordCount} palabras'),
-              _dotSeparator(),
-              _microMeta('${story.followers} seguidores'),
             ],
           ),
           const Spacer(),
-          if (story.isPublished)
-            Row(
-              children: [
-                const Icon(
-                  Icons.star_rounded,
-                  color: AppColors.gold,
-                  size: 12,
-                ),
-                const SizedBox(width: 3),
-                Text(
-                  story.rating > 0
-                      ? story.rating.toStringAsFixed(1)
-                      : 'Sin valoración',
-                  style: GoogleFonts.inter(
-                    color: story.rating > 0
-                        ? AppColors.gold
-                        : _textSecondaryColor,
-                    fontSize: 7.5,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            )
-          else
-            Text(
-              '★ Sin valoración',
-              style: GoogleFonts.inter(
-                color: AppColors.gold,
-                fontSize: 7.3,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
           const SizedBox(height: 5),
           Row(
             children: [
@@ -255,10 +150,7 @@ extension _WriterStoryCardSection on _WriterScreenState {
         text,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: GoogleFonts.inter(
-          color: _textSecondaryColor,
-          fontSize: 6.6,
-        ),
+        style: GoogleFonts.inter(color: _textSecondaryColor, fontSize: 6.6),
       ),
     );
   }
@@ -325,35 +217,23 @@ extension _WriterStoryCardSection on _WriterScreenState {
       height: 32,
       child: InkWell(
         onTapDown: (details) {
-          _showStoryMenu(
-            story,
-            details.globalPosition,
-          );
+          _showStoryMenu(story, details.globalPosition);
         },
         borderRadius: BorderRadius.circular(9),
         child: Container(
           decoration: BoxDecoration(
             color: _surfaceColor,
             borderRadius: BorderRadius.circular(9),
-            border: Border.all(
-              color: AppColors.gold.withValues(alpha: 0.55),
-            ),
+            border: Border.all(color: AppColors.gold.withValues(alpha: 0.55)),
           ),
           alignment: Alignment.center,
-          child: Icon(
-            Icons.more_horiz_rounded,
-            color: _headingColor,
-            size: 20,
-          ),
+          child: Icon(Icons.more_horiz_rounded, color: _headingColor, size: 20),
         ),
       ),
     );
   }
 
-  Future<void> _showStoryMenu(
-    WriterStory story,
-    Offset tapPosition,
-  ) async {
+  Future<void> _showStoryMenu(WriterStory story, Offset tapPosition) async {
     if (_blockGuestAction()) return;
 
     await showGeneralDialog<void>(
@@ -367,10 +247,14 @@ extension _WriterStoryCardSection on _WriterScreenState {
         const menuWidth = 165.0;
         final menuHeight = story.isPublished ? 94.0 : 52.0;
 
-        final left = (tapPosition.dx - menuWidth)
-            .clamp(12.0, size.width - menuWidth - 12.0);
-        final top = (tapPosition.dy + 6)
-            .clamp(12.0, size.height - menuHeight - 24.0);
+        final left = (tapPosition.dx - menuWidth).clamp(
+          12.0,
+          size.width - menuWidth - 12.0,
+        );
+        final top = (tapPosition.dy + 6).clamp(
+          12.0,
+          size.height - menuHeight - 24.0,
+        );
 
         return Stack(
           children: [
@@ -435,17 +319,9 @@ extension _WriterStoryCardSection on _WriterScreenState {
           ],
         );
       },
-      transitionBuilder: (
-        dialogContext,
-        animation,
-        secondaryAnimation,
-        child,
-      ) {
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
         return FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOut,
-          ),
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: child,
         );
       },
@@ -461,17 +337,10 @@ extension _WriterStoryCardSection on _WriterScreenState {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 13,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
         child: Row(
           children: [
-            Icon(
-              icon,
-              size: 15,
-              color: AppColors.gold,
-            ),
+            Icon(icon, size: 15, color: AppColors.gold),
             const SizedBox(width: 9),
             Text(
               label,
@@ -486,5 +355,4 @@ extension _WriterStoryCardSection on _WriterScreenState {
       ),
     );
   }
-
 }

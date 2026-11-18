@@ -1,3 +1,4 @@
+import '../../../core/widgets/book_cover_reference.dart';
 import '../../../core/network/api_client.dart';
 
 class CatalogPage {
@@ -37,7 +38,11 @@ class ApiCatalogRepository implements CatalogRepository {
           0,
       'genre': categories.join(', '),
       'isbn': ids['ISBN_13'] ?? ids['ISBN_10'] ?? '',
-      'cover': book['coverUrl'] ?? '',
+      'cover': BookCoverReference.resolve(
+        book['coverUrl'] as String?,
+        googleVolumeId: book['volumeId'] as String?,
+      ),
+      'language': book['language'],
       'synopsis': book['description'] ?? '',
       'publisher': book['publisher'] ?? '',
       'totalPages': book['pageCount'] ?? 0,
@@ -52,6 +57,14 @@ class ApiCatalogRepository implements CatalogRepository {
     String query, {
     String mode = 'all',
     int start = 0,
+  }) => _search(query, mode: mode, start: start);
+  Future<CatalogPage> searchSpanish(String query) =>
+      _search(query, language: 'es');
+  Future<CatalogPage> _search(
+    String query, {
+    String mode = 'all',
+    int start = 0,
+    String language = '',
   }) async {
     final result = await api.requestJson(
       'GET',
@@ -59,6 +72,7 @@ class ApiCatalogRepository implements CatalogRepository {
       publicRead: true,
       queryParameters: {
         'q': query,
+        if (language.isNotEmpty) 'language': language,
         'mode': mode,
         'startIndex': '$start',
         'maxResults': '20',

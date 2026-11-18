@@ -1,3 +1,4 @@
+import '../../../core/widgets/book_cover_reference.dart';
 import 'book_status.dart';
 import 'library_book.dart';
 import 'reading_record.dart';
@@ -27,18 +28,26 @@ class LibraryEntry {
     if (id is! int || id <= 0 || json['title'] is! String) {
       throw const FormatException('Invalid book response');
     }
+    final rawMetadata = json['googleBooks'];
+    final metadata =
+        rawMetadata is Map && rawMetadata['volumeId'] == json['googleVolumeId']
+        ? Map<String, dynamic>.from(rawMetadata)
+        : null;
     return LibraryBook(
       googleVolumeId: json['googleVolumeId'] as String?,
-      googleBooks: json['googleBooks'] == null ? null : Map<String,dynamic>.from(json['googleBooks'] as Map),
+      googleBooks: metadata,
       id: id,
       title: json['title'] as String,
-      author: (json['googleBooks'] as Map?)?['authors'] is List
-        ? ((json['googleBooks'] as Map)['authors'] as List).join(', ')
-        : json['author'] as String? ?? '',
+      author: metadata?['authors'] is List
+          ? (metadata!['authors'] as List).join(', ')
+          : json['author'] as String? ?? '',
       year: json['publicationYear'] as int? ?? 0,
-      genre: ((json['googleBooks'] as Map?)?['categories'] as List? ?? []).join(', '),
+      genre: (metadata?['categories'] as List? ?? []).join(', '),
       isbn: json['isbn'] as String? ?? '',
-      cover: json['coverUrl'] as String? ?? '',
+      cover: BookCoverReference.resolve(
+        json['coverUrl'] as String?,
+        googleVolumeId: json['googleVolumeId'] as String?,
+      ),
       synopsis: json['synopsis'] as String? ?? '',
       publisher: json['publisher'] as String? ?? '',
       totalPages: json['totalPages'] as int? ?? 0,

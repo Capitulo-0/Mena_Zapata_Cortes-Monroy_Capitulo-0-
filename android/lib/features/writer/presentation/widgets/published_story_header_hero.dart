@@ -24,50 +24,45 @@ extension _PublishedStoryHeaderHero on _PublishedStoryScreenState {
             ),
           ),
           const Spacer(),
-          InkWell(
-            onTap: () => _showReportMenu(context),
-            borderRadius: BorderRadius.circular(9),
-            child: Container(
-              width: 31,
-              height: 31,
-              decoration: BoxDecoration(
-                color: _surfaceColor(context),
-                borderRadius: BorderRadius.circular(9),
-                border: Border.all(
-                  color: AppColors.gold.withValues(alpha: 0.42),
+          if (widget.socialActionsEnabled)
+            InkWell(
+              onTap: () => _showReportMenu(context),
+              borderRadius: BorderRadius.circular(9),
+              child: Container(
+                width: 31,
+                height: 31,
+                decoration: BoxDecoration(
+                  color: _surfaceColor(context),
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(
+                    color: AppColors.gold.withValues(alpha: 0.42),
+                  ),
+                ),
+                child: Icon(
+                  Icons.more_vert_rounded,
+                  size: 17,
+                  color: _headingColor(context),
                 ),
               ),
-              child: Icon(
-                Icons.more_vert_rounded,
-                size: 17,
-                color: _headingColor(context),
-              ),
             ),
-          ),
         ],
       ),
     );
   }
 
   Widget _buildHero(BuildContext context) {
-    final cover = widget.story.coverPath?.trim() ?? '';
-    final hasNetworkCover =
-        cover.startsWith('http://') || cover.startsWith('https://');
-
     return SizedBox(
       width: double.infinity,
       height: 225,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (hasNetworkCover)
-            Image.network(
-              cover,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _buildPresetHeroBackground(),
-            )
-          else
-            _buildPresetHeroBackground(),
+          WriterCover(
+            storyId: widget.story.id,
+            coverPath: widget.story.coverPath,
+            title: widget.story.title,
+            radius: 0,
+          ),
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -84,7 +79,9 @@ extension _PublishedStoryHeaderHero on _PublishedStoryScreenState {
           Positioned(
             top: 12,
             left: 16,
-            child: _buildFavoriteChip(),
+            child: widget.onToggleFavorite == null
+                ? const SizedBox.shrink()
+                : _buildFavoriteChip(),
           ),
           Positioned(
             top: 13,
@@ -166,49 +163,31 @@ extension _PublishedStoryHeaderHero on _PublishedStoryScreenState {
                   ),
                 ),
                 const SizedBox(width: 12),
-                InkWell(
-                  onTap: () => _showShareDialog(context),
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.25),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.gold.withValues(alpha: 0.75),
+                if (widget.socialActionsEnabled)
+                  InkWell(
+                    onTap: () => _showShareDialog(context),
+                    borderRadius: BorderRadius.circular(999),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.25),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppColors.gold.withValues(alpha: 0.75),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.share_outlined,
+                        color: Colors.white,
+                        size: 17,
                       ),
                     ),
-                    child: const Icon(
-                      Icons.share_outlined,
-                      color: Colors.white,
-                      size: 17,
-                    ),
                   ),
-                ),
               ],
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPresetHeroBackground() {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: _coverColors(widget.story.coverPath),
-        ),
-      ),
-      child: Center(
-        child: Icon(
-          Icons.auto_stories_rounded,
-          size: 74,
-          color: Colors.white.withValues(alpha: 0.10),
-        ),
       ),
     );
   }

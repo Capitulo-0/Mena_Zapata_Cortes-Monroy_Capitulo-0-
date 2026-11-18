@@ -16,6 +16,9 @@ import static com.capitulo0.backend.recommendation.Recommendations.*;
 
 @Service
 public class RecommendationService {
+    private static final org.slf4j.Logger log=org.slf4j.LoggerFactory.getLogger(RecommendationService.class);
+    static final int TARGET=5, MAX_REQUESTS=8;
+    static final long SEARCH_BUDGET_MS=8000;
     private final LibraryService library;
     private final GoogleBooksService books;
     private final Provider gemini;
@@ -28,7 +31,9 @@ public class RecommendationService {
         Result normal;
         Result ai;
         Input input;
+        SearchStats stats;
         volatile long expires;
+        long normalExpires;
         long nextAiAttempt;
         final ArrayDeque<Long> calls = new ArrayDeque<>();
     }
@@ -54,53 +59,66 @@ public class RecommendationService {
         sessions.put(uid, created); return created;
     }
     public Result recommendations(Long uid) {
-        var entries = List.copyOf(library.list(uid));
-        String fingerprint = fingerprint(entries);
         State state = state(uid);
         synchronized (state) {
-            if (state.normal != null && fingerprint.equals(state.fingerprint) && clock.millis() < state.expires)
+            var entries = List.copyOf(library.list(uid));
+            String fingerprint = fingerprint(entries);
+            if (state.normal != null && fingerprint.equals(state.fingerprint) && clock.millis() < state.normalExpires)
                 return state.normal;
             var profile = profile(entries);
             var pool = new ArrayList<GoogleBook>();
-            int failures = 0;
-            List<String[]> queries = queries(profile);
-            long started = System.nanoTime();
-            int attempted = 0;
+            var stats = new SearchStats();
+            var plan = new ArrayDeque<Query>();
+            var initial = queries(profile);
+            initial.forEach(q -> plan.add(new Query(q[0], q[1], 0)));
+            int initialCount = plan.size();
+            additionalQueries(profile).forEach(plan::add);
+            long rotation=Objects.hash(uid,clock.millis()/60000);
+            var topics=new ArrayList<>(List.of("fiction","classics","poetry","history","mystery","science","romance"));
+            Collections.shuffle(topics,new Random(rotation));
+            var discovery=new ArrayDeque<Query>();
+            topics.forEach(topic->discovery.add(new Query("subject:"+topic,"all",0)));
+            var discoveryIds=new HashSet<String>();
+            if(entries.size()<=2) initialCount=Math.max(3,initialCount);
+            var seenQueries = new HashSet<Query>();
+            long deadline = System.nanoTime() + SEARCH_BUDGET_MS * 1_000_000;
             RuntimeException failure = null;
-            for (var query : queries) {
-                if (attempted >= 2 && System.nanoTime() - started > 3_000_000_000L) break;
-                attempted++;
-                try { pool.addAll(books.search(query[0], query[1], 0, 20, "").items()); }
-                catch (RuntimeException e) { failures++; failure = e; }
-            }
-            if (failures == attempted) throw failure;
+            List<Item> items = List.of();
             boolean personalized = !profile.authors.isEmpty() || !profile.genres.isEmpty();
-            var scored = new ArrayList<Scored>();
-
-            for (var book : pool) {
-                if (book == null || book.volumeId() == null || !book.volumeId().matches("[A-Za-z0-9_-]{1,128}")
-                        || clean(book.title()).isEmpty()) continue;
-                var ids = identities(book);
-                if (!Collections.disjoint(ids, profile.owned)) continue;
-                var reasons = new ArrayList<String>();
-                int score = match(safe(book.authors()), profile.authors, "AUTHOR:", reasons)
-                    + match(safe(book.categories()), profile.genres, "GENRE:", reasons);
-                if (personalized && reasons.isEmpty()) continue;
-                if (reasons.isEmpty()) reasons.add("EXPLORE");
-
-                scored.add(new Scored(new Item(book, reason(reasons.getFirst()), List.copyOf(reasons)), score));
+            int consecutiveFailures=0;
+            while((!plan.isEmpty() || !discovery.isEmpty()) && stats.requests<MAX_REQUESTS && System.nanoTime()<deadline) {
+                boolean general=plan.isEmpty() || (stats.requests>=MAX_REQUESTS-3 && !discovery.isEmpty());
+                if(general && discovery.isEmpty()) general=false;
+                Query query=general?discovery.removeFirst():plan.removeFirst();
+                if(!seenQueries.add(query)) continue;
+                stats.requests++;
+                try {
+                    var page=GoogleBooksClient.withinRecommendationDeadline(deadline,
+                        () -> books.search(query.text(),query.mode(),query.start(),20,"es"));
+                    if(page==null) throw new ApiException(org.springframework.http.HttpStatus.BAD_GATEWAY,"Catálogo incompleto");
+                    consecutiveFailures=0;
+                    stats.received+=page.receivedItems();
+                    stats.providerLanguage+=page.rejectedLanguage();
+                    stats.providerMetadata+=page.rejectedMetadata();
+                    pool.addAll(page.items());
+                    if(general) page.items().stream().filter(Objects::nonNull).map(GoogleBook::volumeId).forEach(discoveryIds::add);
+                    if(page.nextStartIndex()!=null && query.start()==0 && page.nextStartIndex()>0)
+                        plan.addLast(new Query(query.text(),query.mode(),page.nextStartIndex()));
+                } catch(RuntimeException error) { stats.failures++; consecutiveFailures++; failure=error; }
+                items=rank(pool,profile,stats,discoveryIds,rotation);
+                if(stats.requests==1) { stats.initialEligible=items.size(); stats.initialReceived=stats.received; }
+                // Cover the initial strongest signals before stopping; expand only on a real shortage.
+                if(stats.requests>=initialCount && items.size()>=TARGET) break;
+                if(consecutiveFailures>=3) break;
             }
-            scored.sort(Comparator.comparingInt(Scored::score).reversed()
-                .thenComparing(Comparator.comparingInt((Scored s) -> metadataQuality(s.item().book())).reversed()));
-            var titles = new HashSet<String>();
-            var identities = new HashSet<String>();
-            scored.removeIf(candidate -> {
-                var book = candidate.item().book();
-                var keys = identities(book);
-                if (titles.contains(workTitle(book.title())) || !Collections.disjoint(keys, identities)) return true;
-                titles.add(workTitle(book.title())); identities.addAll(keys); return false;
-            });
-            var items = diversify(scored);
+            stats.selected=items.size();
+            stats.stop=items.size()>=TARGET?"TARGET_REACHED":System.nanoTime()>=deadline?"TIME_BUDGET":
+                stats.requests>=MAX_REQUESTS?"REQUEST_BUDGET":consecutiveFailures>=3?"PROVIDER_FAILURES":"CANDIDATES_EXHAUSTED";
+            state.stats=stats;
+            log.info("recommendation_search requests={} failures={} received={} initialReceived={} initialEligible={} language={} metadata={} owned={} unrelated={} duplicates={} selected={} stop={}",
+                stats.requests,stats.failures,stats.received,stats.initialReceived,stats.initialEligible,stats.providerLanguage+stats.language,
+                stats.providerMetadata+stats.metadata,stats.owned,stats.unrelated,stats.duplicates,stats.selected,stats.stop);
+            if(stats.failures==stats.requests && failure!=null) throw failure;
             state.input = new Input(profile.preferences, items.stream().map(item -> new Candidate(
                 item.book().volumeId(), clean(item.book().title()), bounded(item.book().authors()),
                 bounded(item.book().categories()), item.reasonCodes())).toList());
@@ -109,9 +127,13 @@ public class RecommendationService {
                 : "Exploración general: faltan autores o categorías utilizables en tu Biblioteca.";
             if (personalized && !items.isEmpty() && items.stream().map(i -> authorKey(i.book())).distinct().count() == 1)
                 notice = "Sugerencias limitadas a un autor con los metadatos disponibles.";
-            if (failures > 0) notice += " Parte de Google Books no respondió; puedes actualizar.";
+            if (items.size() < TARGET) notice += " Se encontraron " + items.size() + " obras verificables en español tras ampliar la búsqueda; no se completa con otros idiomas.";
+            if (items.size() < 4) notice += " Límite técnico: " + stats.stop + ".";
+            if(items.stream().anyMatch(i->i.reasonCodes().contains("DISCOVER"))) notice += " Incluye descubrimientos variados en español.";
+            if (stats.failures > 0) notice += " Parte de Google Books no respondió; puedes actualizar.";
             state.normal = new Result(UUID.randomUUID().toString(), personalized, items, "NORMAL", notice, personalized && !items.isEmpty() && gemini.available());
             state.ai = null; state.fingerprint = fingerprint; state.expires = clock.millis() + 60000;
+            state.normalExpires = clock.millis() + (items.size()<TARGET || stats.failures>0 ? 10000 : 60000);
             return state.normal;
         }
     }
@@ -153,7 +175,11 @@ public class RecommendationService {
                 }
                 if (!state.fingerprint.equals(fingerprint(List.copyOf(library.list(uid)))))
                     throw ApiException.conflict("Tu Biblioteca cambió. Actualiza las recomendaciones.");
-                state.ai = new Result(state.normal.candidateSetId(), true, List.copyOf(selected), "ENRICHED",
+                for(var item:state.normal.items()) {
+                    if(selected.size()>=TARGET) break;
+                    if(used.add(item.book().volumeId())) selected.add(item);
+                }
+                state.ai = new Result(state.normal.candidateSetId(), true, uniqueItems(selected), "ENRICHED",
                     "Selección verificada entre tus recomendaciones.", true);
                 return state.ai;
             } catch (Unavailable e) { return fallback(state, e.status);
@@ -191,6 +217,7 @@ public class RecommendationService {
         for (var entry : entries) {
             if (entry.book() == null) continue;
             var b = entry.book();
+            owned.add("title:"+workTitle(b.title()));
             owned.addAll(identities(b.googleBooks() != null ? b.googleBooks()
                 : new GoogleBook(b.googleVolumeId(), b.title(), null, author(b.author()), null, null,
                     null, null, List.of(), null, b.isbn() == null ? Map.of() : Map.of("isbn", b.isbn()), null, null)));
@@ -218,7 +245,8 @@ public class RecommendationService {
     private static int match(List<String> values, Map<String, Integer> preferences, String prefix, List<String> reasons) {
         int score = 0;
         for (var preference : preferences.entrySet())
-            if (values.stream().anyMatch(value -> norm(value).equals(norm(preference.getKey())))) {
+            if (values.stream().anyMatch(value -> norm(value).equals(norm(preference.getKey()))
+                || (prefix.equals("GENRE:") && !Collections.disjoint(genreKeys(value),genreKeys(preference.getKey()))))) {
                 if (reasons.size() < 6) reasons.add(prefix + preference.getKey());
                 score += preference.getValue();
             }
@@ -260,22 +288,90 @@ public class RecommendationService {
         return numbered.find() ? authorKey(book) + "|" + numbered.group(1) : "";
     }
     private static List<Item> diversify(List<Scored> ranked) {
-        var selected = new ArrayList<Item>();
-        var authors = new HashMap<String,Integer>();
-        var series = new HashSet<String>();
-        var ids = new HashSet<String>();
-        for (int perAuthor = 1; perAuthor <= 2; perAuthor++) {
-            for (var scored : ranked) {
-                var item = scored.item();
-                String author = authorKey(item.book()), saga = seriesKey(item.book());
-                if (selected.size() >= 16 || ids.contains(item.book().volumeId())
-                        || authors.getOrDefault(author,0) >= perAuthor
-                        || (!saga.isEmpty() && series.contains(saga))) continue;
-                selected.add(item); ids.add(item.book().volumeId());
-                authors.merge(author,1,Integer::sum); if (!saga.isEmpty()) series.add(saga);
+        var selected=new ArrayList<Item>(); var authors=new HashMap<String,Integer>();
+        var series=new HashSet<String>(); var ids=new HashSet<String>();var discoveryGenres=new HashSet<String>();
+        for(int perAuthor: new int[]{1,2,TARGET}) {
+            for(var scored:ranked) {
+                var item=scored.item(); String author=authorKey(item.book()), saga=seriesKey(item.book());
+                if(selected.size()>=TARGET || ids.contains(item.book().volumeId()) || authors.getOrDefault(author,0)>=perAuthor
+                    || (perAuthor<TARGET && !saga.isEmpty() && series.contains(saga))
+                    || (perAuthor==1 && item.reasonCodes().contains("DISCOVER") && discoveryGenres.contains(safe(item.book().categories()).stream().findFirst().orElse("unknown")))) continue;
+                selected.add(item);ids.add(item.book().volumeId());authors.merge(author,1,Integer::sum);
+                if(item.reasonCodes().contains("DISCOVER"))discoveryGenres.add(safe(item.book().categories()).stream().findFirst().orElse("unknown"));
+                if(!saga.isEmpty())series.add(saga);
             }
         }
         return List.copyOf(selected);
+    }
+    private record Query(String text,String mode,int start) {}
+    static final class SearchStats {
+        int requests,failures,received,initialReceived,initialEligible,providerLanguage,providerMetadata,language,metadata,owned,unrelated,duplicates,selected;
+        String stop;
+    }
+    SearchStats searchStats(Long uid) { return state(uid).stats; }
+    private static List<Item> rank(List<GoogleBook> pool,Profile profile,SearchStats stats,Set<String> discoveryIds,long rotation) {
+        stats.language=stats.metadata=stats.owned=stats.unrelated=stats.duplicates=0;
+        var scored=new ArrayList<Scored>();
+        boolean personalized=!profile.authors.isEmpty() || !profile.genres.isEmpty();
+        for(var book:pool) {
+            if(book==null || book.volumeId()==null || !book.volumeId().matches("[A-Za-z0-9_-]{1,128}") || clean(book.title()).isEmpty()) { stats.metadata++;continue; }
+            if(!SpanishBooks.accepts(book)) { stats.language++;continue; }
+            if(profile.owned.contains("title:"+workTitle(book.title())) || !Collections.disjoint(identities(book),profile.owned)) { stats.owned++;continue; }
+            var reasons=new ArrayList<String>();
+            int score=match(safe(book.authors()),profile.authors,"AUTHOR:",reasons)+match(safe(book.categories()),profile.genres,"GENRE:",reasons);
+            if(personalized && reasons.isEmpty() && !discoveryIds.contains(book.volumeId())) { stats.unrelated++;continue; }
+            if(reasons.isEmpty()) { reasons.add(discoveryIds.contains(book.volumeId())?"DISCOVER":"EXPLORE");score=-1; }
+            scored.add(new Scored(new Item(book,reason(reasons.getFirst()),List.copyOf(reasons)),score));
+        }
+        scored.sort(Comparator.comparingInt(Scored::score).reversed().thenComparing(Comparator.comparingInt((Scored x)->metadataQuality(x.item().book())).reversed())
+            .thenComparingLong(x->x.item().reasonCodes().contains("DISCOVER")?Objects.hash(rotation,x.item().book().volumeId()):0));
+        var unique=uniqueRanked(scored);stats.duplicates=scored.size()-unique.size();
+        return diversify(unique);
+    }
+    private static int root(int[] parent,int i) { while(parent[i]!=i){parent[i]=parent[parent[i]];i=parent[i];}return i; }
+    private static List<Scored> uniqueRanked(List<Scored> ranked) {
+        int[] parent=java.util.stream.IntStream.range(0,ranked.size()).toArray();
+        var first=new HashMap<String,Integer>();
+        for(int i=0;i<ranked.size();i++) {
+            var book=ranked.get(i).item().book();var aliases=new HashSet<>(identities(book));aliases.add("title:"+workTitle(book.title()));
+            for(String alias:aliases) {
+                Integer previous=first.putIfAbsent(alias,i);
+                if(previous!=null){int a=root(parent,i),b=root(parent,previous);if(a!=b)parent[Math.max(a,b)]=Math.min(a,b);}
+            }
+        }
+        var unique=new LinkedHashMap<Integer,Scored>();
+        for(int i=0;i<ranked.size();i++) unique.putIfAbsent(root(parent,i),ranked.get(i));
+        return List.copyOf(unique.values());
+    }
+    private static List<Item> uniqueItems(List<Item> items) {
+        return uniqueRanked(items.stream().map(i->new Scored(i,0)).toList()).stream().map(Scored::item).limit(TARGET).toList();
+    }
+    private static List<Query> additionalQueries(Profile profile) {
+        var plan=new LinkedHashSet<Query>();
+        var authors=strongest(profile.authors);var genres=strongest(profile.genres);
+        for(int i=0;i<Math.max(authors.size(),genres.size()) && plan.size()<16;i++) {
+            if(i<genres.size())plan.add(new Query("subject:"+quoted(genres.get(i)),"all",0));
+            if(i<authors.size())plan.add(new Query(quoted(authors.get(i)),"author",0));
+        }
+        for(var genre:genres) for(var topic:genre.split("[/>:]")) {
+            String value=topic.strip();
+            if(!value.isBlank()) plan.add(new Query("subject:"+quoted(value),"all",0));
+        }
+        return List.copyOf(plan);
+    }
+    private static Set<String> genreKeys(String genre) {
+        var keys=new HashSet<String>();
+        for(String part:genre.split("[/>:]")) {
+            String key=norm(part);
+            keys.add(switch(key) {
+                case "fiction" -> "ficcion";case "fantasy" -> "fantasia";
+                case "science fiction" -> "ciencia ficcion";case "history" -> "historia";
+                case "mystery", "mystery detective" -> "misterio";case "poetry" -> "poesia";
+                case "short stories" -> "cuentos";case "horror" -> "terror";
+                default -> key;
+            });
+        }
+        keys.remove(""); keys.remove("general");return keys;
     }
     private static String workTitle(String title) {
         String value = Objects.toString(title, "");

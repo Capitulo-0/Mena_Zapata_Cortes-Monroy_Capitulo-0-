@@ -22,6 +22,7 @@ List<Map<String, dynamic>> realisticBooks() => List.generate(
   titles.length,
   (index) => {
     'googleVolumeId': 'realistic-$index',
+    'language': 'es',
     'title': titles[index],
     'author': index == 4
         ? null
@@ -64,6 +65,9 @@ void main() {
               ),
             );
             await load;
+            final selectedTitles = controller.data!.items
+                .map((b) => b['title'] as String)
+                .toList();
             Map<String, dynamic>? opened;
             await tester.pumpWidget(
               MaterialApp(
@@ -125,11 +129,17 @@ void main() {
               find.byKey(const ValueKey('recommendations-gemini')),
               findsNothing,
             );
-            for (var page = 0; page <= 3; page++) {
+            for (
+              var page = 0;
+              page < (controller.data!.items.length + 2) ~/ 3;
+              page++
+            ) {
               final covers = find.byType(HomeNetworkCover);
-              expect(covers, findsNWidgets(3));
+              final visibleCount = (controller.data!.items.length - page * 3)
+                  .clamp(0, 3);
+              expect(covers, findsNWidgets(visibleCount));
               final heights = <double>[];
-              for (var i = 0; i < 3; i++) {
+              for (var i = 0; i < visibleCount; i++) {
                 final card = find
                     .ancestor(of: covers.at(i), matching: find.byType(InkWell))
                     .first;
@@ -145,7 +155,7 @@ void main() {
                 isNull,
                 reason: 'Page $page must have no overflow',
               );
-              if (page < 3) {
+              if (page < (controller.data!.items.length + 2) ~/ 3 - 1) {
                 final next = find.byIcon(Icons.chevron_right_rounded);
                 await tester.ensureVisible(next);
                 await tester.pumpAndSettle();
@@ -158,7 +168,7 @@ void main() {
             await tester.pumpAndSettle();
             await tester.tap(previous);
             await tester.pumpAndSettle();
-            expect(find.text(titles.last), findsNothing);
+            expect(find.text(selectedTitles.last), findsNothing);
             await tester.tap(find.byIcon(Icons.chevron_right_rounded));
             await tester.pumpAndSettle();
             expect(
@@ -166,8 +176,8 @@ void main() {
               isNull,
               reason: 'Previous and next must preserve valid layout',
             );
-            expect(find.text(titles.last), findsOneWidget);
-            final lastTitle = find.text(titles.last);
+            expect(find.text(selectedTitles.last), findsOneWidget);
+            final lastTitle = find.text(selectedTitles.last);
             await tester.ensureVisible(lastTitle);
             await tester.pumpAndSettle();
             expect(
@@ -187,7 +197,10 @@ void main() {
               reason: 'Cards must never introduce their own vertical scroll',
             );
             await tester.tap(lastTitle);
-            expect(opened!['googleVolumeId'], 'realistic-5');
+            expect(
+              opened!['googleVolumeId'],
+              controller.data!.items.last['googleVolumeId'],
+            );
             final rating = find.text('Sin valorar').last;
             await tester.ensureVisible(rating);
             await tester.pumpAndSettle();

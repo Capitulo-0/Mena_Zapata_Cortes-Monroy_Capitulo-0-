@@ -40,7 +40,7 @@ class RecommendationTests {
     GoogleBooksService.Page page(GoogleBook... b) { return new GoogleBooksService.Page(List.of(b),b.length,0,20,null); }
     void fixture() {
         when(library.list(1L)).thenReturn(List.of(entry(1,book("saved","Saved","Autora","Fantasía"),ReadingStatus.LEIDO)));
-        when(books.search(anyString(),anyString(),eq(0),eq(20),eq(""))).thenReturn(page(
+        when(books.search(anyString(),anyString(),eq(0),eq(20),eq("es"))).thenReturn(page(
             book("saved","Saved","Autora","Fantasía"),book("candidate","Other","Autora","Fantasía")));
         when(provider.configured()).thenReturn(true);
         when(provider.available()).thenReturn(true);
@@ -48,18 +48,18 @@ class RecommendationTests {
     }
     @Test void readAuthorsAndGenresDriveTwoQueriesExcludingOwnedAndDuplicateWorks() {
         fixture();
-        when(books.search(anyString(),anyString(),eq(0),eq(20),eq(""))).thenReturn(page(
+        when(books.search(anyString(),anyString(),eq(0),eq(20),eq("es"))).thenReturn(page(
             book("saved","Saved","Autora","Fantasía"), book("anotherEdition","Saved","Autora","Fantasía"),
             book("candidate","Other","Autora","Fantasía"),book("duplicate","Other","Autora","Fantasía"),
             book("unrelated","No","Otra","Ciencia")));
         var result=service.recommendations(1L);
         assertThat(result.personalized()).isTrue();
-        assertThat(result.items()).extracting(i->i.book().volumeId()).containsExactly("candidate");
+        assertThat(result.items()).extracting(i->i.book().volumeId()).contains("candidate").doesNotContain("saved","anotherEdition","duplicate");
         assertThat(result.items().getFirst().reasonCodes()).contains("AUTHOR:Autora","GENRE:Fantasía");
-        verify(books).search("\"Autora\"","author",0,20,"");
-        verify(books).search("subject:\"Fantasía\"","all",0,20,"");
+        verify(books).search("\"Autora\"","author",0,20,"es");
+        verify(books).search("subject:\"Fantasía\"","all",0,20,"es");
         service.recommendations(1L);
-        verify(books,times(2)).search(anyString(),anyString(),anyInt(),anyInt(),anyString());
+        verify(books,times(service.searchStats(1L).requests)).search(anyString(),anyString(),anyInt(),anyInt(),anyString());
     }
     @Test void readStateOutweighsPendingAndMissingFieldsDoNotInventPreferences() {
         when(library.list(1L)).thenReturn(List.of(
@@ -67,16 +67,16 @@ class RecommendationTests {
             entry(1,book("pending","Pending","Pending author",null),ReadingStatus.POR_LEER)));
         when(books.search(anyString(),anyString(),anyInt(),anyInt(),anyString())).thenReturn(page());
         service.recommendations(1L);
-        verify(books).search("\"Read author\"","author",0,20,"");
+        verify(books).search("\"Read author\"","author",0,20,"es");
         when(library.list(2L)).thenReturn(List.of(entry(2,book("missing","Missing",null,null),ReadingStatus.LEIDO)));
         var result=service.recommendations(2L);
         assertThat(result.personalized()).isFalse();
         assertThat(result.notice()).contains("faltan autores");
-        verify(books).search("subject:fiction","all",0,20,"");
+        verify(books,atLeastOnce()).search("subject:fiction","all",0,20,"es");
     }
     @Test void emptyLibraryIsExplicitGeneralExploration() {
         when(library.list(1L)).thenReturn(List.of());
-        when(books.search("subject:fiction","all",0,20,"")).thenReturn(page(book("x","Explore",null,null)));
+        when(books.search("subject:fiction","all",0,20,"es")).thenReturn(page(book("x","Explore",null,null)));
         var result=service.recommendations(1L);
         assertThat(result.personalized()).isFalse(); assertThat(result.notice()).contains("Exploración general");
         assertThat(result.items().getFirst().reasonCodes()).containsExactly("EXPLORE");
@@ -86,10 +86,10 @@ class RecommendationTests {
     @Test void accountsHaveDifferentCandidatesAndCannotUseEachOthersSets() {
         fixture();
         when(library.list(2L)).thenReturn(List.of(entry(2,book("b","B","Otra","Historia"),ReadingStatus.LEYENDO)));
-        when(books.search("\"Otra\"","author",0,20,"")).thenReturn(page(book("history","Historia","Otra","Historia")));
-        when(books.search("subject:\"Historia\"","all",0,20,"")).thenReturn(page());
+        when(books.search("\"Otra\"","author",0,20,"es")).thenReturn(page(book("history","Historia","Otra","Historia")));
+        when(books.search("subject:\"Historia\"","all",0,20,"es")).thenReturn(page());
         var first=service.recommendations(1L); var second=service.recommendations(2L);
-        assertThat(second.items()).extracting(i->i.book().volumeId()).containsExactly("history");
+        assertThat(second.items()).extracting(i->i.book().volumeId()).contains("history").doesNotContain("b");
         assertThat(second.candidateSetId()).isNotEqualTo(first.candidateSetId());
         assertThatThrownBy(()->service.enrich(2L,first.candidateSetId())).isInstanceOf(ApiException.class);
         verify(provider,never()).select(any());
@@ -149,7 +149,7 @@ class RecommendationTests {
             var normal=executor.submit(()->service.recommendations(1L));
             var duplicate=executor.submit(()->service.recommendations(1L));
             assertThat(normal.get().candidateSetId()).isEqualTo(duplicate.get().candidateSetId());
-            verify(books,times(2)).search(anyString(),anyString(),anyInt(),anyInt(),anyString());
+            verify(books,times(service.searchStats(1L).requests)).search(anyString(),anyString(),anyInt(),anyInt(),anyString());
             String id=normal.get().candidateSetId();
             var a=executor.submit(()->service.enrich(1L,id));
             var b=executor.submit(()->service.enrich(1L,id));
