@@ -7,6 +7,8 @@ import com.capitulo0.backend.auth.model.AuthenticatedFirebaseUser;
 import com.capitulo0.backend.auth.service.FirebaseTokenVerifier;
 import com.capitulo0.backend.user.entity.User;
 import com.capitulo0.backend.recommendation.GeminiRecommendationClient;
+import com.capitulo0.backend.integration.googlebooks.GoogleBooksService;
+import com.capitulo0.backend.integration.googlebooks.GoogleBook;
 import com.capitulo0.backend.writer.WriterStoryRepository;
 import com.capitulo0.backend.writer.WriterService;
 import com.capitulo0.backend.writer.WriterDocument;
@@ -34,6 +36,7 @@ class SecurityEndpointTests {
     @Value("${local.server.port}") int port;
     @MockitoBean FirebaseTokenVerifier verifier;
     @MockitoBean GeminiRecommendationClient gemini;
+    @MockitoBean GoogleBooksService googleBooks;
     @Autowired WriterStoryRepository writerStories;
     @Autowired WriterService writer;
     @Autowired UserRepository users;
@@ -98,6 +101,65 @@ class SecurityEndpointTests {
         }
         verifyNoInteractions(verifier);
     }
+    @Test void directAuthorTitleAndSeriesUseCatalogWithoutGemini() throws Exception {
+        final var path = "/api/me/assistant";
+        final var auth = token(user());
+        final var book = new GoogleBook("id", "Culpa mía", "Saga Culpables", List.of("Mercedes Ron"),
+            null, null, null, null, List.of(), "es", Map.of(), null, null);
+        var page = new GoogleBooksService.Page(List.of(book), 1, 0, 24, null);
+        when(googleBooks.search(anyString(), anyString(), anyInt(), anyInt(), nullable(String.class))).thenReturn(page);
+        for (var message : List.of("libros de mercedes ron", "¿Qué libros tiene Mercedes Ron?",
+                "Busca Culpa mía", "¿Cuáles son los libros de la saga Culpables?")) {
+            var reply = data(call("POST", path, auth, json.writeValueAsString(Map.of("message", message))), 200);
+            assertThat(reply.path("books").get(0).path("volumeId").asText()).isEqualTo("id");
+        }
+        var repeat = data(call("POST", path, auth, """
+            {"message":"Mercedes Ron","history":[{"role":"user","text":"libros de mercedes ron"}]}
+            """), 200);
+        assertThat(repeat.path("books").size()).isEqualTo(1);
+        verify(googleBooks, atLeastOnce()).search(eq("\"mercedes ron\""), eq("author"), eq(0), eq(24), eq("es"));
+        verify(googleBooks).search(eq("\"Culpa mía\""), eq("title"), eq(0), eq(24), eq("es"));
+        verify(googleBooks).search(eq("\"Culpables\""), eq("all"), eq(0), eq(24), eq("es"));
+        verifyNoInteractions(gemini);
+
+        when(gemini.configured()).thenReturn(true);
+        when(gemini.generate(anyString(), anyMap(), anyMap(), anyInt(), anyString())).thenReturn(json.readTree("""
+            {"mode":"TEXT","sections":[{"heading":"Idea","text":"Una biblioteca","action":"NONE"}]}
+            """));
+        for (int attempt = 0; attempt < 12; attempt++)
+            data(call("POST", path, auth, "{\"message\":\"Dame una idea\"}"), 200);
+        var limited = call("POST", path, auth, "{\"message\":\"Dame otra idea\"}");
+        assertThat(data(limited, 429).path("code").asText()).isEqualTo("CHAT_GENERATION_LIMIT");
+        assertThat(limited.headers().firstValue("Retry-After")).isPresent();
+        data(call("POST", path, auth, "{\"message\":\"Libros de Mercedes Ron\"}"), 200);
+        verify(gemini, times(12)).generate(anyString(), anyMap(), anyMap(), anyInt(), anyString());
+    }
+
+    @Test void followUpForOtherAuthorsExcludesThePreviousAuthorAndSelection() throws Exception {
+        var same = new GoogleBook("same", "Otra novela", null, List.of("Mercedes Ron"),
+            null, null, null, null, List.of("Romance"), "es", Map.of(), null, null);
+        var prior = new GoogleBook("prior", "Una novela", null, List.of("Otra autora"),
+            null, null, null, null, List.of("Romance"), "es", Map.of(), null, null);
+        var fresh = new GoogleBook("fresh", "La última carta", null, List.of("Autora nueva"),
+            null, null, null, null, List.of("Romance"), "es", Map.of(), null, null);
+        when(gemini.configured()).thenReturn(true);
+        when(gemini.generate(anyString(), anyMap(), anyMap(), anyInt(), anyString())).thenReturn(json.readTree("""
+            {"mode":"BOOKS","queries":["romance juvenil"],"terms":["romance"],
+             "excludedWorks":[],"excludedTopics":[],"narrative":true,"maxPages":0,"sections":[]}
+            """));
+        when(googleBooks.search("romance juvenil", "all", 0, 24, "es"))
+            .thenReturn(new GoogleBooksService.Page(List.of(same, prior, fresh), 3, 0, 24, null));
+        var reply = data(call("POST", "/api/me/assistant", token(user()), """
+            {"message":"Ahora otros autores similares","history":[
+              {"role":"user","text":"Libros de Mercedes Ron"},
+              {"role":"assistant","text":"Última selección de catálogo:\\n1. Una novela — Otra autora"}
+            ]}
+            """), 200);
+        assertThat(reply.path("books").size()).isEqualTo(1);
+        assertThat(reply.path("books").get(0).path("volumeId").asText()).isEqualTo("fresh");
+        verify(googleBooks).search("romance juvenil", "all", 0, 24, "es");
+    }
+
     @Test void literaryChatRequiresVerifiedIdentityAndDoesNotWriteStories() throws Exception {
         String path = "/api/me/assistant";
         String body = "{\"message\":\"Dame una idea\"}";

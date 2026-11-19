@@ -131,8 +131,14 @@ class ApiWriterRepository
   ApiFailure _assistantError(ApiFailure e) {
     final message = switch (e.code) {
       'WRITER_AI_NOT_CONFIGURED' => 'El asistente todavía no está configurado.',
-      'WRITER_AI_QUOTA' =>
-        'Se alcanzó el límite de solicitudes. Intenta más tarde.',
+      'CHAT_GENERATION_LIMIT' => 'Alcanzaste el límite temporal de generación de Capítulo 0. Puedes buscar un autor o título.',
+      'CHAT_CATALOG_LIMIT' =>
+        'Alcanzaste el límite temporal de búsquedas de Capítulo 0.',
+      'CHAT_REQUEST_ACTIVE' => 'Tu solicitud anterior aún está en curso.',
+      'CHAT_BUSY' => 'El asistente está ocupado en este momento.',
+      'CHAT_CATALOG_UNAVAILABLE' => 'No se pudo completar la consulta a Google Books. Puedes volver a intentarlo.',
+      'WRITER_AI_PROVIDER_QUOTA' =>
+        'Google Gemini alcanzó su cuota. Puedes buscar un autor o título.',
       'WRITER_AI_TIMEOUT' =>
         'Gemini tardó demasiado. Puedes volver a intentarlo.',
       'WRITER_AI_EMPTY' => 'Gemini devolvió una respuesta vacía.',
@@ -143,7 +149,12 @@ class ApiWriterRepository
       'WRITER_AI_INPUT_TOO_LARGE' => 'Acorta el texto antes de enviarlo.',
       _ => e.message,
     };
-    return ApiFailure(e.statusCode, message, code: e.code);
+    return ApiFailure(
+      e.statusCode,
+      message,
+      code: e.code,
+      retryAfterSeconds: e.retryAfterSeconds,
+    );
   }
 
   String _path(String id) {

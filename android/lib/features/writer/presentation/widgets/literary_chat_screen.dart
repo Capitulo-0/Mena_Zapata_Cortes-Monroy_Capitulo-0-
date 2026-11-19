@@ -9,6 +9,8 @@ import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../home/presentation/widgets/home_network_cover.dart';
 import '../../services/literary_chat.dart';
+import '../../services/chat_dictation.dart';
+import 'chat_microphone.dart';
 
 class LiteraryChatScreen extends StatefulWidget {
   const LiteraryChatScreen({
@@ -19,6 +21,7 @@ class LiteraryChatScreen extends StatefulWidget {
     this.genre = '',
     this.title = '',
     this.onBook,
+    this.dictation,
   });
 
   final LiteraryChatRepository repository;
@@ -26,6 +29,7 @@ class LiteraryChatScreen extends StatefulWidget {
   final String excerpt;
   final String genre;
   final String title;
+  final ChatDictation? dictation;
   final Future<void> Function(Map<String, dynamic>)? onBook;
 
   static Future<ChatSection?> open(
@@ -53,7 +57,10 @@ class _LiteraryChatScreenState extends State<LiteraryChatScreen> {
   bool _busy = false;
   bool _active = true;
   int _version = 0;
+  int _conversation = 0;
   String? _error;
+  Timer? _retryTimer;
+  int _retryIn = 0;
 
   @override
   void initState() {
@@ -71,6 +78,7 @@ class _LiteraryChatScreenState extends State<LiteraryChatScreen> {
 
   @override
   void dispose() {
+    _retryTimer?.cancel();
     _identity.cancel();
     _input.dispose();
     _scroll.dispose();
@@ -78,7 +86,9 @@ class _LiteraryChatScreenState extends State<LiteraryChatScreen> {
   }
 
   void _clear() {
+    _resetRetry();
     _version++;
+    _conversation++;
     _messages.clear();
     _input.clear();
     _error = null;
@@ -108,33 +118,89 @@ class _LiteraryChatScreenState extends State<LiteraryChatScreen> {
 
   List<ChatTurn> get _history {
     final turns = <ChatTurn>[];
-    String clip(String text) {
-      if (text.length <= 1200) return text;
+    String clip(String text, [int limit = 1200]) {
+      if (text.length <= limit) return text;
       final end =
-          text.codeUnitAt(1199) >= 0xD800 && text.codeUnitAt(1199) <= 0xDBFF
-          ? 1199
-          : 1200;
+          text.codeUnitAt(limit - 1) >= 0xD800 &&
+              text.codeUnitAt(limit - 1) <= 0xDBFF
+          ? limit - 1
+          : limit;
       return text.substring(0, end);
     }
 
     for (final message in _messages) {
       if (message.reply case final reply?) {
         turns.add((role: 'user', text: clip(message.text)));
+        final sectionBudget = reply.sections.isEmpty
+            ? 1200
+            : (1200 ~/ reply.sections.length) - 3;
         final text = reply.sections
-            .map((part) => '${part.heading}\n${part.text}')
+            .map((part) => clip('${part.heading}\n${part.text}', sectionBudget))
             .join('\n\n');
-        final books = reply.books.map((book) => book['title']).join(', ');
+        final books = [
+          for (var index = 0; index < reply.books.length; index++)
+            '${index + 1}. ${reply.books[index]['title']} — ${(reply.books[index]['authors'] as List? ?? []).join(', ')}',
+        ].join('\n');
         turns.add((
           role: 'assistant',
-          text: clip(books.isEmpty ? text : '$text\n$books'),
+          text: clip(
+            books.isEmpty
+                ? text
+                : 'Última selección de catálogo:\n$books\n\n$text',
+          ),
         ));
       }
     }
-    return turns.length <= 6 ? turns : turns.sublist(turns.length - 6);
+    if (turns.length <= 6) return turns;
+    final cutoff = turns.length - 6;
+    final pleasantry = RegExp(
+      r'^[\s¡!.,¿?]*(hola|buenos días|buenas tardes|buenas noches|buenas|gracias|ok|de acuerdo)[\s¡!.,¿?]*$',
+      caseSensitive: false,
+    );
+    final opening = turns
+        .take(cutoff)
+        .where((turn) => turn.role == 'user' && !pleasantry.hasMatch(turn.text))
+        .firstOrNull;
+    return [?opening, ...turns.skip(cutoff)];
+  }
+
+  void _insertDictation(String text) {
+    final current = _input.text;
+    final combined = current.trim().isEmpty
+        ? text
+        : '${current.trimRight()} $text';
+    final end = combined.length > 2000
+        ? (combined.codeUnitAt(1999) >= 0xD800 &&
+                  combined.codeUnitAt(1999) <= 0xDBFF
+              ? 1999
+              : 2000)
+        : combined.length;
+    _input.value = TextEditingValue(
+      text: combined.substring(0, end),
+      selection: TextSelection.collapsed(offset: end),
+    );
+  }
+
+  void _resetRetry() {
+    _retryTimer?.cancel();
+    _retryIn = 0;
+  }
+
+  void _holdRetry(int seconds) {
+    _retryIn = seconds;
+    if (seconds <= 0) return;
+    _retryTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() => _retryIn = (seconds - timer.tick).clamp(0, seconds));
+      if (_retryIn == 0) timer.cancel();
+    });
   }
 
   Future<void> _send({bool retry = false}) async {
-    if (_busy || !_active) return;
+    if (_busy || !_active || (retry && _retryIn > 0)) return;
     final text = retry ? _messages.last.text : _input.text.trim();
     if (text.isEmpty) return;
     final history = _history;
@@ -145,6 +211,7 @@ class _LiteraryChatScreenState extends State<LiteraryChatScreen> {
       }
       if (!retry) _messages.add((text: text, reply: null));
       _input.clear();
+      _resetRetry();
       _busy = true;
       _error = null;
     });
@@ -167,7 +234,10 @@ class _LiteraryChatScreenState extends State<LiteraryChatScreen> {
       );
     } on ApiFailure catch (error) {
       if (mounted && version == _version) {
-        setState(() => _error = error.message);
+        setState(() {
+          _error = error.message;
+          if (error.statusCode == 429) _holdRetry(error.retryAfterSeconds ?? 0);
+        });
       }
     } on TimeoutException {
       if (mounted && version == _version) {
@@ -261,6 +331,7 @@ class _LiteraryChatScreenState extends State<LiteraryChatScreen> {
     if (!mounted || approved != true || !_active || version != _version) return;
     setState(() {
       _messages.clear();
+      _resetRetry();
       _error = null;
       if (chapter) {
         _chapter = choice;
@@ -386,7 +457,11 @@ class _LiteraryChatScreenState extends State<LiteraryChatScreen> {
                       ),
                     ),
                   ),
-                SelectableText(part.text),
+                for (final paragraph in part.text.split(RegExp(r'\n\s*\n')))
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 7),
+                    child: SelectableText(paragraph),
+                  ),
                 Wrap(
                   children: [
                     TextButton(
@@ -421,8 +496,19 @@ class _LiteraryChatScreenState extends State<LiteraryChatScreen> {
                   height: 48,
                   title: book['title'] as String,
                 ),
-                title: Text(book['title'] as String),
-                subtitle: Text((book['authors'] as List? ?? []).join(', ')),
+                title: Text(
+                  '${reply.books.indexOf(book) + 1}. ${book['title']}',
+                ),
+                subtitle: Text(
+                  [
+                    (book['authors'] as List? ?? []).join(', '),
+                    if ((book['language'] as String?) == null ||
+                        (book['language'] as String).trim().isEmpty ||
+                        (book['language'] as String).toLowerCase().trim() ==
+                            'und')
+                      'Idioma sin verificar',
+                  ].join('\n'),
+                ),
                 onTap: widget.onBook == null
                     ? null
                     : () => widget.onBook!({
@@ -526,10 +612,13 @@ class _LiteraryChatScreenState extends State<LiteraryChatScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(error),
-                              TextButton(
-                                onPressed: () => _send(retry: true),
-                                child: const Text('Reintentar'),
-                              ),
+                              if (_retryIn > 0)
+                                Text('Espera $_retryIn s antes de reintentar.')
+                              else
+                                TextButton(
+                                  onPressed: () => _send(retry: true),
+                                  child: const Text('Reintentar'),
+                                ),
                             ],
                           ),
                         ),
@@ -665,6 +754,14 @@ class _LiteraryChatScreenState extends State<LiteraryChatScreen> {
                                     counterText: '',
                                   ),
                                 ),
+                              ),
+                              ChatMicrophone(
+                                key: ValueKey(_conversation),
+                                dictation:
+                                    widget.dictation ??
+                                    DeviceChatDictation.instance,
+                                enabled: !_busy && _active,
+                                onText: _insertDictation,
                               ),
                               IconButton.filled(
                                 tooltip: 'Enviar',

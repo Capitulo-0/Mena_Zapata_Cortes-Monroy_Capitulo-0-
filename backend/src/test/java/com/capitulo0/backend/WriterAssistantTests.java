@@ -25,7 +25,7 @@ class WriterAssistantTests {
     private final UserService users = mock(UserService.class);
     private final JsonMapper json = JsonMapper.builder().build();
     private final org.springframework.test.web.servlet.MockMvc mvc = MockMvcBuilders.standaloneSetup(
-        new WriterAssistantController(new CurrentUserService(users), new WriterAssistantService(gemini)))
+        new WriterAssistantController(new CurrentUserService(users), new WriterAssistantService(gemini, 5, 20)))
         .setControllerAdvice(new ApiExceptionHandler()).build();
 
     @BeforeEach void configured() { when(gemini.configured()).thenReturn(true); }
@@ -110,14 +110,19 @@ class WriterAssistantTests {
             .andExpect(jsonPath("$.code").value("WRITER_AI_NOT_CONFIGURED"));
         when(gemini.configured()).thenReturn(true);
         for (var failure : Map.of("TIMEOUT", 504, "QUOTA", 429, "HTTP_ERROR", 502).entrySet()) {
-            doThrow(new Unavailable(failure.getKey())).when(gemini)
+            doThrow(new Unavailable(failure.getKey(), 17)).when(gemini)
                 .generate(anyString(), anyMap(), anyMap(), anyInt(), anyString());
-            send(request("IDEAS")).andExpect(status().is(failure.getValue()));
+            var response = send(request("IDEAS")).andExpect(status().is(failure.getValue()));
+            if ("QUOTA".equals(failure.getKey()))
+                response.andExpect(jsonPath("$.code").value("WRITER_AI_PROVIDER_QUOTA"))
+                    .andExpect(header().string("Retry-After", "17"));
         }
         doReturn(json.valueToTree(Map.of("suggestions", List.of("Una pista"))))
             .when(gemini).generate(anyString(), anyMap(), anyMap(), anyInt(), anyString());
         for (int index = 0; index < 2; index++) send(request("IDEAS")).andExpect(status().isOk());
-        send(request("IDEAS")).andExpect(status().isTooManyRequests());
+        send(request("IDEAS")).andExpect(status().isTooManyRequests())
+            .andExpect(jsonPath("$.code").value("CHAT_GENERATION_LIMIT"))
+            .andExpect(header().exists("Retry-After"));
         login("uid-B");
         send(request("IDEAS")).andExpect(status().isOk());
         verify(gemini, times(6)).generate(anyString(), anyMap(), anyMap(), anyInt(), anyString());
@@ -143,7 +148,9 @@ class WriterAssistantTests {
             try {
                 assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
                 login("uid-A");
-                send(request("IDEAS")).andExpect(status().isTooManyRequests());
+                send(request("IDEAS")).andExpect(status().isTooManyRequests())
+                    .andExpect(jsonPath("$.code").value("CHAT_REQUEST_ACTIVE"))
+                    .andExpect(header().string("Retry-After", "3"));
             } finally {
                 release.countDown();
             }

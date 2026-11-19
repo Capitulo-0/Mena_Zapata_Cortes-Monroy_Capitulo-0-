@@ -26,7 +26,13 @@ public final class Recommendations {
     }
     public static final class Unavailable extends RuntimeException {
         public final String status;
-        public Unavailable(String status) { super("Gemini unavailable"); this.status = status; }
+        public final Integer retryAfterSeconds;
+        public Unavailable(String status) { this(status, null); }
+        public Unavailable(String status, Integer retryAfterSeconds) {
+            super("Gemini unavailable");
+            this.status = status;
+            this.retryAfterSeconds = retryAfterSeconds;
+        }
     }
     public static String reason(String code) {
         if (code.equals("DISCOVER")) return "Descubrimiento variado en español · Fuente: Google Books";

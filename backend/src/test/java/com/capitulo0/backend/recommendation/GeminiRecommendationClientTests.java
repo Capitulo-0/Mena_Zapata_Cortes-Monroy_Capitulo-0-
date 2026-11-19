@@ -54,6 +54,7 @@ class GeminiRecommendationClientTests {
         server.createContext("/",exchange->{
             try {
                 int status=switch(mode.get()){case "quota"->429;case "http"->500;default->200;};
+                if (status == 429) exchange.getResponseHeaders().set("Retry-After", "27");
                 if(mode.get().equals("slow")) Thread.sleep(350);
                 byte[] body=(mode.get().equals("large")?"x".repeat(70000):"{}").getBytes(StandardCharsets.UTF_8);
                 exchange.sendResponseHeaders(status,body.length); exchange.getResponseBody().write(body);
@@ -62,7 +63,9 @@ class GeminiRecommendationClientTests {
         try {
             var client=new GeminiRecommendationClient("test-only-key","gemini-4-hydrogen",HttpClient.newHttpClient(),
                 URI.create("http://127.0.0.1:"+server.getAddress().getPort()+"/"),Duration.ofMillis(150));
-            for(var value:List.of("quota","http","invalid","large","slow")) {
+            assertThatThrownBy(() -> client.select(input())).isInstanceOfSatisfying(Unavailable.class,
+                error -> assertThat(error.retryAfterSeconds).isEqualTo(27));
+            for(var value:List.of("http","invalid","large","slow")) {
                 mode.set(value);
                 assertThatThrownBy(()->client.select(input())).isInstanceOf(Unavailable.class)
                     .hasMessageNotContaining("test-only-key");
