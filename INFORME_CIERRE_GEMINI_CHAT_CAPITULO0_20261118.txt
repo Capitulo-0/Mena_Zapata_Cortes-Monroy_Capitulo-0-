@@ -1,0 +1,151 @@
+CAPÍTULO 0 | CIERRE DEL CHAT LITERARIO GEMINI
+Rama feature/gemini-writer-20261118 | Base d7af0a4
+
+Experiencia
+El icono de destellos abre Asistente Capítulo 0 desde la cabecera de Inicio
+y Writer. Nueva historia, Editar historia y el editor de capítulos abren la
+misma pantalla con las acciones que corresponden a su borrador. El chat usa
+Cinzel y Merriweather, burdeos, crema y dorado, burbujas y tarjetas, campo
+inferior fijo y desplazamiento independiente. Tres puntos animados indican
+la espera. El movimiento reducido muestra los puntos estáticos. Una
+conversación nueva vacía el historial y no reutiliza respuestas pendientes.
+El acceso anterior a Selección con Gemini se retiró de la cabecera. Su
+endpoint se conserva por compatibilidad. El carrusel habitual de Inicio
+mantiene su fuente, carga y reglas.
+
+Lectura
+Gemini interpreta el mensaje y devuelve los criterios de búsqueda. La API
+consulta Google Books en español, aplica el límite de páginas cuando procede
+y reutiliza el filtro de obras guardadas y la deduplicación por obra e ISBN.
+Una búsqueda puede devolver menos de cinco resultados. Sin suficientes
+candidatos se muestra una explicación. Los libros y sus identificadores
+vienen sólo del catálogo. Las tarjetas abren la ficha real desde el chat
+global. La opción Usar mi biblioteca permite ordenar por preferencias o
+buscar a partir de géneros y autores guardados si falta un tema explícito.
+La biblioteca se consulta en el backend y no se adjunta al prompt.
+
+Escritura y propiedad
+Se puede escribir libremente para proponer ideas, títulos, sinopsis, diálogos,
+correcciones y continuaciones. Se muestra una sugerencia independiente por
+sección. Cada respuesta se puede copiar o descartar, y un fallo se puede
+reintentar explícitamente. En los editores hay confirmación para aplicar un
+título, comparar una sinopsis o añadir prosa al final. El editor verifica que
+el texto de destino no haya cambiado. La inserción conserva el original y
+puede deshacerse mientras el bloque se mantiene intacto. El chat no guarda
+ni publica. Las sugerencias basadas en una historia guardada seleccionada
+se pueden copiar sin aplicar a un borrador abierto.
+
+Mi historia solicita al servidor sólo las opciones del propietario
+autenticado. El usuario autoriza el uso del título, género y hasta 1200
+caracteres de sinopsis. Si elige un capítulo, autoriza además el título
+y hasta 3000 caracteres finales. Spring comprueba el propietario y que
+el capítulo pertenezca a la obra. Desde un editor se puede compartir
+explícitamente un fragmento visible de hasta 4000 caracteres. Cambiar o
+quitar la historia borra el contexto conversacional anterior. Ningún texto
+de otros capítulos llega al proveedor.
+
+Backend, seguridad y plazos
+POST /api/me/assistant y GET /api/me/assistant/stories con la ruta de capítulos
+por historia reutilizan la autenticación Firebase. El cliente conserva
+GeminiRecommendationClient, Interactions REST sin historial remoto
+(store=false), el modelo por GEMINI_MODEL y la clave sólo en Spring.
+Se reutiliza la cuota de cinco por UID por minuto, un envío concurrente por
+UID y cuatro por instancia. El cuerpo se limita a 32 KiB. El mensaje actual
+se limita a 2000 caracteres. Se adjuntan como máximo seis turnos previos
+de 1200 caracteres cada uno. Los textos se empaquetan como datos separados
+de las reglas del sistema. El historial vive en la pantalla, se borra al
+salir o cambiar de cuenta y no se almacena en Neon. Los logs de generación
+contienen duración, HTTP del proveedor y motivo técnico, sin contenido.
+
+El 504 anterior a 40,47 s es compatible con el límite del cliente Spring.
+El HTTP 200 posterior a 7,34 s, observado por la usuaria, confirma que el
+problema no era constante. Sin un registro de cabeceras del primer intento
+no se puede atribuir la espera a una causa interna del proveedor. Se
+conservan 40 s de generación, ajustables con GEMINI_WRITER_TIMEOUT_SECONDS
+hasta 45 s, 50 s para Flutter HTTP y 55 s visuales. La búsqueda de catálogo
+tiene un presupuesto adicional de tres segundos. Los plazos de Home para
+su recomendador quedan separados. Cerrar el chat descarta la respuesta
+en la interfaz. Una solicitud ya enviada puede consumir cuota. No se
+añadieron reintentos automáticos ni estimaciones falsas de avance.
+
+Verificación
+Backend: 30 pruebas aprobadas en H2 en memoria con Flyway desactivado y
+proveedores controlados. Incluyeron autenticación, propiedad y autorización
+de historia, capítulo, contexto acotado, ausencia de escrituras, catálogo
+sin duplicados o guardados y regresión de Home. El transporte aceptó una
+respuesta demorada más de ocho segundos y respetó un plazo corto de control.
+Flutter: 76 pruebas de Writer, chat y recomendaciones aprobadas. Después de
+reforzar la comprobación de cuenta al aplicar una sugerencia, pasaron las 13
+pruebas focalizadas. Se probaron 320, 360 y 390 px con teclado simulado,
+seguimiento de turnos, cambio de cuenta, cancelación, inserción y deshacer,
+tarjetas de libros, errores 429/502/503/504 y respuesta tras 42 s simulados.
+flutter analyze --no-pub: sin incidencias en el código final.
+Flutter Web debug: compilación exitosa en 148,7 s con una copia temporal
+que contenía sólo el objeto Firebase válido. Se eliminó la copia al terminar.
+El artefacto local se generó en android/build/web.
+
+La usuaria comprobó Gemini real con gemini-3-flash-preview antes de
+este cambio. El recorrido real de la nueva interfaz queda pendiente porque
+la clave no está disponible en el proceso de verificación. La selección
+de catálogo y los turnos del nuevo chat se validaron con pruebas controladas.
+No se accedió a Neon ni se ejecutaron migraciones.
+
+Chrome
+En la terminal del backend con la clave ya configurada, conserva
+GEMINI_MODEL=gemini-3-flash-preview. Inicia el backend desde esta rama:
+
+mvn -o spring-boot:run "-Dspring-boot.run.arguments=--server.port=8086 --spring.flyway.enabled=false --spring.jpa.hibernate.ddl-auto=validate"
+
+El archivo local de Firebase tenía texto después del objeto JSON y se dejó
+intacto. Para ejecutar Chrome usa un archivo privado que contenga únicamente
+el objeto JSON autorizado. Ajusta la ruta del ejemplo según tu archivo.
+
+Desde android:
+
+flutter run -d chrome --web-port=7357 --dart-define-from-file=config/firebase_web.local.json --dart-define=API_BASE_URL=http://localhost:8086
+
+Inicia sesión. Abre los destellos de Inicio y prueba «Recomiéndame cinco
+libros cortos de misterio», abre una ficha y vuelve al chat. En Writer,
+pide ideas y luego «haz la segunda más misteriosa». Autoriza una historia
+y capítulo de prueba para pedir una continuación. En un editor, confirma
+una sugerencia y deshaz la inserción antes de guardar. La solicitud de chat
+en Network es POST /api/me/assistant. Evita copiar los encabezados, mensajes
+privados y respuestas en los registros de prueba.
+
+Git
+Commit de implementación: 15e5cfaff38ba458349204a5a9524fc3ec31c0dc
+(feat: integrar chat literario Gemini en Inicio y Writer).
+Push confirmado a origin/feature/gemini-writer-20261118. GitHub creó la rama
+remota y el seguimiento quedó configurado. Este informe se guarda en un
+commit de documentación posterior. git diff --check pasó. Git avisó de
+conversión de LF a CRLF en archivos de texto. No se publicó a develop.
+Lista selectiva desde la raíz:
+INFORME_CIERRE_GEMINI_CHAT_CAPITULO0_20261118.txt
+INFORME_INTEGRACION_GEMINI_WRITER_CAPITULO0_20261118.txt
+android/lib/core/network/api_client.dart
+android/lib/features/home/presentation/screens/home_screen.dart
+android/lib/features/home/presentation/screens/main_shell_screen.dart
+android/lib/features/home/presentation/widgets/main_header.dart
+android/lib/features/writer/presentation/screens/chapter_editor_screen.dart
+android/lib/features/writer/presentation/screens/create_story_screen.dart
+android/lib/features/writer/presentation/widgets/literary_chat_screen.dart
+android/lib/features/writer/services/literary_chat.dart
+android/lib/features/writer/services/writer_api_repository.dart
+android/lib/features/writer/services/writer_assistant.dart
+android/test/home_recommendations_final_test.dart
+android/test/home_recommendations_test.dart
+android/test/writer/writer_assistant_test.dart
+backend/src/main/java/com/capitulo0/backend/recommendation/GeminiRecommendationClient.java
+backend/src/main/java/com/capitulo0/backend/recommendation/RecommendationService.java
+backend/src/main/java/com/capitulo0/backend/writer/LiteraryChatController.java
+backend/src/main/java/com/capitulo0/backend/writer/LiteraryChatService.java
+backend/src/main/java/com/capitulo0/backend/writer/WriterAssistantController.java
+backend/src/main/java/com/capitulo0/backend/writer/WriterAssistantService.java
+backend/src/main/java/com/capitulo0/backend/writer/WriterService.java
+backend/src/test/java/com/capitulo0/backend/SecurityEndpointTests.java
+backend/src/test/java/com/capitulo0/backend/WriterAssistantTests.java
+backend/src/test/java/com/capitulo0/backend/recommendation/GeminiRecommendationClientTests.java
+backend/src/test/java/com/capitulo0/backend/recommendation/RecommendationClosureTests.java
+
+La lista excluye configuración Firebase local, claves, respaldos, logs,
+perfiles Chrome, capturas, temporales y compilaciones.
