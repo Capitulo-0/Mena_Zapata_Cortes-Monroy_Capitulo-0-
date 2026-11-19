@@ -6,6 +6,10 @@ import java.util.*;
 import com.capitulo0.backend.auth.model.AuthenticatedFirebaseUser;
 import com.capitulo0.backend.auth.service.FirebaseTokenVerifier;
 import com.capitulo0.backend.user.entity.User;
+import com.capitulo0.backend.recommendation.GeminiRecommendationClient;
+import com.capitulo0.backend.writer.WriterStoryRepository;
+import com.capitulo0.backend.writer.WriterService;
+import com.capitulo0.backend.writer.WriterDocument;
 import com.capitulo0.backend.user.repository.UserRepository;
 import com.capitulo0.backend.catalog.book.entity.Book;
 import com.capitulo0.backend.catalog.book.repository.BookRepository;
@@ -29,6 +33,9 @@ import static org.mockito.Mockito.*;
 class SecurityEndpointTests {
     @Value("${local.server.port}") int port;
     @MockitoBean FirebaseTokenVerifier verifier;
+    @MockitoBean GeminiRecommendationClient gemini;
+    @Autowired WriterStoryRepository writerStories;
+    @Autowired WriterService writer;
     @Autowired UserRepository users;
     @Autowired BookRepository books;
     private final HttpClient client = HttpClient.newHttpClient();
@@ -90,6 +97,63 @@ class SecurityEndpointTests {
             data(call("GET", "/api/me", authorization, null), 401);
         }
         verifyNoInteractions(verifier);
+    }
+    @Test void literaryChatRequiresVerifiedIdentityAndDoesNotWriteStories() throws Exception {
+        String path = "/api/me/assistant";
+        String body = "{\"message\":\"Dame una idea\"}";
+        data(call("POST", path, null, body), 401);
+        data(call("GET", path + "/stories", null, null), 401);
+        verifyNoInteractions(gemini);
+        var owner = user();
+        var authorization = token(owner);
+        var other = token(user());
+        var now = java.time.Instant.now();
+        writer.save(owner.getId(), "other", new WriterDocument("other", "Historia propia", "Sinopsis", "Misterio",
+            null, "draft", List.of(new WriterDocument.Chapter("one", "Capítulo", "secreto" + "x".repeat(3000),
+                1, false, now, now)), now, now, 0L, 0, 0.0));
+        var count = writerStories.count();
+        when(gemini.configured()).thenReturn(true);
+        when(gemini.generate(anyString(), anyMap(), anyMap(), anyInt(), anyString()))
+            .thenReturn(json.readTree("""
+                {"mode":"TEXT","query":"","maxPages":0,"sections":[
+                {"heading":"Una idea","text":"La llave","action":"NONE"}]}
+                """));
+        assertThat(data(call("POST", path, authorization, body), 200)
+            .path("sections").get(0).path("text").asText()).isEqualTo("La llave");
+        data(call("POST", path, other, """
+            {"message":"Continúa","storyId":"other","shareStory":true}
+            """), 404);
+        data(call("POST", path, authorization, """
+            {"message":"Continúa","storyId":"other","chapterId":"one","shareStory":false}
+            """), 400);
+        assertThat(data(call("GET", path + "/stories", authorization, null), 200)
+            .get(0).path("id").asText()).isEqualTo("other");
+        assertThat(data(call("GET", path + "/stories/other/chapters", authorization, null), 200)
+            .get(0).path("id").asText()).isEqualTo("one");
+        data(call("GET", path + "/stories/other/chapters", other, null), 404);
+        data(call("POST", path, authorization, """
+            {"message":"Continúa","history":[{"role":"assistant","text":"La segunda idea"}],
+             "storyId":"other","chapterId":"one","shareStory":true}
+            """), 200);
+        verify(gemini).generate(anyString(), argThat(fields ->
+            "x".repeat(3000).equals(fields.get("fragmento final del capítulo"))
+            && fields.get("historial").contains("La segunda idea")), anyMap(), anyInt(), anyString());
+        assertThat(writerStories.count()).isEqualTo(count);
+    }
+    @Test void writerAssistantUsesBearerFilterAndLeavesStoriesUntouched() throws Exception {
+        var path = "/api/me/writer/assistant";
+        var body = "{\"task\":\"IDEAS\",\"direction\":\"Una biblioteca\"}";
+        var authorization = token(user());
+        var count = writerStories.count();
+        data(call("POST", path, null, body), 401);
+        data(call("POST", path, "Bearer invalid", body), 401);
+        verifyNoInteractions(gemini);
+        when(gemini.configured()).thenReturn(true);
+        when(gemini.generate(anyString(), anyMap(), anyMap(), anyInt(), anyString()))
+            .thenReturn(json.readTree("{\"suggestions\":[\"Una pista discreta\"]}"));
+        assertThat(data(call("POST", path, authorization, body), 200)
+            .path("suggestions").get(0).asText()).isEqualTo("Una pista discreta");
+        assertThat(writerStories.count()).isEqualTo(count);
     }
     @Test void invalidOrExpiredTokensHaveSanitized401() throws Exception {
         for (String token : List.of("invalid", "expired")) {

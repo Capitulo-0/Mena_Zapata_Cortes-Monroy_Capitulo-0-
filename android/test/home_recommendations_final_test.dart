@@ -10,11 +10,10 @@ import 'package:android/features/home/data/home_recommendation_repository.dart';
 import 'package:android/features/home/data/recommendation_titles.dart';
 import 'package:android/features/home/presentation/home_recommendation_controller.dart';
 import 'package:android/features/home/presentation/dialogs/home_gemini_selection_dialog.dart';
-import 'package:android/features/home/presentation/screens/home_screen.dart';
 import 'package:android/features/home/presentation/widgets/main_header.dart';
 
 import 'home_recommendations_test.dart'
-    show RecommendationsFake, result, candidate, home;
+    show RecommendationsFake, result, candidate;
 import 'catalog_test.dart' show metadata;
 import 'support/auth_fakes.dart';
 import 'library_regression_test.dart' show installLocalTestAssets;
@@ -142,11 +141,8 @@ void main() {
           await load;
           await tester.pumpWidget(entry(controller, dark: dark));
           await tester.pumpAndSettle();
-          expect(
-            find.byTooltip('Selección inteligente con Gemini'),
-            findsOneWidget,
-          );
-          await tester.tap(find.byTooltip('Selección inteligente con Gemini'));
+          expect(find.byTooltip('Asistente Capítulo 0'), findsOneWidget);
+          await tester.tap(find.byTooltip('Asistente Capítulo 0'));
           await tester.pumpAndSettle();
           expect(
             find.byKey(const ValueKey('gemini-selection-dialog')),
@@ -186,7 +182,7 @@ void main() {
         await load;
         await tester.pumpWidget(entry(controller));
         await tester.pumpAndSettle();
-        await tester.tap(find.byTooltip('Selección inteligente con Gemini'));
+        await tester.tap(find.byTooltip('Asistente Capítulo 0'));
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('gemini-request')));
         await tester.pump();
@@ -247,7 +243,7 @@ void main() {
       await controller.load();
       await tester.pumpWidget(entry(controller));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Selección inteligente con Gemini'));
+      await tester.tap(find.byTooltip('Asistente Capítulo 0'));
       await tester.pumpAndSettle();
       expect(requests, hasLength(1));
       expect(find.byKey(const ValueKey('gemini-consent')), findsOneWidget);
@@ -263,38 +259,6 @@ void main() {
         findsOneWidget,
       );
       expect(controller.data!.items.single['googleVolumeId'], 'real');
-    },
-  );
-  testWidgets(
-    'only one Home dialog opens and changing accounts closes it and discards pending selection',
-    (tester) async {
-      final a = RecommendationsFake('a');
-      final b = RecommendationsFake('b');
-      final key = GlobalKey<HomeScreenState>();
-      await tester.pumpWidget(home(a, homeKey: key));
-      a.loads.single.complete(result('a'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Selección inteligente con Gemini'));
-      key.currentState!.showGeminiAssistant();
-      await tester.pumpAndSettle();
-      expect(
-        find.byKey(const ValueKey('gemini-selection-dialog')),
-        findsOneWidget,
-      );
-      await tester.tap(find.byKey(const ValueKey('gemini-request')));
-      await tester.pump();
-      expect(a.enrichments, hasLength(1));
-      await tester.pumpWidget(home(b, homeKey: key));
-      b.loads.single.complete(result('b', available: false));
-      a.enrichments.single.complete(result('a', status: 'ENRICHED'));
-      await tester.pumpAndSettle();
-      expect(
-        find.byKey(const ValueKey('gemini-selection-dialog')),
-        findsNothing,
-      );
-      expect(find.text('Real fixture a'), findsNothing);
-      expect(b.enrichments, isEmpty);
-      expect(tester.takeException(), isNull);
     },
   );
 }

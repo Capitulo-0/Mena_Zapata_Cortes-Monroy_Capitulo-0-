@@ -17,7 +17,7 @@ class GeminiRecommendationClientTests {
     Input input() { return new Input(List.of(new Preference("Leído",List.of("Autora"),List.of("Fantasía"),"LEIDO")),
         List.of(new Candidate("real","Candidato",List.of("Autora"),List.of("Fantasía"),List.of("AUTHOR:Autora")))); }
     @Test void missingKeyNeverCallsNetwork() {
-        var client=new GeminiRecommendationClient("","gemini-4-hydrogen");
+        var client=new GeminiRecommendationClient("","gemini-4-hydrogen",40);
         assertThat(client.configured()).isFalse();
         assertThatThrownBy(()->client.select(input())).isInstanceOf(Unavailable.class);
     }
@@ -68,6 +68,81 @@ class GeminiRecommendationClientTests {
                     .hasMessageNotContaining("test-only-key");
             }
         } finally {server.stop(0);}
+    }
+
+    @Test void writerUsesSameTransportWithSeparateInstructionsAndHandlesEmptyOutput() throws Exception {
+        var received = new AtomicReference<String>();
+        var mode = new AtomicReference<>("ok");
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/interactions", exchange -> {
+            try {
+                received.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                var parts = mode.get().equals("ok")
+                    ? List.of(Map.of("type", "text", "text", "{\"suggestions\":[\"Una pista\"]}"))
+                    : List.of(Map.of("type", "thought", "text", "internal"));
+                var bytes = json.writeValueAsBytes(Map.of("status", "completed", "steps",
+                    List.of(Map.of("type", "model_output", "content", parts))));
+                exchange.sendResponseHeaders(200, bytes.length);
+                exchange.getResponseBody().write(bytes);
+            } finally { exchange.close(); }
+        });
+        server.start();
+        try {
+            var client = new GeminiRecommendationClient("test-only-key", "gemini-4-hydrogen",
+                HttpClient.newHttpClient(), URI.create("http://127.0.0.1:" +
+                server.getAddress().getPort() + "/interactions"), Duration.ofSeconds(2));
+            var fields = Map.of("fragmento", "Una biblioteca");
+            var schema = Map.<String, Object>of("type", "object");
+            assertThat(client.generate("Responde en español.", fields, schema, 2304, "low")
+                .path("suggestions").get(0).asText()).isEqualTo("Una pista");
+            var body = json.readTree(received.get());
+            assertThat(body.path("input").asText()).contains("Una biblioteca").doesNotContain("test-only-key");
+            assertThat(body.path("system_instruction").asText()).isEqualTo("Responde en español.");
+            assertThat(body.path("store").asBoolean(true)).isFalse();
+            assertThat(body.path("generation_config").path("thinking_level").asText()).isEqualTo("low");
+            mode.set("empty");
+            assertThatThrownBy(() -> client.generate("Responde en español.", fields, schema, 2304, "low"))
+                .isInstanceOfSatisfying(Unavailable.class, error -> assertThat(error.status).isEqualTo("EMPTY"));
+        } finally { server.stop(0); }
+    }
+
+    @Test void writerAcceptsAResponseAfterEightSecondsAndStopsAtItsConfiguredDeadline() throws Exception {
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+        var received = new AtomicReference<String>();
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/interactions", exchange -> {
+            try {
+                calls.incrementAndGet();
+                received.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+                byte[] bytes = json.writeValueAsBytes(Map.of("status", "completed", "steps", List.of(Map.of(
+                    "type", "model_output", "content",
+                    List.of(Map.of("type", "text", "text", "{\"suggestions\":[\"Una pista\"]}"))))));
+                exchange.sendResponseHeaders(200, bytes.length);
+                Thread.sleep(8300);
+                exchange.getResponseBody().write(bytes);
+            } catch (java.io.IOException ignored) {
+                // The deadline test cancels the delayed response.
+            } catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            } finally { exchange.close(); }
+        });
+        server.start();
+        try {
+            var endpoint = URI.create("http://127.0.0.1:" + server.getAddress().getPort() + "/interactions");
+            var http = HttpClient.newHttpClient();
+            var fields = Map.of("fragmento", "Una biblioteca");
+            var schema = Map.<String, Object>of("type", "object");
+            var writer = new GeminiRecommendationClient("test-only-key", "gemini-3-flash-preview",
+                http, endpoint, Duration.ofSeconds(8), Duration.ofSeconds(40));
+            assertThat(writer.generate("Responde en español.", fields, schema, 2304, "low")
+                .path("suggestions").get(0).asText()).isEqualTo("Una pista");
+            assertThat(json.readTree(received.get()).path("model").asText()).isEqualTo("gemini-3-flash-preview");
+            var shortDeadline = new GeminiRecommendationClient("test-only-key", "gemini-3-flash-preview",
+                http, endpoint, Duration.ofSeconds(8), Duration.ofMillis(700));
+            assertThatThrownBy(() -> shortDeadline.generate("Responde en español.", fields, schema, 2304, "low"))
+                .isInstanceOfSatisfying(Unavailable.class, error -> assertThat(error.status).isEqualTo("TIMEOUT"));
+            assertThat(calls).hasValue(2);
+        } finally { server.stop(0); }
     }
 
     @Test void availabilityChecksAccountModelMetadataOnceAndNeverGenerates() throws Exception {

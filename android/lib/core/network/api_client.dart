@@ -18,7 +18,7 @@ class ApiFailure implements Exception {
   final String message;
   final String? code;
 
-  factory ApiFailure.forStatus(int code) => ApiFailure(
+  factory ApiFailure.forStatus(int code, {String? errorCode}) => ApiFailure(
     code,
     switch (code) {
       401 =>
@@ -39,6 +39,7 @@ class ApiFailure implements Exception {
       _ =>
         'No pudimos completar la operación con el backend.',
     },
+    code: errorCode,
   );
 }
 
@@ -100,6 +101,7 @@ class ApiClient {
     String path, {
     Map<String, dynamic>? body,
     String? expectedUid,
+    Duration? responseTimeout,
     bool publicRead = false,
     Map<String, String>? queryParameters,
   }) async {
@@ -151,7 +153,7 @@ class ApiClient {
         response = await _http
             .send(request)
             .then(http.Response.fromStream)
-            .timeout(timeout);
+            .timeout(responseTimeout ?? timeout);
       } on TimeoutException {
         throw const ApiFailure(
           503,
@@ -217,7 +219,7 @@ class ApiClient {
 
         // Mantener el comportamiento original
         // para los demás errores HTTP.
-        throw ApiFailure.forStatus(response.statusCode);
+        throw ApiFailure.forStatus(response.statusCode, errorCode: errorCode);
       }
 
       if (response.statusCode == 204) {
@@ -249,12 +251,14 @@ class ApiClient {
     String path, {
     Map<String, dynamic>? body,
     String? expectedUid,
+    Duration? responseTimeout,
   }) async {
     final result = await requestJson(
       method,
       path,
       body: body,
       expectedUid: expectedUid,
+      responseTimeout: responseTimeout,
     );
 
     if (result is Map<String, dynamic>) {

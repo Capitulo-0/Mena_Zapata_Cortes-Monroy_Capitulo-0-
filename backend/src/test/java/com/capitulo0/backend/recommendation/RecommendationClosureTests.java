@@ -27,6 +27,17 @@ class RecommendationClosureTests {
    assertThat(f.service.recommendations(1L)).isSameAs(result);
   }
  }
+ @Test void chatDiscoveryExcludesSavedAndDuplicateEditionsAndHonorsLength() {
+  var f=new RecommendationProgressiveTests();
+  var owned=f.book("owned","Autora A","Fantasía");
+  when(f.library.list(1L)).thenReturn(List.of(f.entry(owned)));
+  var first=new GoogleBook("real","La noche del misterio",null,List.of("Autora B"),null,null,null,130,List.of("Misterio"),"es",Map.of(),null,null);
+  var duplicate=new GoogleBook("duplicate","La noche del misterio (Edición ilustrada)",null,List.of("Autora B"),null,null,null,130,List.of("Misterio"),"es",Map.of(),null,null);
+  var tooLong=new GoogleBook("long","Un misterio muy largo",null,List.of("Autora C"),null,null,null,350,List.of("Misterio"),"es",Map.of(),null,null);
+  when(f.books.search("misterio","all",0,24,"es")).thenReturn(f.page(owned,first,duplicate,tooLong));
+  assertThat(f.service.discover(1L,"misterio",false,200)).hasSize(1)
+    .allMatch(book->Set.of("real","duplicate").contains(book.volumeId()));
+ }
  @Test void identityAliasesMergeTransitivelyAcrossIdsTitlesAndValidIsbns() {
   var f=new RecommendationProgressiveTests();f.seven();
   var a=new GoogleBook("a","La misma obra",null,List.of("Autora A"),null,null,null,null,List.of("Fantasía"),"es",Map.of("ISBN_10","0306406152"),null,null);

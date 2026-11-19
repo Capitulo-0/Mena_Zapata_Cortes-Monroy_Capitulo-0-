@@ -20,7 +20,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../data/home_demo_data.dart';
 
 import '../dialogs/home_isbn_scanner_dialog.dart';
-import '../dialogs/home_gemini_selection_dialog.dart';
 import '../widgets/home_quote_section.dart';
 import '../widgets/home_search_section.dart';
 import 'home_book_detail_screen.dart';
@@ -125,8 +124,6 @@ class HomeScreenState extends State<HomeScreen> {
   String _recommendationRevision = '';
   String? _recommendationExplanation;
 
-  bool _geminiDialogOpen = false;
-  BuildContext? _geminiDialogContext;
   int carouselOffset = 0;
   HomeRecommendations? _visibleRecommendations;
 
@@ -188,7 +185,6 @@ class HomeScreenState extends State<HomeScreen> {
     if (_recommendationRevision != _revision() ||
         oldWidget.catalogRepository != widget.catalogRepository ||
         oldWidget.recommendationRepository != widget.recommendationRepository) {
-      _dismissGeminiDialog();
       _recommendations
         ..removeListener(_catalogChanged)
         ..dispose();
@@ -204,22 +200,8 @@ class HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() {});
   }
 
-  void _dismissGeminiDialog() {
-    final dialogContext = _geminiDialogContext;
-    _geminiDialogContext = null;
-    if (dialogContext == null || !dialogContext.mounted) return;
-    final route = ModalRoute.of(dialogContext);
-    final navigator = Navigator.of(dialogContext);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (navigator.mounted && route != null && route.isActive) {
-        navigator.removeRoute(route);
-      }
-    });
-  }
-
   @override
   void dispose() {
-    _dismissGeminiDialog();
     _recommendations
       ..removeListener(_catalogChanged)
       ..dispose();
@@ -555,30 +537,7 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void showGeminiAssistant() {
-    unawaited(_confirmGemini());
-  }
-
-  Future<void> _confirmGemini() async {
-    if (_geminiDialogOpen || !mounted) return;
-    final controller = _recommendations;
-    _geminiDialogOpen = true;
-    try {
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) {
-          _geminiDialogContext = dialogContext;
-          return HomeGeminiSelectionDialog(
-            controller: controller,
-            isCurrent: () => mounted && identical(controller, _recommendations),
-          );
-        },
-      );
-    } finally {
-      _geminiDialogContext = null;
-      _geminiDialogOpen = false;
-    }
-  }
+  Future<void> openAssistantBook(Map<String, dynamic> book) => _showBookDetails(book);
 
   void _showAuthorProfile(Map<String, String> story) {
     final isOwnProfile = story['user'] == '@constanza.lectora';

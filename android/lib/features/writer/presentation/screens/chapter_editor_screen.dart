@@ -13,6 +13,8 @@ import '../widgets/chapter_preview_screen.dart';
 import '../../models/writer_chapter.dart';
 import '../../models/writer_story.dart';
 import '../../services/writer_repository.dart';
+import '../../services/literary_chat.dart';
+import '../widgets/literary_chat_screen.dart';
 
 part '../widgets/chapter_editor_header_section.dart';
 part '../widgets/chapter_editor_story_info.dart';
@@ -468,6 +470,74 @@ class _ChapterEditorScreenState extends State<ChapterEditorScreen> {
     Navigator.of(context).pop();
   }
 
+  ({String before, String inserted})? _assistantInsertion;
+
+  bool get _canUndoAssistantInsertion {
+    final insertion = _assistantInsertion;
+    return insertion != null &&
+        _contentController.text.startsWith(
+          insertion.before + insertion.inserted,
+        );
+  }
+
+  void _undoAssistantInsertion() {
+    final insertion = _assistantInsertion;
+    if (insertion == null || !_canUndoAssistantInsertion) return;
+    final start = insertion.before.length;
+    final text = _contentController.text.replaceRange(
+      start,
+      start + insertion.inserted.length,
+      '',
+    );
+    _assistantInsertion = null;
+    _contentController.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: start),
+    );
+  }
+
+  Future<void> _openAssistant(LiteraryChatRepository repository) async {
+    final before = _contentController.text;
+    final selection = _contentController.selection;
+    final excerpt = selection.isValid && !selection.isCollapsed
+        ? selection.textInside(before)
+        : before;
+    final suggestion = await LiteraryChatScreen.open(
+      context,
+      LiteraryChatScreen(
+        repository: repository,
+        editor: ChatEditor.chapter,
+        genre: widget.story.genre,
+        excerpt: excerpt.length <= 4000 ? excerpt : '',
+      ),
+    );
+    if (!mounted ||
+        suggestion == null ||
+        _isSaving ||
+        _contentController.text != before ||
+        suggestion.action != 'INSERT' ||
+        !repository.chatAccountIsCurrent) {
+      return;
+    }
+    final inserted = before.isEmpty
+        ? suggestion.text
+        : '\n\n${suggestion.text}';
+    final text = before + inserted;
+    if (text.length > 200000) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El capítulo supera el límite de longitud.'),
+        ),
+      );
+      return;
+    }
+    _assistantInsertion = (before: before, inserted: inserted);
+    _contentController.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -499,6 +569,21 @@ class _ChapterEditorScreenState extends State<ChapterEditorScreen> {
                     const LinearProgressIndicator(),
                   _buildTitleSection(),
                   const SizedBox(height: 18),
+                  if (widget.repository case LiteraryChatRepository assistant)
+                    Wrap(
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _openAssistant(assistant),
+                          icon: const Icon(Icons.auto_awesome, size: 17),
+                          label: const Text('Asistente IA'),
+                        ),
+                        if (_canUndoAssistantInsertion)
+                          TextButton(
+                            onPressed: _undoAssistantInsertion,
+                            child: const Text('Deshacer inserción IA'),
+                          ),
+                      ],
+                    ),
                   _buildContentSection(),
                   const SizedBox(height: 8),
                   _buildCompactStats(),
