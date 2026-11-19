@@ -142,8 +142,9 @@ public class GeminiRecommendationClient implements Provider {
                 return new LimitedBody();
             });
             var response = pending.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
-            if (response.statusCode() != 200) throw new Unavailable(
-                response.statusCode() == 429 ? "QUOTA" : "HTTP_ERROR");
+            if (response.statusCode() == 429) throw new Unavailable("QUOTA",
+                response.headers().firstValue("Retry-After").map(GeminiRecommendationClient::retrySeconds).orElse(null));
+            if (response.statusCode() != 200) throw new Unavailable("HTTP_ERROR");
             var root = json.readTree(new String(response.body(), StandardCharsets.UTF_8));
             if (!"completed".equals(root.path("status").asText())) throw new Unavailable("INVALID");
             StringBuilder output = new StringBuilder();
@@ -175,6 +176,21 @@ public class GeminiRecommendationClient implements Provider {
                     TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started),
                     status == 0 ? "none" : Integer.toString(status), outcome);
             }
+        }
+    }
+
+    private static Integer retrySeconds(String header) {
+        try {
+            long seconds;
+            if (header.matches("[0-9]+")) {
+                seconds = Long.parseLong(header);
+            } else {
+                var retryAt = java.time.ZonedDateTime.parse(header, java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME);
+                seconds = Duration.between(java.time.Instant.now(), retryAt.toInstant()).toSeconds() + 1;
+            }
+            return (int) Math.max(0, Math.min(Integer.MAX_VALUE, seconds));
+        } catch (RuntimeException ignored) {
+            return null;
         }
     }
 

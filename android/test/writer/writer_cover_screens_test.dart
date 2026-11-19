@@ -30,8 +30,13 @@ import 'writer_closure_test.dart' show fixture;
 class SelectedImagePicker extends WriterCoverPicker {
   SelectedImagePicker(this.selection);
   final WriterCoverSelection selection;
+  var _picked = false;
   @override
-  Future<WriterCoverSelection?> pick() async => selection;
+  Future<WriterCoverSelection?> pick() async {
+    if (_picked) return null;
+    _picked = true;
+    return selection;
+  }
 }
 
 class DelayedCoverRepository extends TestWriterRepository {
@@ -409,6 +414,12 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(Image), findsWidgets);
+      await t.tap(find.byKey(const ValueKey('writer-upload-cover')));
+      await t.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('writer-cover-preview-notice')),
+        findsOneWidget,
+      );
       await t.ensureVisible(
         find.byKey(const ValueKey('writer-save-story-draft')),
       );

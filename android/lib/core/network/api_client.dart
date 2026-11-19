@@ -12,13 +12,15 @@ class ApiFailure implements Exception {
     this.statusCode,
     this.message, {
     this.code,
+    this.retryAfterSeconds,
   });
 
   final int statusCode;
   final String message;
   final String? code;
+  final int? retryAfterSeconds;
 
-  factory ApiFailure.forStatus(int code, {String? errorCode}) => ApiFailure(
+  factory ApiFailure.forStatus(int code, {String? errorCode, int? retryAfterSeconds}) => ApiFailure(
     code,
     switch (code) {
       401 =>
@@ -40,6 +42,7 @@ class ApiFailure implements Exception {
         'No pudimos completar la operación con el backend.',
     },
     code: errorCode,
+    retryAfterSeconds: retryAfterSeconds,
   );
 }
 
@@ -219,7 +222,16 @@ class ApiClient {
 
         // Mantener el comportamiento original
         // para los demás errores HTTP.
-        throw ApiFailure.forStatus(response.statusCode, errorCode: errorCode);
+        final retryHeader = response.headers.entries
+            .where((header) => header.key.toLowerCase() == 'retry-after')
+            .firstOrNull
+            ?.value;
+        final retryAfter = int.tryParse(retryHeader ?? '');
+        throw ApiFailure.forStatus(
+          response.statusCode,
+          errorCode: errorCode,
+          retryAfterSeconds: retryAfter != null && retryAfter >= 0 ? retryAfter : null,
+        );
       }
 
       if (response.statusCode == 204) {

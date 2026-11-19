@@ -4,6 +4,7 @@ import com.capitulo0.backend.common.exception.ApiException;
 import com.capitulo0.backend.recommendation.GeminiRecommendationClient;
 import com.capitulo0.backend.recommendation.Recommendations.Unavailable;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.util.*;
 
@@ -29,18 +30,29 @@ public class WriterAssistantService {
 
     private static final long WINDOW = java.time.Duration.ofMinutes(1).toNanos();
     private final GeminiRecommendationClient gemini;
+    private final int generationLimit;
+    private final int catalogLimit;
     private final Map<String, Usage> users = new HashMap<>();
     private int active;
 
     private static final class Usage {
         final long started;
-        int count;
+        int generations;
+        int catalogs;
         boolean busy;
 
         Usage(long started) { this.started = started; }
     }
 
-    public WriterAssistantService(GeminiRecommendationClient gemini) { this.gemini = gemini; }
+    public WriterAssistantService(GeminiRecommendationClient gemini,
+            @Value("${GEMINI_CHAT_REQUESTS_PER_MINUTE:12}") int generationLimit,
+            @Value("${CHAT_CATALOG_REQUESTS_PER_MINUTE:20}") int catalogLimit) {
+        if (generationLimit < 1 || generationLimit > 60 || catalogLimit < 1 || catalogLimit > 60)
+            throw new IllegalArgumentException("Chat limits must be between 1 and 60 requests per minute");
+        this.gemini = gemini;
+        this.generationLimit = generationLimit;
+        this.catalogLimit = catalogLimit;
+    }
 
     Result generate(String uid, Request input) {
         if (input == null || input.task() == null) throw ApiException.invalid("Selecciona una tarea.");
@@ -91,10 +103,21 @@ public class WriterAssistantService {
 
     <T> T withQuota(String uid, java.util.function.Supplier<T> action) {
         if (!gemini.configured()) throw providerError("NOT_CONFIGURED");
-        var usage = acquire(uid);
+        return permitted(uid, true, action);
+    }
+
+    <T> T withCatalogQuota(String uid, java.util.function.Supplier<T> action) {
+        return permitted(uid, false, action);
+    }
+
+    private <T> T permitted(String uid, boolean generation, java.util.function.Supplier<T> action) {
+        var usage = acquire(uid, generation);
         try {
             return action.get();
         } catch (Unavailable e) {
+            if ("QUOTA".equals(e.status)) throw quota("WRITER_AI_PROVIDER_QUOTA",
+                "Google Gemini alcanzó su cuota. La búsqueda directa de libros sigue disponible.",
+                e.retryAfterSeconds != null ? e.retryAfterSeconds : 30);
             throw providerError(e.status);
         } finally {
             release(usage);
@@ -107,17 +130,26 @@ public class WriterAssistantService {
         return value.strip();
     }
 
-    private synchronized Usage acquire(String uid) {
+    private synchronized Usage acquire(String uid, boolean generation) {
         var now = System.nanoTime();
         users.values().removeIf(usage -> !usage.busy && now - usage.started >= WINDOW);
         var usage = users.get(uid);
-        if (active >= 4 || (usage != null && (usage.busy || usage.count >= 5))
-                || (usage == null && users.size() >= 2000)) throw providerError("QUOTA");
+        if (usage != null && usage.busy)
+            throw quota("CHAT_REQUEST_ACTIVE", "Tu solicitud anterior aún está en curso.", 3);
+        if (active >= 4 || (usage == null && users.size() >= 2000))
+            throw quota("CHAT_BUSY", "El asistente está ocupado en este momento.", 3);
+        if (usage != null && (generation ? usage.generations >= generationLimit : usage.catalogs >= catalogLimit)) {
+            int seconds = (int) Math.ceil((WINDOW - (now - usage.started)) / 1_000_000_000.0);
+            throw quota(generation ? "CHAT_GENERATION_LIMIT" : "CHAT_CATALOG_LIMIT",
+                generation ? "Alcanzaste el límite temporal de generación de Capítulo 0."
+                    : "Alcanzaste el límite temporal de búsquedas de Capítulo 0.", Math.max(1, seconds));
+        }
         if (usage == null) {
             usage = new Usage(now);
             users.put(uid, usage);
         }
-        usage.count++;
+        if (generation) usage.generations++;
+        else usage.catalogs++;
         usage.busy = true;
         active++;
         return usage;
@@ -128,12 +160,14 @@ public class WriterAssistantService {
         active--;
     }
 
+    private static ApiException quota(String code, String message, int retrySeconds) {
+        return new ApiException(HttpStatus.TOO_MANY_REQUESTS, code, message, retrySeconds);
+    }
+
     static ApiException providerError(String reason) {
         return switch (reason) {
             case "NOT_CONFIGURED" -> new ApiException(HttpStatus.SERVICE_UNAVAILABLE,
                 "WRITER_AI_NOT_CONFIGURED", "El asistente todavía no está configurado.");
-            case "QUOTA" -> new ApiException(HttpStatus.TOO_MANY_REQUESTS,
-                "WRITER_AI_QUOTA", "Se alcanzó el límite de solicitudes. Intenta más tarde.");
             case "TIMEOUT" -> new ApiException(HttpStatus.GATEWAY_TIMEOUT,
                 "WRITER_AI_TIMEOUT", "Gemini tardó demasiado. Puedes volver a intentarlo.");
             case "EMPTY" -> new ApiException(HttpStatus.BAD_GATEWAY,

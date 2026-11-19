@@ -21,7 +21,7 @@ public class ApiCorsConfiguration {
         configuration.setAllowedOrigins(origins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-        configuration.setExposedHeaders(List.of("WWW-Authenticate"));
+        configuration.setExposedHeaders(List.of("WWW-Authenticate", "Retry-After"));
         configuration.setAllowCredentials(false);
         configuration.setMaxAge(600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
