@@ -1,0 +1,178 @@
+CAPÍTULO 0 | AJUSTES DE GEMINI, PORTADAS Y VOZ
+19 de noviembre de 2026 | feature/gemini-writer-20261118 | Base bd4092e
+
+1. Estado inicial y causas
+
+Se retomó la rama del chat ya publicado. Los archivos temporales y respaldos
+locales existentes se conservaron. La prueba real previa de la usuaria
+corresponde al chat anterior y al modelo gemini-3-flash-preview.
+
+El chat anterior enviaba sólo los seis turnos más recientes y concatenaba
+todas las propuestas en un bloque que podía cortarse antes de la segunda
+idea. Los títulos bibliográficos se adjuntaban como una lista de texto sin
+números. La búsqueda del chat interpretaba una sola consulta. Una coincidencia
+literal con el título de referencia podía convertirse en el único resultado.
+
+El rechazo de portadas válidas se explicó por la implementación Web de
+Flutter. ImageDescriptor.encoded permitía crear el descriptor, pero leer
+sus dimensiones lanzaba UnsupportedError. La excepción se mostraba como si
+la imagen estuviera dañada. La lectura anterior tampoco comprobaba que el
+número de bytes recibido coincidiera con el tamaño del archivo.
+
+2. Continuidad, contexto de Writer y presentación
+
+El chat retiene la primera premisa sustantiva cuando sale de la ventana
+reciente. Omite saludos o agradecimientos breves para elegir esa premisa.
+Envía como máximo siete turnos, con hasta 1200 caracteres por turno.
+Distribuye el espacio entre las alternativas y numera la última selección
+bibliográfica. Los roles del historial se codifican como datos y las
+reglas se mantienen en la instrucción de sistema. Gemini recibe reglas
+para mantener el argumento, aplicar cambios de tono o detalles al mismo
+borrador y aclarar únicamente el dato imprescindible. Las consultas se
+limitan a lectura, libros y escritura literaria.
+
+Se verificó el acceso a historia y capítulo por propietario en Spring.
+La obra seleccionada y autorizada permanece en los siguientes envíos.
+El servicio comparte título, género, sinopsis limitada y un fragmento
+final de hasta 3000 caracteres sólo si el capítulo está autorizado.
+Cambiar o quitar la obra, cambiar de cuenta o reiniciar el chat aísla
+el historial anterior. Aplicar una sugerencia sigue siendo una decisión
+explícita y no ejecuta guardado ni publicación automáticos.
+
+Las alternativas siguen en tarjetas. El texto visible separa párrafos y
+la copia conserva el original. Los libros muestran su número y siguen
+abriendo la ficha por ID. Se mantienen Cinzel, Merriweather, la paleta
+aprobada, el compositor fijo y los tres puntos con movimiento reducido.
+
+3. Recomendaciones del chat
+
+Gemini produce hasta tres búsquedas temáticas y términos de relevancia
+para contrastar con títulos, categorías y descripciones. También devuelve
+obras y temas a excluir. Una petición general usa géneros narrativos de
+catálogo, o autores y géneros de Biblioteca si se autoriza. Las consultas
+generales filtran indicios académicos. La similitud usa criterios como
+romance juvenil y drama contemporáneo en vez de volver a buscar el título
+de referencia. Para Culpables se contempla excluir Culpa mía, Culpa tuya,
+Culpa nuestra y menciones del nombre de la saga. El filtro permite excluir
+temas como fantasía y aplicar un límite de páginas si se pidió.
+
+El backend reúne candidatos de Google Books en español con autor e ID,
+prioriza coincidencias semánticas por metadatos disponibles y reutiliza los
+filtros de guardados, ISBN y ediciones. Se mantienen los IDs y las portadas
+que entrega el proveedor. Hasta cinco obras válidas. Cuando hay menos, se
+informa el límite. La búsqueda tiene hasta tres consultas y un presupuesto
+global de cuatro segundos. El carrusel habitual de Home conserva su flujo.
+La relevancia depende de la interpretación del modelo y de la calidad de
+los metadatos de Google Books.
+
+4. Portadas personalizadas
+
+En Web se toman los bytes del selector. En Android se acumula el flujo con
+límite y se comprueba su longitud. El tipo se determina por la firma, sin
+depender del MIME ni del nombre. Se verifica cabecera y resolución antes de
+decodificar un fotograma con la API de imagen de Flutter. JPEG, PNG y WebP.
+Límites de 5 MiB, 4096 px por lado y 16 megapíxeles. Se distinguen formato
+incompatible, lectura fallida o incompleta, exceso de tamaño o dimensiones
+y archivo corrupto. Cancelar conserva la portada anterior.
+
+La vista previa es local. No se encontró una integración Firebase Storage
+configurada, ni un bucket y reglas de acceso comprobados en este entorno.
+La aplicación mantiene visible esta limitación y conserva la opción de
+guardar con una portada predeterminada. Para persistir imágenes falta
+confirmar un bucket autorizado, credenciales operativas y reglas o un
+servicio que validen propiedad y permitan lectura comunitaria sólo al
+publicar. También falta acordar eliminación, sustitución y caché. No se
+activaron servicios ni se guardaron binarios o base64 en PostgreSQL.
+
+5. Dictado en español
+
+El micrófono usa speech_to_text 7.5.0 con reconocimiento del navegador o
+de Android y locale es-CL. El usuario da consentimiento antes del permiso
+de micrófono. Se advierte que el reconocedor del dispositivo o del navegador
+puede usar su servicio en línea. Capítulo 0 no graba ni persiste audio, y
+no lo envía a Gemini. La transcripción final se añade al campo editable.
+El envío sólo ocurre al pulsar Enviar. Hay controles de detener y cancelar,
+y limpieza al perder la cuenta, cerrar el chat u ocultar la aplicación.
+Ante falta de permiso, dispositivo o soporte, se mantiene la entrada
+escrita. Android declara RECORD_AUDIO y la consulta de RecognitionService.
+El navegador debe admitir reconocimiento de voz en HTTPS o localhost.
+
+6. Verificación
+
+Backend: 32 pruebas aprobadas con H2 en memoria y Flyway desactivado.
+Tras exigir autor verificable, se repitieron y aprobaron las seis pruebas
+focalizadas de recomendación. Los proveedores se controlaron con fixtures.
+Se cubrieron autenticación, propiedad, capítulos, cuotas, errores y regresión
+de Home, además de exclusión de saga, no ficción académica irrelevante,
+idioma, obras guardadas y ediciones duplicadas.
+Flutter: 33 pruebas afectadas aprobadas. Incluyen contexto entre turnos,
+selección y autorización de historia y capítulo, cuenta distinta, respuestas
+tardías, estados de dictado y errores, 320/360/390 px, formatos y lectura de
+archivos, cancelación de portada y preservación del valor persistido.
+
+Chrome aislado: PASS JPEG PNG WebP. Se usó el validador real de Writer
+y se verificó que Image.memory dibujara los tres fotogramas con las
+dimensiones esperadas. Chrome expuso SpeechRecognition/webkitSpeechRecognition.
+El ejecutor estándar de Flutter para Chrome quedó detenido en la carga,
+por lo que se usó una aplicación Web de prueba sin autenticación ni secretos.
+
+flutter analyze --no-pub: sin incidencias.
+
+Flutter Web debug: compilación final exitosa en 169,0 s, usando una copia
+temporal del JSON local válido de Firebase. Se eliminó la copia al terminar.
+La configuración original no se editó. Salida en android/build/web.
+
+No había GEMINI_API_KEY en el proceso de verificación. No se ejecutó esta
+versión con un proveedor real ni se comprobó un micrófono físico. Las
+pruebas automatizadas de audio inyectaron eventos de reconocimiento y
+errores de permiso. No se probó en un dispositivo Android físico.
+Se conservaron GEMINI_MODEL y los límites existentes. No hubo escrituras
+sobre Neon ni ejecución de migraciones.
+
+7. Validación manual en Chrome
+
+Arranca Spring en la terminal que ya dispone de la clave privada y de la
+configuración autorizada. Conserva GEMINI_MODEL=gemini-3-flash-preview y
+mantén Flyway desactivado al usar el esquema existente:
+
+mvn -o spring-boot:run "-Dspring-boot.run.arguments=--server.port=8086 --spring.flyway.enabled=false --spring.jpa.hibernate.ddl-auto=validate"
+
+Desde android, usa un JSON local válido. Si el archivo privado contiene
+notas después del objeto, usa una copia privada que contenga sólo el JSON.
+Elige la ruta correspondiente en el comando:
+
+flutter run -d chrome --web-port=7357 --dart-define-from-file=config/firebase_web.local.json --dart-define=API_BASE_URL=http://localhost:8086
+
+Inicia sesión. Pide una historia de princesa y villano, luego «hazla más
+oscura», «que tenga un secreto» y «dame tres títulos». Selecciona y autoriza
+una historia y un capítulo propios y pide continuar el mismo argumento.
+Prueba «cinco libros en español», «parecidos a Culpables», «sin fantasía»
+y «el tercero me interesa». Abre una ficha. En el micrófono, da permiso,
+dicta una frase breve, detén, corrige el texto y comprueba que se envía sólo
+al pulsar Enviar. Repite denegando el permiso. En Nueva historia abre
+portadas JPG, PNG y WebP. Cancela una segunda selección y confirma que la
+vista previa anterior sigue visible. También prueba a 320, 360 y 390 px.
+
+8. Estado Git y lista selectiva
+
+Rama feature/gemini-writer-20261118, HEAD bd4092e. Ajustes locales, índice
+vacío. No hubo staging, commit, push, merge ni PR. git diff --check aprobado.
+Archivos necesarios para el próximo guardado, desde la raíz:
+
+INFORME_AJUSTES_FINALES_GEMINI_PORTADAS_VOZ_CAPITULO0_20261119.txt
+android/android/app/src/main/AndroidManifest.xml
+android/lib/features/writer/presentation/widgets/chat_microphone.dart
+android/lib/features/writer/presentation/widgets/literary_chat_screen.dart
+android/lib/features/writer/services/chat_dictation.dart
+android/lib/features/writer/services/writer_cover_picker.dart
+android/pubspec.lock
+android/pubspec.yaml
+android/test/writer/writer_assistant_test.dart
+android/test/writer/writer_cover_picker_test.dart
+android/test/writer/writer_cover_screens_test.dart
+backend/src/main/java/com/capitulo0/backend/recommendation/RecommendationService.java
+backend/src/main/java/com/capitulo0/backend/writer/LiteraryChatService.java
+backend/src/test/java/com/capitulo0/backend/recommendation/RecommendationClosureTests.java
+
+Se excluyen configuraciones Firebase, claves, respaldos, perfiles Chrome,
+capturas, logs y compilaciones.

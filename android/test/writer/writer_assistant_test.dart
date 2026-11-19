@@ -8,6 +8,13 @@ import 'package:android/features/writer/presentation/screens/chapter_editor_scre
 import 'package:android/features/writer/presentation/screens/create_story_screen.dart';
 import 'package:android/features/writer/presentation/widgets/literary_chat_screen.dart';
 import 'package:android/features/writer/services/literary_chat.dart';
+import 'package:android/features/writer/services/chat_dictation.dart';
+import 'package:android/features/writer/services/writer_api_repository.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+
+import '../support/auth_fakes.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -66,6 +73,36 @@ class ChatFixture extends TestWriterRepository
   }
 }
 
+class FakeChatDictation implements ChatDictation {
+  ValueChanged<String>? text;
+  ValueChanged<String>? error;
+  VoidCallback? done;
+  int starts = 0;
+  int cancels = 0;
+  int stops = 0;
+  @override
+  Future<void> start({
+    required ValueChanged<String> onText,
+    required ValueChanged<String> onError,
+    required VoidCallback onDone,
+  }) async {
+    starts++;
+    text = onText;
+    error = onError;
+    done = onDone;
+  }
+
+  @override
+  Future<void> stop() async {
+    stops++;
+  }
+
+  @override
+  Future<void> cancel() async {
+    cancels++;
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(installLocalTestAssets);
@@ -80,6 +117,127 @@ void main() {
     await tester.tap(find.byTooltip('Enviar'));
     await tester.pump();
   }
+
+  testWidgets(
+    'conserva la premisa y la selección numerada al avanzar la conversación',
+    (tester) async {
+      final repo = ChatFixture();
+      addTearDown(repo.account.close);
+      await tester.pumpWidget(app(LiteraryChatScreen(repository: repo)));
+      for (final message in [
+        'Hola',
+        'Una princesa enamorada de un villano',
+        'Hazla más oscura',
+        'Que tenga un secreto',
+        'Dame tres títulos',
+      ]) {
+        await send(tester, message);
+        await tester.pumpAndSettle();
+      }
+      repo.books = [
+        {
+          'volumeId': 'first',
+          'title': 'Primera novela',
+          'authors': ['Autora A'],
+        },
+        {
+          'volumeId': 'second',
+          'title': 'Segunda novela',
+          'authors': ['Autora B'],
+        },
+        {
+          'volumeId': 'third',
+          'title': 'Tercera novela',
+          'authors': ['Autora C'],
+        },
+      ];
+      await send(tester, 'Recomiéndame libros');
+      await tester.pumpAndSettle();
+      await send(tester, 'El tercero me interesa');
+      await tester.pumpAndSettle();
+      expect(repo.lastHistory, hasLength(7));
+      expect(
+        repo.lastHistory.first.text,
+        'Una princesa enamorada de un villano',
+      );
+      expect(
+        repo.lastHistory.any((turn) => turn.text.contains('3. Tercera novela')),
+        isTrue,
+      );
+    },
+  );
+
+  testWidgets(
+    'dictado requiere permiso, permite editar y nunca envía por sí solo',
+    (tester) async {
+      final repo = ChatFixture();
+      final mic = FakeChatDictation();
+      addTearDown(repo.account.close);
+      await tester.pumpWidget(
+        app(LiteraryChatScreen(repository: repo, dictation: mic)),
+      );
+      final input = find.byKey(const ValueKey('literary-chat-input'));
+      await tester.enterText(input, 'Quiero');
+      await tester.tap(find.byTooltip('Dictar en español'));
+      await tester.pumpAndSettle();
+      expect(mic.starts, 0);
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      expect(mic.starts, 0);
+      await tester.tap(find.byTooltip('Dictar en español'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Permitir dictado'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Detener dictado'));
+      await tester.pumpAndSettle();
+      expect(mic.stops, 1);
+      mic.text!('un misterio corto');
+      mic.done!();
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(input).controller!.text,
+        'Quiero un misterio corto',
+      );
+      expect(repo.messages, isEmpty);
+      await send(tester, 'Quiero un misterio en español');
+      await tester.pumpAndSettle();
+      expect(repo.messages, ['Quiero un misterio en español']);
+    },
+  );
+
+  testWidgets(
+    'dictado maneja errores, cancelación y cierre sin aplicar resultados tardíos',
+    (tester) async {
+      final repo = ChatFixture();
+      final mic = FakeChatDictation();
+      addTearDown(repo.account.close);
+      await tester.pumpWidget(
+        app(LiteraryChatScreen(repository: repo, dictation: mic)),
+      );
+      Future<void> start() async {
+        await tester.tap(find.byTooltip('Dictar en español'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Permitir dictado'));
+        await tester.pumpAndSettle();
+      }
+
+      await start();
+      await tester.tap(find.byTooltip('Cancelar dictado'));
+      await tester.pumpAndSettle();
+      mic.text!('Resultado tardío');
+      expect(find.text('Resultado tardío'), findsNothing);
+      expect(mic.cancels, 1);
+      await start();
+      mic.error!('Permiso bloqueado');
+      await tester.pump();
+      expect(find.text('Permiso bloqueado'), findsOneWidget);
+      await start();
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+      expect(mic.cancels, 3);
+      expect(repo.messages, isEmpty);
+    },
+  );
 
   for (final width in [320.0, 360.0, 390.0]) {
     testWidgets('Cabecera abre el chat y conserva el contexto a $width', (
@@ -269,12 +427,73 @@ void main() {
     );
     await send(tester, 'Busca un libro');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Libro del catálogo'));
+    await tester.tap(find.text('1. Libro del catálogo'));
     expect(opened, 'volume');
     await tester.tap(find.byTooltip('Nueva conversación'));
     await tester.pumpAndSettle();
-    expect(find.text('Libro del catálogo'), findsNothing);
+    expect(find.text('1. Libro del catálogo'), findsNothing);
   });
+
+  test(
+    'el repositorio distingue el límite de Gemini y conserva Retry-After',
+    () async {
+      final client = ApiClient(
+        auth: FakeAuth()..identity = fixtureIdentity,
+        baseUrl: 'http://localhost:8086',
+        client: MockClient(
+          (request) async => http.Response(
+            '{"code":"WRITER_AI_PROVIDER_QUOTA"}',
+            429,
+            headers: {'Retry-After': '17'},
+          ),
+        ),
+      );
+      final repository = ApiWriterRepository(
+        client,
+        ownerUid: fixtureIdentity.uid,
+      );
+      await expectLater(
+        repository.chat(
+          message: 'Dame otra idea',
+          history: [],
+          useLibrary: false,
+          excerpt: '',
+          genre: '',
+        ),
+        throwsA(
+          isA<ApiFailure>()
+              .having(
+                (error) => error.message,
+                'message',
+                contains('Google Gemini'),
+              )
+              .having((error) => error.retryAfterSeconds, 'seconds', 17),
+        ),
+      );
+    },
+  );
+
+  testWidgets(
+    'respeta la pausa antes del reintento manual y no envía automáticamente',
+    (tester) async {
+      final repo = ChatFixture()
+        ..failure = const ApiFailure(429, 'Límite local', retryAfterSeconds: 3);
+      addTearDown(repo.account.close);
+      await tester.pumpWidget(app(LiteraryChatScreen(repository: repo)));
+      await send(tester, 'Dame una idea');
+      await tester.pumpAndSettle();
+      expect(find.text('Espera 3 s antes de reintentar.'), findsOneWidget);
+      expect(find.text('Reintentar'), findsNothing);
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+      expect(find.text('Reintentar'), findsOneWidget);
+      expect(repo.messages, hasLength(1));
+      repo.failure = null;
+      await tester.tap(find.text('Reintentar'));
+      await tester.pumpAndSettle();
+      expect(repo.messages, hasLength(2));
+    },
+  );
 
   for (final status in [429, 502, 503, 504]) {
     testWidgets('Error $status permite reintento explícito', (tester) async {

@@ -1,0 +1,162 @@
+CAPÍTULO 0 | CORRECCIÓN DEL BUSCADOR Y CUOTAS DEL CHAT GEMINI
+19 de noviembre de 2026 | feature/gemini-writer-20261118 | HEAD bd4092e
+
+1. Fallo recuperado
+
+La consulta «libros de mercedes ron» entraba por Gemini, que sólo podía
+producir una búsqueda genérica de catálogo o una respuesta de texto. El
+servicio de descubrimiento enviaba las consultas generadas en modo all.
+Nunca usaba inauthor: para esa ruta. Los resultados también pasaban por
+el filtro estricto de español y coincidencias temáticas. El motivo exacto
+por el que la ejecución de Chrome devolvió cero no se puede aislar sin su
+solicitud saliente y respuesta de proveedor. No había registros locales
+de esa consulta ni credenciales de proveedor en el proceso de verificación.
+
+El 429 previo podía originarse en el contador de cinco por UID, la
+concurrencia o Google Gemini. Esas causas se convertían al mismo código y
+mensaje. No se atribuye el 429 observado a un origen sin sus registros.
+
+2. Ruta bibliográfica y recuperación
+
+Las frases explícitas de autor, título y saga se reconocen localmente
+antes de llamar a Gemini. «Mercedes Ron» puede retomar la consulta explícita
+del último mensaje del usuario. El catálogo se consulta aun si Gemini no
+está configurado o el UID agotó sus generaciones locales.
+
+Autor usa inauthor: y título usa intitle:. El cliente HTTP aplica su
+codificación de URL existente. Saga usa búsqueda por frase y verifica el
+nombre en el título, subtítulo o una mención de saga, colección, serie o
+trilogía en la descripción. No se agregaron listas de autores o títulos.
+El modelo también puede estructurar casos ambiguos como autor, título o
+saga. Las peticiones de género, tema y alternativas similares siguen
+usando la interpretación contextual de Gemini.
+
+Se consultan hasta tres páginas o consultas, dentro de cuatro segundos.
+Se empieza con español y nombre o título entre comillas. Si faltan
+resultados se sigue el índice de la página o se amplía con una consulta
+sin comillas y sin restricción de idioma en el proveedor. El backend
+compara nombres y títulos normalizando mayúsculas, acentos, puntuación
+y espacios. Conserva el nombre y los demás metadatos originales.
+
+3. Filtros y seguimiento
+
+Las búsquedas explícitas priorizan libros cuyo idioma declarado es
+español. Excluyen otros idiomas declarados y marcadores explícitos de
+edición en inglés. Si faltan resultados, una coincidencia bibliográfica
+con idioma ausente puede aparecer rotulada «Idioma sin verificar».
+Sinopsis y portada son opcionales. Un resultado exige volumen, título,
+autor e identidad coherentes. La búsqueda de título devuelve hasta una
+coincidencia. Autor, saga y recomendaciones devuelven hasta cinco.
+
+Las recomendaciones temáticas conservan el filtro de español y
+guardados, la deduplicación y el orden semántico existentes. Pueden
+añadir otra página si hay margen. Consultar expresamente una saga
+permite ver sus obras. Solicitar similares conserva las exclusiones
+de la saga y puede excluir la última selección numerada. «Otros autores»
+excluye además a los autores de referencia recuperados del historial.
+«Otras cinco» usa esa selección para excluir sus títulos. Si Google
+Books no devuelve candidatos, si ninguno supera el filtro o si el
+proveedor falla, la respuesta distingue cada caso. Se conserva el
+carrusel principal de Home.
+
+4. Cuota y comportamiento ante errores
+
+GEMINI_CHAT_REQUESTS_PER_MINUTE establece 12 generaciones por UID por
+minuto por defecto. Permite más turnos que el límite previo de cinco
+sin dejar consumo ilimitado. CHAT_CATALOG_REQUESTS_PER_MINUTE establece
+20 búsquedas directas por UID por minuto. Ambas variables aceptan
+de 1 a 60. Una solicitud ocupa un único cupo del flujo que eligió,
+aunque consulte más de una página. Una solicitud en vuelo por UID y
+cuatro simultáneas por instancia. El cliente Google Books conserva
+su presupuesto propio.
+
+Los códigos separan CHAT_GENERATION_LIMIT, CHAT_CATALOG_LIMIT,
+CHAT_REQUEST_ACTIVE, CHAT_BUSY y WRITER_AI_PROVIDER_QUOTA. Un límite de
+ventana devuelve los segundos que faltan. La concurrencia sugiere
+volver a consultar el estado tras tres segundos. Un 429 externo
+conserva Retry-After y convierte las fechas HTTP en segundos cuando
+corresponde. Si Google no informa espera, se muestran 30 segundos
+como pausa inicial, sin prometer que su cuota se haya renovado. CORS
+expone la cabecera para Flutter Web. El chat oculta Reintentar durante
+esa espera, conserva el campo para solicitudes distintas y jamás
+reenvía automáticamente.
+
+Cerrar el chat descarta la respuesta en la interfaz. Si la petición
+ya se envió, el backend libera el permiso cuando termina, incluso al
+fallar o agotar su plazo. Se conservan la autenticación y separación
+por UID, el modelo configurado, las credenciales sólo en backend y los
+plazos de Gemini.
+
+5. Pruebas y límites
+
+Backend: 50 pruebas de la suite afectada aprobaron. Después se ejecutaron
+21 pruebas de catálogo y seguridad sobre el backend final, con solapamiento
+entre suites. Se cubrieron autor, título, saga, paginación, idioma ausente,
+deduplicación, género, alternativas, operadores HTTP codificados, 429 local y
+externo, Retry-After y otros autores en el seguimiento. La prueba HTTP agotó
+12 generaciones de un UID y pudo consultar un autor con el mismo UID.
+Flutter: 47 pruebas de chat y recomendador de Inicio aprobadas.
+Incluyen Retry-After, reintento manual, cierre, continuidad, cambio de
+cuenta, dictado y diseño a 320, 360 y 390 px.
+flutter analyze --no-pub: sin incidencias en la versión final de Flutter.
+Flutter Web debug compiló correctamente en 222,9 s con una copia temporal
+del objeto Firebase válido. La copia se eliminó. La configuración original
+quedó intacta. Se confirmó Retry-After en el JavaScript compilado.
+
+Las pruebas HTTP usaron transporte loopback, proveedores controlados y
+H2 en memoria con Flyway desactivado. No se consultó Gemini o Google
+Books real en esta ejecución. La calidad y cantidad de resultados reales
+dependen de los índices y metadatos del proveedor. Un nombre aislado sin
+una búsqueda explícita anterior puede requerir interpretación de Gemini.
+Una saga sólo se muestra cuando el catálogo aporta evidencia de pertenencia.
+No se ejecutaron migraciones ni se accedió a Neon.
+
+Referencias técnicas
+https://developers.google.com/books/docs/v1/using#PerformingSearch
+https://aistudio.google.com/docs/rate-limits
+https://www.rfc-editor.org/rfc/rfc9110#name-retry-after
+
+6. Verificar en Chrome
+
+Reinicia el backend con la configuración privada existente y Flyway
+desactivado. Conserva GEMINI_MODEL. Desde backend:
+
+mvn -o spring-boot:run "-Dspring-boot.run.arguments=--server.port=8086 --spring.flyway.enabled=false --spring.jpa.hibernate.ddl-auto=validate"
+
+Desde android, arranca la app con un JSON Firebase local válido:
+
+flutter run -d chrome --web-port=7357 --dart-define-from-file=config/firebase_web.local.json --dart-define=API_BASE_URL=http://localhost:8086
+
+Prueba «libros de mercedes ron», «Mercedes Ron», «¿Qué libros tiene
+Isabel Allende?», «Busca La casa de los espíritus» y «¿Cuáles son los
+libros de la saga Culpables?». Luego prueba «otros autores similares»,
+«romance juvenil» y «dame otras cinco opciones». Abre una ficha y
+comprueba la identidad. Si hay 429, revisa sólo code y Retry-After de
+la respuesta, sin copiar el token ni datos privados.
+
+7. Git y archivos de este anexo
+
+Rama feature/gemini-writer-20261118, HEAD bd4092e. Se conservaron los
+ajustes locales previos de voz y portadas. Índice vacío. Sin staging,
+commit, push ni merge. git diff --check aprobado.
+
+INFORME_CORRECCION_BUSCADOR_CHAT_GEMINI_20261119.txt
+android/lib/core/network/api_client.dart
+android/lib/features/writer/presentation/widgets/literary_chat_screen.dart
+android/lib/features/writer/services/writer_api_repository.dart
+android/test/writer/writer_assistant_test.dart
+backend/src/main/java/com/capitulo0/backend/common/exception/ApiException.java
+backend/src/main/java/com/capitulo0/backend/common/exception/ApiExceptionHandler.java
+backend/src/main/java/com/capitulo0/backend/config/cors/ApiCorsConfiguration.java
+backend/src/main/java/com/capitulo0/backend/integration/googlebooks/SpanishBooks.java
+backend/src/main/java/com/capitulo0/backend/recommendation/GeminiRecommendationClient.java
+backend/src/main/java/com/capitulo0/backend/recommendation/RecommendationService.java
+backend/src/main/java/com/capitulo0/backend/recommendation/Recommendations.java
+backend/src/main/java/com/capitulo0/backend/writer/CatalogIntent.java
+backend/src/main/java/com/capitulo0/backend/writer/LiteraryChatService.java
+backend/src/main/java/com/capitulo0/backend/writer/WriterAssistantService.java
+backend/src/test/java/com/capitulo0/backend/GoogleBooksTests.java
+backend/src/test/java/com/capitulo0/backend/SecurityEndpointTests.java
+backend/src/test/java/com/capitulo0/backend/WriterAssistantTests.java
+backend/src/test/java/com/capitulo0/backend/recommendation/GeminiRecommendationClientTests.java
+backend/src/test/java/com/capitulo0/backend/recommendation/RecommendationClosureTests.java
