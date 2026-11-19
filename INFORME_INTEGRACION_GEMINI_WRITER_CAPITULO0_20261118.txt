@@ -1,0 +1,169 @@
+CAPÍTULO 0 | Integración de Gemini en Writer
+18 de noviembre de 2026 | feature/gemini-writer-20261118 | HEAD d7af0a4
+
+1. Integración recuperada y reutilización
+
+La rama activa partía de d7af0a4, igual a la referencia local origin/develop.
+Había capturas, respaldos y archivos locales sin seguimiento. Se conservaron.
+Home ya usaba GeminiRecommendationClient para ordenar y enriquecer candidatos
+bibliográficos previamente verificados. Writer reutiliza el mismo componente
+Spring, cliente HTTP, origen fijo y analizador de respuestas. Home conserva su
+consulta de metadatos, su esquema y presupuesto, su selección de candidatos y
+sus reglas de Google Books y respaldo local. Se pospuso la explicación opcional.
+
+2. Modelo y configuración
+
+Modelo por defecto del proyecto: gemini-4-hydrogen. El backend carga GEMINI_MODEL
+si está definido y lee GEMINI_API_KEY de la configuración de Spring. Envía la
+clave exclusivamente en x-goog-api-key, del backend a Google. Se conserva REST
+v1beta/interactions con Api-Revision 2026-05-20 y store=false. Writer pide JSON
+estructurado, con pensamiento low y hasta 2304 tokens de salida. La conexión
+tiene un límite de 3 segundos. Writer espera hasta 40 segundos al proveedor
+(GEMINI_WRITER_TIMEOUT_SECONDS, configurable de 1 a 45 segundos), 50 segundos
+en el HTTP Flutter y 55 segundos en el diálogo. Home conserva 8 segundos para
+la generación, 2 segundos para metadatos y el plazo habitual del cliente Flutter.
+GEMINI_MODEL sigue prevaleciendo sobre el valor por defecto compartido.
+
+La documentación oficial confirma soporte de texto, JSON estructurado y ese
+modelo en Interactions. La disponibilidad y cuota para una cuenta se confirman
+al ejecutar una generación con su configuración.
+https://aistudio.google.com/docs/models/gemini-4-hydrogen
+https://aistudio.google.com/api-reference/interactions-api/create-interaction
+
+3. Experiencia de Writer
+
+En Nueva historia y Editar historia, Asistente IA abre el panel dentro del
+formulario. Ofrece generar ideas por género, tema, premisa o tono, sugerir de
+tres a cinco títulos y mejorar la sinopsis conservando su argumento. Una idea
+se puede copiar. El escritor puede copiar o descartar cualquier respuesta,
+elegir un título o aplicar la sinopsis previa confirmación. Aplicar sólo
+actualiza el campo del formulario y el guardado sigue siendo explícito.
+
+En el editor de capítulos el mismo panel ofrece continuar una escena,
+proponer sucesos, mejorar redacción, corregir ortografía y gramática, proponer
+diálogos o superar un bloqueo. Se puede revisar y editar el fragmento que se
+enviará. Cuando el fragmento seleccionado excede 4000 caracteres, el campo
+abre vacío para que el escritor pegue uno más corto. Las sugerencias de prosa
+se pueden copiar o insertar al final, conservando el texto anterior. Antes
+del guardado, Deshacer inserción IA elimina el último bloque que permaneció
+intacto si el texto anterior sigue coincidiendo. Las notas de desarrollo y
+bloqueo se ofrecen para copiar o descartar.
+
+El panel informa antes de enviar cuáles campos procesa Google Gemini. Los
+estados incluyen listo, en curso, resultado, vacío, formato inválido, límite,
+error de conexión, falta de configuración y cierre. Cerrar o cancelar descarta
+la respuesta tardía en la interfaz. Una solicitud que ya llegó al proveedor
+puede finalizar y consumir cuota.
+
+4. API, permisos y privacidad
+
+POST /api/me/writer/assistant, Content-Type application/json, autenticado
+mediante el filtro Bearer de Firebase y la identidad verificada de Spring.
+Flutter utiliza ApiClient y expectedUid, por lo que una respuesta de una
+cuenta anterior no se entrega tras un cambio de sesión. El servicio deriva su
+límite del UID del token y no lo envía a Gemini.
+
+Campos: task, genre, context, direction, tone. Respuesta: suggestions, una
+lista de textos. El controlador rechaza cuerpos de más de 32 KiB, campos
+desconocidos, claves repetidas, tipos incompatibles y tareas desconocidas.
+Se admiten hasta 4000 caracteres de contexto, 600 de dirección y 100 de género
+y tono. Los límites de salida incluyen la cantidad, títulos únicos de hasta
+80 caracteres y una sinopsis de hasta 600 para ajustarse al editor.
+
+El endpoint no acepta IDs de historias o capítulos ni consulta repositorios
+de Writer. Envía únicamente género y campos visibles del panel. El texto se
+serializa como datos, separado de las instrucciones de sistema y de la tarea.
+Las peticiones no habilitan herramientas del proveedor ni se encadenan.
+No se registran prompts, borradores, claves, tokens ni cuerpos del proveedor.
+El endpoint y el servicio carecen de dependencias de persistencia. No se
+tocaron migraciones ni se ejecutaron escrituras sobre Neon.
+
+5. Cuota y errores
+
+Cinco solicitudes por UID en una ventana de un minuto por instancia. Se
+admite una solicitud en vuelo por UID y un máximo de cuatro en todo el
+servicio. El límite vive en memoria y se reinicia con la instancia. La
+interfaz también bloquea envíos repetidos mientras espera. Cuota propia o
+externa produce 429. Falta de configuración produce 503, un timeout produce
+504 y los fallos de red, formato o respuesta vacía producen 502 con códigos
+distintos. Writer registra duración, estado HTTP del proveedor si recibió
+cabeceras y motivo técnico. El registro sólo contiene esos tres valores. No se
+agregaron reintentos de generación. La respuesta HTTP se limita a 64 KiB desde el proveedor y no sigue
+redirecciones. Las respuestas de error son mensajes de la aplicación.
+
+6. Verificación automatizada
+
+Backend: 28 pruebas aprobadas en WriterAssistantTests,
+GeminiRecommendationClientTests, RecommendationClosureTests,
+RecommendationEndpointTests y SecurityEndpointTests. Se cubrieron las nueve
+tareas, autenticación, validación, privacidad, separación y cuota por UID,
+envío simultáneo, ausencia de escrituras, errores, plazos, respuestas inválidas
+y regresión de Home. El proveedor local devolvió una respuesta válida en
+8,73 segundos. Otro caso agotó su plazo de transporte de 700 ms con un solo
+intento. El cuerpo enviado contenía el modelo gemini-3-flash-preview. Se usaron dobles del proveedor, HTTP loopback y un
+verificador Firebase simulado. El primer arranque de la suite de seguridad
+en H2 falló por el índice parcial existente en V9. La ejecución final usó
+exclusivamente H2 en memoria, Flyway desactivado y ddl-auto=create-drop para
+el esquema desechable de pruebas.
+
+Flutter: flutter test --no-pub test/writer/ terminó con 42 pruebas aprobadas.
+Incluye 8 pruebas nuevas del asistente y 34 de regresión de Writer. Se cubrió
+la vista previa de títulos en 320, 360 y 390 px, confirmar sinopsis, errores,
+cancelación tras 30 segundos, descarte, inserción y deshacer, el transporte
+autenticado y una respuesta después de 42 segundos simulados en Flutter.
+Análisis: flutter analyze --no-pub terminó sin incidencias.
+Compilación Web de la integración inicial: exitosa en 122,2 s, con el punto de entrada principal.
+La compilación debug usó la configuración privada Firebase local, puerto API
+8086 y --no-wasm-dry-run. Salida local: android/build/web.
+
+7. Prueba real y validación manual en Chrome
+
+El equipo confirmó HTTP 200 al consultar modelos y generar directamente con
+gemini-3-flash-preview. Reportó HTTP 504 en Writer a los 8,32 segundos con la
+versión anterior. Durante esta corrección, GEMINI_API_KEY no estaba disponible
+en el proceso de verificación ni en las variables de usuario o equipo.
+La generación real con el endpoint actualizado y el recorrido con una cuenta
+Firebase real quedan pendientes. Las respuestas automatizadas son fixtures.
+Queda por confirmar la calidad literaria y el acceso al modelo con la clave
+del entorno autorizado. No se hicieron peticiones reales a Gemini en esta
+sesión.
+
+En la terminal del backend, asegúrate de que GEMINI_API_KEY esté cargada de
+forma privada en el entorno, junto con la configuración ya autorizada de
+Base de Datos y Firebase. GEMINI_MODEL es opcional. Arranca en 8086 con:
+
+mvn -o spring-boot:run "-Dspring-boot.run.arguments=--server.port=8086 --spring.flyway.enabled=false --spring.jpa.hibernate.ddl-auto=validate"
+
+Desde android, con el archivo Firebase local existente:
+
+flutter run -d chrome --web-port=7357 --dart-define-from-file=config/firebase_web.local.json --dart-define=API_BASE_URL=http://localhost:8086
+
+Inicia sesión con una cuenta de prueba. Abre Writer y crea o edita una obra
+de prueba. Selecciona Misterio con una premisa ficticia y pide ideas y
+títulos. Comprueba respuestas en español y que el título original se conserva
+hasta seleccionar una alternativa. Abre un capítulo, pide una continuación
+desde un fragmento ficticio, insértala y deshazla antes de guardar. Prueba
+también cerrar la solicitud mientras procesa. La red de Chrome debe mostrar
+el POST al backend, con 200 y suggestions al generar correctamente. Las
+credenciales permanecen en sus entornos locales.
+
+8. Archivos modificados y lista selectiva desde la raíz del repositorio
+
+INFORME_INTEGRACION_GEMINI_WRITER_CAPITULO0_20261118.txt
+android/lib/core/network/api_client.dart
+android/lib/features/writer/presentation/screens/chapter_editor_screen.dart
+android/lib/features/writer/presentation/screens/create_story_screen.dart
+android/lib/features/writer/presentation/widgets/writer_assistant_dialog.dart
+android/lib/features/writer/services/writer_api_repository.dart
+android/lib/features/writer/services/writer_assistant.dart
+android/test/writer/writer_assistant_test.dart
+backend/src/main/java/com/capitulo0/backend/recommendation/GeminiRecommendationClient.java
+backend/src/main/java/com/capitulo0/backend/writer/WriterAssistantController.java
+backend/src/main/java/com/capitulo0/backend/writer/WriterAssistantService.java
+backend/src/test/java/com/capitulo0/backend/SecurityEndpointTests.java
+backend/src/test/java/com/capitulo0/backend/WriterAssistantTests.java
+backend/src/test/java/com/capitulo0/backend/recommendation/GeminiRecommendationClientTests.java
+
+La lista excluye configuraciones privadas de Firebase, credenciales,
+compilaciones, respaldos, capturas, perfiles y logs. No se añadió nada al
+índice. No se hicieron commits ni push. git diff --check devolvió código 0. Rama y HEAD conservados.

@@ -137,6 +137,28 @@ public class RecommendationService {
             return state.normal;
         }
     }
+    public List<GoogleBook> discover(Long owner, String query, boolean useLibrary, int maxPages) {
+        var ownProfile = profile(library.list(owner));
+        var searchProfile = useLibrary ? ownProfile : new Profile(Map.of(), Map.of(), List.of(), ownProfile.owned());
+        if (query.isBlank() && !useLibrary) return List.of();
+        var queries = new ArrayList<Query>();
+        if (!query.isBlank()) queries.add(new Query(query, "all", 0));
+        else queries.addAll(additionalQueries(searchProfile).stream().limit(2).toList());
+        if (queries.isEmpty()) return List.of();
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(3).toNanos();
+        var pool = new ArrayList<GoogleBook>();
+        for (var entry : queries) {
+            if (System.nanoTime() >= deadline) break;
+            var candidates = GoogleBooksClient.withinRecommendationDeadline(deadline,
+                () -> books.search(entry.text(), entry.mode(), 0, 24, "es"));
+            candidates.items().stream().filter(Objects::nonNull)
+                .filter(book -> maxPages == 0 || (book.pageCount() != null
+                    && book.pageCount() > 0 && book.pageCount() <= maxPages)).forEach(pool::add);
+        }
+        var candidates = pool.stream().map(GoogleBook::volumeId).collect(java.util.stream.Collectors.toSet());
+        return rank(pool, searchProfile, new SearchStats(), candidates, 0).stream().map(Item::book).toList();
+    }
+
     public Result enrich(Long uid, String candidateSetId) {
         State state = state(uid);
         String fingerprint = fingerprint(List.copyOf(library.list(uid)));

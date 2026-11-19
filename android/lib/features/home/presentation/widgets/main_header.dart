@@ -97,7 +97,7 @@ class MainHeader extends StatelessWidget {
               _HeaderButton(
                 compact: compact,
                 icon: Icons.auto_awesome_rounded,
-                tooltip: 'Selección inteligente con Gemini',
+                tooltip: 'Asistente Capítulo 0',
                 gold: gold,
                 background: deepAlt,
                 onTap: onGeminiTap,

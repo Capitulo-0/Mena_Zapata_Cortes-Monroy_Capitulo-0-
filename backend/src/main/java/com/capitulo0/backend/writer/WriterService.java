@@ -33,6 +33,12 @@ public class WriterService {
   row.payload=json.writeValueAsString(d.state(d.status(),d.chapters(),row.createdAt,row.updatedAt,row.revision));
   return document(stories.saveAndFlush(row));
  }
+ public record AssistantChoice(String id, String title) {}
+ @Transactional(readOnly=true) public List<AssistantChoice> assistantStories(Long owner) {
+  return stories.findByOwnerIdOrderByUpdatedAtDesc(owner).stream()
+      .map(row -> new AssistantChoice(row.storyKey,json.readTree(row.payload).path("title").asText()))
+      .toList();
+ }
  @Transactional(readOnly=true) public List<WriterDocument> list(Long owner){return stories.findByOwnerIdOrderByUpdatedAtDesc(owner).stream().map(this::document).toList();}
  @Transactional(readOnly=true) public WriterDocument get(Long owner,String id){return document(own(owner,id));}
  @Transactional public WriterDocument save(Long owner,String id,WriterDocument d){

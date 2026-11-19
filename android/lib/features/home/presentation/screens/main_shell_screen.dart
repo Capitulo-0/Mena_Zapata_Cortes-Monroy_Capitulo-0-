@@ -30,6 +30,8 @@ import '../../../library/presentation/dialogs/reading_record_dialog.dart';
 import '../widgets/main_header.dart';
 import '../../../writer/models/writer_story.dart';
 import '../../../writer/services/writer_repository.dart';
+import '../../../writer/services/literary_chat.dart';
+import '../../../writer/presentation/widgets/literary_chat_screen.dart';
 import '../../../writer/presentation/screens/writer_screen.dart';
 
 import 'package:android/features/maps/presentation/screens/maps_screen.dart';
@@ -1025,7 +1027,16 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openHeaderGemini() {
-    _homeKey.currentState?.showGeminiAssistant();
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+    if (widget.writerRepository case LiteraryChatRepository repository) {
+      unawaited(LiteraryChatScreen.open(context, LiteraryChatScreen(
+        repository: repository,
+        onBook: (book) async => _homeKey.currentState?.openAssistantBook(book),
+      )));
+    }
   }
 
   void _showGuestAccessDialog() {
