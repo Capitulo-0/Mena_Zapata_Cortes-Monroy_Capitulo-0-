@@ -8,3 +8,6 @@ Frontend: Flutter y Dart. Backend: Spring Boot. Base de datos: PostgreSQL.
 
 ## Autenticación
 La autenticación de usuarios se realiza mediante Firebase Authentication.
+
+## Integraciones
+El proyecto integra servicios externos para catálogo de libros y funcionalidades complementarias.
