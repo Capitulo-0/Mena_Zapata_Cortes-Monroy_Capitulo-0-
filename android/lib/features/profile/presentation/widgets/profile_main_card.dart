@@ -19,6 +19,7 @@ class ProfileMainCard extends StatelessWidget {
     this.onFollowingTap,
     this.booksLabel = 'Total Leídos',
     this.showStats = true,
+    this.verifiedOrganizer = false,
   });
 
   final String name;
@@ -34,6 +35,7 @@ class ProfileMainCard extends StatelessWidget {
   final VoidCallback? onFollowingTap;
   final String booksLabel;
   final bool showStats;
+  final bool verifiedOrganizer;
 
   String get memberSince {
     if (createdAt == null) {
@@ -75,6 +77,8 @@ class ProfileMainCard extends StatelessWidget {
         : AppColors.textSecondary;
 
     final headingColor = isDark ? AppColors.darkTextPrimary : AppColors.deep;
+
+    final goldColor = isDark ? AppColors.darkGold : AppColors.gold;
 
     final stats = <Widget>[
       if (readBooksCount != null)
@@ -191,6 +195,56 @@ class ProfileMainCard extends StatelessWidget {
                   ],
                 ),
               ),
+
+              // Insignia pública de organizador verificado.
+              if (verifiedOrganizer) ...[
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Organizador verificado por Capítulo 0',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(24),
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Organizador verificado por Capítulo 0',
+                            ),
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: goldColor.withValues(alpha: 0.11),
+                          border: Border.all(
+                            color: goldColor.withValues(alpha: 0.55),
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: goldColor.withValues(alpha: 0.10),
+                              blurRadius: 10,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.verified_rounded,
+                          color: goldColor,
+                          size: 27,
+                          semanticLabel: 'Organizador verificado',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 11),

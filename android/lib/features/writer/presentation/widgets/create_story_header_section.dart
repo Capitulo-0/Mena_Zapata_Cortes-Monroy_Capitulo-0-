@@ -7,10 +7,7 @@ extension _CreateStoryHeaderSection on _CreateStoryScreenState {
       icon: const Icon(Icons.arrow_back_rounded, size: 16),
       label: Text(
         _isEditing ? 'Volver' : 'Volver',
-        style: GoogleFonts.inter(
-          fontSize: 9,
-          fontWeight: FontWeight.w700,
-        ),
+        style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700),
       ),
       style: TextButton.styleFrom(
         foregroundColor: AppColors.accent,
@@ -57,9 +54,7 @@ extension _CreateStoryHeaderSection on _CreateStoryScreenState {
         ),
         const SizedBox(height: 6),
         Text(
-          _isEditing
-              ? 'Actualiza la identidad y presentación de tu obra.'
-              : 'Empieza por su identidad, género y la idea que quieres contar.',
+          _isEditing ? 'Actualiza la identidad y presentación de tu obra.' : 'Empieza por su identidad, género y la idea que quieres contar.',
           style: GoogleFonts.inter(
             fontSize: 9.5,
             height: 1.45,

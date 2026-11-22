@@ -4,6 +4,8 @@ import 'core/theme/app_theme.dart';
 import 'features/writer/services/writer_api_repository.dart';
 import 'features/writer/services/writer_repository.dart';
 
+import 'features/verification/data/organizer_verification_repository.dart';
+import 'features/clubs/data/reading_club_repository.dart';
 import 'core/network/api_client.dart';
 import 'core/session/local_account_scope.dart';
 import 'features/auth/data/account_repository.dart';
@@ -68,10 +70,14 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
   late final _catalogApi = ApiClient(auth: widget.session.auth);
   late final _accountApi = ApiClient(auth: widget.session.auth);
   late final _accountRepository = ApiAccountRepository(_accountApi);
+  late final _readingClubRepository = ReadingClubRepository(_accountApi);
   late final _catalog = ApiCatalogRepository(_catalogApi);
   late final _userSearchRepository = ApiUserSearchRepository(_accountApi);
   late final _publicProfileRepository = ApiPublicProfileRepository(_accountApi);
   late final _notificationRepository = ApiNotificationRepository(_accountApi);
+  late final _verificationRepository = ApiOrganizerVerificationRepository(
+    _accountApi,
+  );
   late final _followRepository = ApiFollowRepository(_accountApi);
 
   final _navigatorKey = GlobalKey<NavigatorState>();
@@ -96,12 +102,9 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
 
     if (scope != _lastScope) {
       _lastScope = scope;
-
       _libraryRepository = null;
       _libraryOwner = null;
 
-      // Dispose account-specific routes as well as the shell,
-      // without deleting local files.
       _navigatorKey.currentState?.popUntil((route) => route.isFirst);
 
       BookInteractionStore.clear();
@@ -109,7 +112,6 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
       ProfileGenderStore.customGender = null;
       ProfileBlockedUsersStore.blockedUsers.value = [];
     }
-
     setState(() {});
   }
 
@@ -148,6 +150,9 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
     return switch (widget.session.phase) {
       SessionPhase.ready || SessionPhase.guest => AppStage.main,
       SessionPhase.signedOut => AppStage.auth,
+      SessionPhase.preparing
+          when widget.session.interactiveAuthenticationInProgress =>
+        AppStage.auth,
       _ => AppStage.preparing,
     };
   }
@@ -207,13 +212,18 @@ class _CapituloCeroAppState extends State<CapituloCeroApp> {
           key: ValueKey(scope),
           uid: scope,
           child: MainShellScreen(
-            writerRepository: guest ? null : widget.writerRepositoryFactory?.call(scope) ?? ApiWriterRepository(_accountApi, ownerUid: scope),
+            writerRepository: guest
+                ? null
+                : widget.writerRepositoryFactory?.call(scope) ??
+                      ApiWriterRepository(_accountApi, ownerUid: scope),
             isGuest: guest,
             profileUser: widget.session.user,
             accountRepository: guest ? null : _accountRepository,
             userSearchRepository: guest ? null : _userSearchRepository,
             publicProfileRepository: guest ? null : _publicProfileRepository,
             notificationRepository: guest ? null : _notificationRepository,
+            verificationRepository: guest ? null : _verificationRepository,
+            readingClubRepository: _readingClubRepository,
             followRepository: guest ? null : _followRepository,
             onProfileUpdated: (updatedUser) {
               final currentUid = widget.session.uid;

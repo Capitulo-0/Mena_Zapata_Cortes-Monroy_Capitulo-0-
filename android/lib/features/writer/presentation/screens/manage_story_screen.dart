@@ -162,25 +162,176 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
     }
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialog) => AlertDialog(
-        title: Text(publishing ? 'Publicar historia' : 'Volver a borrador'),
-        content: Text(
-          publishing
-              ? 'Se publicaran todos los capitulos completos. Otros usuarios autenticados podrán leerlos en Obras de la comunidad.'
-              : 'La historia dejara de estar disponible en la ruta de lectura para otros usuarios.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialog, false),
-            child: const Text('Cancelar'),
+      barrierDismissible: true,
+      builder: (dialog) {
+        final isDark = Theme.of(dialog).brightness == Brightness.dark;
+        final surface = isDark ? AppColors.darkSurface : AppColors.surface;
+        final heading = isDark ? AppColors.darkTextPrimary : AppColors.deep;
+        final textPrimary = isDark
+            ? AppColors.darkTextPrimary
+            : AppColors.textPrimary;
+        final textSecondary = isDark
+            ? AppColors.darkTextSecondary
+            : AppColors.textSecondary;
+        final accent = isDark ? AppColors.darkAccent : AppColors.accent;
+
+        return Dialog(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: surface,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: AppColors.gold.withValues(alpha: 0.7)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 22,
+                  offset: const Offset(0, 14),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: publishing
+                            ? AppColors.accent.withValues(alpha: 0.14)
+                            : AppColors.gold.withValues(alpha: 0.18),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        publishing
+                            ? Icons.auto_stories_rounded
+                            : Icons.edit_note_rounded,
+                        color: publishing ? accent : AppColors.deepOf(context),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            publishing
+                                ? 'Publicar historia'
+                                : 'Volver a borrador',
+                            style: GoogleFonts.merriweather(
+                              fontSize: 24,
+                              height: 1.2,
+                              fontWeight: FontWeight.w700,
+                              color: heading,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            publishing
+                                ? 'Tu obra quedará lista para ser leída por otros usuarios.'
+                                : 'La obra dejará de estar visible para otros lectores.',
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              height: 1.35,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundOf(context),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: AppColors.gold.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '¿Qué ocurrirá ahora?',
+                        style: GoogleFonts.cinzel(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: heading,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        publishing
+                            ? '• Se publicarán todos los capítulos completos.\n'
+                                  '• Los lectores autenticados podrán encontrar tu obra en la comunidad.\n'
+                                  '• Siempre podrás volverla a borrador más adelante.'
+                            : '• La historia saldrá de la comunidad de lectura.\n'
+                                  '• Los lectores dejarán de verla como publicada.\n'
+                                  '• Tus capítulos seguirán guardados en tu cuenta.',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.8,
+                          height: 1.45,
+                          color: textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(dialog, false),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(46),
+                          side: BorderSide(
+                            color: AppColors.gold.withValues(alpha: 0.8),
+                          ),
+                          foregroundColor: heading,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text('Cancelar'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        key: const ValueKey('writer-confirm-publication'),
+                        onPressed: () => Navigator.pop(dialog, true),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(46),
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          publishing ? 'Publicar' : 'Volver a borrador',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
-          FilledButton(
-            key: const ValueKey('writer-confirm-publication'),
-            onPressed: () => Navigator.pop(dialog, true),
-            child: Text(publishing ? 'Publicar' : 'Volver a borrador'),
-          ),
-        ],
-      ),
+        );
+      },
     );
     if (confirmed != true || !mounted) return;
     setState(() {

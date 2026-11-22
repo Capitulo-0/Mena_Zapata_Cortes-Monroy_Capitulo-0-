@@ -174,6 +174,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return '${item.actorHandle} ahora forma parte de tus seguidores';
       case ReaderNotificationType.followAccepted:
         return '${item.actorHandle} aprobó tu solicitud. ¡Ya puedes descubrir sus lecturas!';
+      case ReaderNotificationType.organizerApproved:
+        return '¡Tu organización fue verificada! El equipo de Capítulo 0 aprobó tu solicitud.';
+      case ReaderNotificationType.organizerRejected:
+        return 'Tu solicitud de verificación fue rechazada. Consulta el motivo en Perfil → Configuración → Verificación de organizador.';
     }
   }
 
@@ -191,7 +195,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final primary = AppColors.textPrimaryOf(context);
     final secondary = AppColors.textSecondaryOf(context);
     final gold = AppColors.goldOf(context);
-    final avatarUrl = item.actorAvatarUrl;
+    final isOrganizerNotification = item.isOrganizerNotification;
+    final IconData notificationIcon = isOrganizerNotification
+        ? (item.type == ReaderNotificationType.organizerApproved
+              ? Icons.verified_rounded
+              : Icons.info_outline_rounded)
+        : Icons.person_outline;
+    final avatarUrl = isOrganizerNotification ? null : item.actorAvatarUrl;
     final hasAvatar =
         avatarUrl != null &&
         (avatarUrl.startsWith('https://') || avatarUrl.startsWith('http://'));
@@ -216,9 +226,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 radius: 22,
                 backgroundColor: gold.withValues(alpha: 0.15),
                 backgroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
-                child: hasAvatar
-                    ? null
-                    : Icon(Icons.person_outline, color: gold),
+                child: hasAvatar ? null : Icon(notificationIcon, color: gold),
               ),
               const SizedBox(width: 12),
               Expanded(

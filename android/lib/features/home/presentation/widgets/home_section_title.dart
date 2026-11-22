@@ -11,8 +11,8 @@ class HomeSectionTitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textPrimary = AppColors.textPrimaryOf(context);
-    final dividerColor =
-        AppColors.textSecondaryOf(context).withValues(alpha: 0.34);
+    final dividerColor = AppColors.textSecondaryOf(context)
+        .withValues(alpha: 0.34);
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -42,12 +42,7 @@ class HomeSectionTitle extends StatelessWidget {
             Expanded(
               child: Row(
                 children: [
-                  Expanded(
-                    child: Container(
-                      height: 1,
-                      color: dividerColor,
-                    ),
-                  ),
+                  Expanded(child: Container(height: 1, color: dividerColor)),
                   const SizedBox(width: 5),
                   Icon(
                     Icons.auto_awesome_rounded,

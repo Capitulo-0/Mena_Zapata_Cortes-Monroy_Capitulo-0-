@@ -8,7 +8,6 @@ import 'home_network_cover.dart';
 import '../../data/recommendation_titles.dart';
 import '../../../gutendex/presentation/widgets/free_work_cover.dart';
 import 'home_section_title.dart';
-import 'recommendation_explanation.dart';
 
 class RecommendedBooksSection extends StatelessWidget {
   const RecommendedBooksSection({
@@ -19,7 +18,8 @@ class RecommendedBooksSection extends StatelessWidget {
     required this.onPrevious,
     required this.onNext,
     required this.onBookTap,
-    required this.onShowExplanation,
+    this.onRefresh,
+    this.refreshEnabled = true,
   });
 
   final String heading;
@@ -28,7 +28,8 @@ class RecommendedBooksSection extends StatelessWidget {
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final ValueChanged<Map<String, dynamic>> onBookTap;
-  final ValueChanged<String> onShowExplanation;
+  final VoidCallback? onRefresh;
+  final bool refreshEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +47,15 @@ class RecommendedBooksSection extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(child: HomeSectionTitle(heading)),
+                if (onRefresh != null) ...[
+                  _CarouselButton(
+                    key: const ValueKey('recommendations-refresh'),
+                    icon: Icons.refresh_rounded,
+                    enabled: refreshEnabled,
+                    onTap: onRefresh!,
+                  ),
+                  const SizedBox(width: 6),
+                ],
                 _CarouselButton(
                   icon: Icons.chevron_left_rounded,
                   enabled: start > 0,
@@ -87,7 +97,6 @@ class RecommendedBooksSection extends StatelessWidget {
                           width: cardWidth,
                           child: _RecommendedBookCard(
                             book: visible[index],
-                            onShowExplanation: onShowExplanation,
                             onTap: () => onBookTap(visible[index]),
                           ),
                         ),
@@ -106,6 +115,7 @@ class RecommendedBooksSection extends StatelessWidget {
 
 class _CarouselButton extends StatelessWidget {
   const _CarouselButton({
+    super.key,
     required this.icon,
     required this.enabled,
     required this.onTap,
@@ -143,14 +153,9 @@ class _CarouselButton extends StatelessWidget {
 }
 
 class _RecommendedBookCard extends StatelessWidget {
-  const _RecommendedBookCard({
-    required this.book,
-    required this.onTap,
-    required this.onShowExplanation,
-  });
+  const _RecommendedBookCard({required this.book, required this.onTap});
 
   final Map<String, dynamic> book;
-  final ValueChanged<String> onShowExplanation;
   final VoidCallback onTap;
 
   @override
@@ -201,23 +206,6 @@ class _RecommendedBookCard extends StatelessWidget {
                       width: double.infinity,
                       height: 122,
                       radius: 0,
-                    ),
-                  if ((book['recommendationReason'] as String? ?? '')
-                      .isNotEmpty)
-                    Positioned(
-                      right: 2,
-                      top: 2,
-                      child: Material(
-                        color: surface.withValues(alpha: .95),
-                        shape: const CircleBorder(),
-                        child: RecommendationInfoButton(
-                          message: book['recommendationReason'] as String,
-                          color: textPrimary,
-                          onPressed: () => onShowExplanation(
-                            book['recommendationReason'] as String,
-                          ),
-                        ),
-                      ),
                     ),
                   Positioned.fill(
                     child: IgnorePointer(

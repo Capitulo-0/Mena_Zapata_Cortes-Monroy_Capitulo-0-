@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_client.dart';
 import '../../data/account_repository.dart';
 import '../../data/pending_username_store.dart';
+import '../../data/pending_legal_consent_store.dart';
 import '../../domain/auth_repository.dart';
 import '../../domain/domain_user.dart';
 import '../../../profile/presentation/widgets/profile_privacy_store.dart';
@@ -24,6 +25,7 @@ class SessionController extends ChangeNotifier {
   final AuthRepository auth;
   final AccountRepository accounts;
   final PendingUsernameStore pendingUsernames = PendingUsernameStore();
+  final PendingLegalConsentStore pendingLegalConsents = PendingLegalConsentStore();
 
   StreamSubscription<AuthIdentity?>? _subscription;
 
@@ -32,6 +34,8 @@ class SessionController extends ChangeNotifier {
   String? message;
   bool busy = false;
   bool usernameRequired = false;
+  bool legalConsentRequired = false;
+  bool interactiveAuthenticationInProgress = false;
 
   bool _disposed = false;
   bool _authOperation = false;
@@ -70,6 +74,7 @@ class SessionController extends ChangeNotifier {
         _preparedUid = null;
         busy = false;
         usernameRequired = false;
+        legalConsentRequired = false;
 
         phase = auth.currentUser == null
             ? SessionPhase.signedOut
@@ -89,6 +94,7 @@ class SessionController extends ChangeNotifier {
     _preparedUid = null;
     message = null;
     usernameRequired = false;
+    legalConsentRequired = false;
 
     if (identity == null) {
       phase = SessionPhase.signedOut;
@@ -108,12 +114,17 @@ class SessionController extends ChangeNotifier {
     busy = true;
     _notify();
 
+    String? pendingUsername;
     try {
-      final username = await pendingUsernames.get(identity.uid);
+      pendingUsername = await pendingUsernames.get(identity.uid);
 
       if (!_current(generation, identity.uid)) return;
 
-      final domain = await accounts.provisionAndLoad(username: username);
+      final legalAccepted = await pendingLegalConsents.accepted(identity.uid);
+      final domain = await accounts.provisionAndLoad(
+        username: pendingUsername,
+        legalAccepted: legalAccepted,
+      );
 
       if (!_current(generation, identity.uid)) return;
 
@@ -121,7 +132,14 @@ class SessionController extends ChangeNotifier {
       _preparedUid = identity.uid;
       phase = SessionPhase.ready;
 
-      if (username != null) {
+      if (legalAccepted) {
+        try {
+          await pendingLegalConsents.remove(identity.uid);
+        } catch (_) {
+          // La cuenta ya existe; no bloquear el ingreso por limpieza local.
+        }
+      }
+      if (pendingUsername != null) {
         try {
           await pendingUsernames.remove(identity.uid);
         } catch (_) {
@@ -131,7 +149,11 @@ class SessionController extends ChangeNotifier {
     } on ApiFailure catch (failure) {
       if (!_current(generation, identity.uid)) return;
 
-      if (failure.code == 'USERNAME_TAKEN' ||
+      if (failure.code == 'LEGAL_CONSENT_REQUIRED') {
+        legalConsentRequired = true;
+        usernameRequired = pendingUsername == null;
+        message = failure.message;
+      } else if (failure.code == 'USERNAME_TAKEN' ||
           failure.code == 'USERNAME_REQUIRED') {
         usernameRequired = true;
         message = failure.message;
@@ -178,6 +200,7 @@ class SessionController extends ChangeNotifier {
   Future<void> _authenticate(Future<void> Function() action) async {
     if (busy) return;
 
+    interactiveAuthenticationInProgress = true;
     busy = true;
     message = null;
     _notify();
@@ -205,6 +228,10 @@ class SessionController extends ChangeNotifier {
       message = failureMessage;
       _notify();
     }
+    if (!_disposed) {
+      interactiveAuthenticationInProgress = false;
+      _notify();
+    }
   }
 
   Future<void> login(String email, String password) =>
@@ -227,6 +254,7 @@ class SessionController extends ChangeNotifier {
     }
 
     try {
+      await pendingLegalConsents.save(uid);
       await pendingUsernames.save(uid, username);
     } catch (_) {
       throw const AuthFailure(
@@ -237,7 +265,34 @@ class SessionController extends ChangeNotifier {
     }
   });
 
-  Future<void> google() => _authenticate(auth.signInWithGoogle);
+  Future<void> google({bool legalAccepted = false}) => _authenticate(() async {
+    await auth.signInWithGoogle();
+    final uid = auth.currentUser?.uid;
+    if (uid != null && legalAccepted) {
+      await pendingLegalConsents.save(uid);
+    }
+  });
+
+  Future<void> submitLegalConsent({String? username}) async {
+    if (busy || _disposed) return;
+    final identity = auth.currentUser;
+    if (identity == null || !identity.emailVerified) return;
+    busy = true;
+    message = null;
+    _notify();
+    try {
+      await pendingLegalConsents.save(identity.uid);
+      if (username != null && username.trim().isNotEmpty) {
+        await pendingUsernames.save(identity.uid, username.trim());
+      }
+      if (!_disposed) await _prepare(identity);
+    } catch (_) {
+      if (_disposed) return;
+      busy = false;
+      message = 'No pudimos registrar la aceptación. Inténtalo nuevamente.';
+      _notify();
+    }
+  }
 
   Future<void> submitUsername(String username) async {
     if (busy || _disposed) return;

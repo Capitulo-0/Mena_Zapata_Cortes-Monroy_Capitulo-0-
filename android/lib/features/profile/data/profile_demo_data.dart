@@ -1,4 +1,3 @@
-
 class ProfileDemoData {
   ProfileDemoData._();
 

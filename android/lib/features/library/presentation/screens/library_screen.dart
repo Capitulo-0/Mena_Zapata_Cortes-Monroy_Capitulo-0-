@@ -175,15 +175,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
     store: widget.epubStore,
     files: widget.epubFiles,
     readerBuilder: widget.epubReaderBuilder,
-    libraryBuilder: (books, buildEpubCard, importControls) {
+    libraryBuilderWithImport: (books, buildEpubCard, importFeedback, onImport) {
       _epubBooks = books;
-      return _buildLibrary(importControls, buildEpubCard);
+      return _buildLibrary(importFeedback, buildEpubCard, onImport);
     },
   );
 
   Widget _buildLibrary(
-    Widget importControls,
+    Widget importFeedback,
     Widget Function(ImportedEpub) buildEpubCard,
+    VoidCallback? onImport,
   ) {
     return ColoredBox(
       color: AppColors.backgroundOf(context),
@@ -193,34 +194,48 @@ class _LibraryScreenState extends State<LibraryScreen> {
           // Reserve space for floating navigation, transient feedback and the
           // system inset so the last card's actions remain reachable.
           padding: EdgeInsets.fromLTRB(
-            16, 14, 16, 208 + MediaQuery.viewPaddingOf(context).bottom,
+            16,
+            14,
+            16,
+            208 + MediaQuery.viewPaddingOf(context).bottom,
           ),
           children: [
-            _buildHeader(),
+            _buildHeader(onImport),
             if (widget.syncController?.busy == true)
-              const Padding(padding: EdgeInsets.symmetric(vertical: 4),
-                child: LinearProgressIndicator(minHeight: 2)),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
             if (widget.syncController?.error != null) ...[
               const SizedBox(height: 6),
               ConstrainedBox(
                 constraints: const BoxConstraints(maxHeight: 96),
-                child: SingleChildScrollView(child: Text(
-                  widget.syncController!.error!,
-                  key: const ValueKey('library-sync-error'),
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondaryOf(context)),
-                )),
+                child: SingleChildScrollView(
+                  child: Text(
+                    widget.syncController!.error!,
+                    key: const ValueKey('library-sync-error'),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondaryOf(context),
+                    ),
+                  ),
+                ),
               ),
-              Align(alignment: Alignment.centerRight, child: TextButton(
-                onPressed: widget.syncController!.busy ? null : widget.syncController!.retry,
-                child: const Text('Reintentar'),
-              )),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: widget.syncController!.busy
+                      ? null
+                      : widget.syncController!.retry,
+                  child: const Text('Reintentar'),
+                ),
+              ),
             ],
             const SizedBox(height: 8),
             _buildViewSelector(),
             const SizedBox(height: 12),
             if (_view == 'libros') ...[
-              importControls,
-              const SizedBox(height: 8),
+              importFeedback,
               _buildSearch(),
               const SizedBox(height: 10),
               _buildCounters(),
@@ -247,7 +262,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ),
                 ),
               if (widget.dataAvailable &&
-                  _filteredBooks.isEmpty && _filteredEpubs.isEmpty)
+                  _filteredBooks.isEmpty &&
+                  _filteredEpubs.isEmpty)
                 _buildEmptyState()
               else ...[
                 ..._filteredBooks.map(_buildBookCard),
@@ -261,12 +277,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(VoidCallback? onImport) {
     return LibraryHeader(
       currentName: widget.currentName,
-      onOptionsTap: _showLibraryOptions,
-      onAddTap: !widget.isGuest && widget.syncController?.canWrite == true
-          ? widget.onAddBook : null,
+      onOptionsTap: () => _showLibraryOptions(onImport),
     );
   }
 
@@ -352,16 +366,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
           _showFinishSuccess = true;
         });
 
-        Future<void>.delayed(
-          const Duration(milliseconds: 2500),
-          () {
-            if (!mounted) return;
+        Future<void>.delayed(const Duration(milliseconds: 2500), () {
+          if (!mounted) return;
 
-            setState(() {
-              _showFinishSuccess = false;
-            });
-          },
-        );
+          setState(() {
+            _showFinishSuccess = false;
+          });
+        });
       },
       onReviewTap: () => _openReviewEditor(book),
     );
@@ -392,13 +403,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           padding: const EdgeInsets.fromLTRB(18, 9, 18, 18),
           decoration: BoxDecoration(
             color: AppColors.backgroundOf(context),
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(22),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
             border: Border(
-              top: BorderSide(
-                color: AppColors.gold.withValues(alpha: 0.32),
-              ),
+              top: BorderSide(color: AppColors.gold.withValues(alpha: 0.32)),
             ),
           ),
           child: SafeArea(
@@ -417,10 +424,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Text(
-                      list.emoji,
-                      style: const TextStyle(fontSize: 20),
-                    ),
+                    Text(list.emoji, style: const TextStyle(fontSize: 20)),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -486,9 +490,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
 
     setState(() {
-      _personalLists[index] = list.copyWith(
-        bookIds: selected.toList(),
-      );
+      _personalLists[index] = list.copyWith(bookIds: selected.toList());
     });
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -505,18 +507,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
           padding: EdgeInsets.zero,
           content: Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 13,
-              vertical: 11,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
             decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF283125)
-                  : const Color(0xFFF4F7EE),
+              color: isDark ? const Color(0xFF283125) : const Color(0xFFF4F7EE),
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color:
-                    const Color(0xFF78935F).withValues(alpha: 0.72),
+                color: const Color(0xFF78935F).withValues(alpha: 0.72),
               ),
               boxShadow: [
                 BoxShadow(
@@ -595,9 +591,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  Future<void> _showLibraryOptions() async {
-    if (_blockGuestAction()) return;
-
+  Future<void> _showLibraryOptions(VoidCallback? onImport) async {
+    // Import EPUB was previously available to guests as a local operation.
+    // Keep it available here; account-specific actions remain guarded.
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -656,65 +652,79 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       ],
                     ),
                     const SizedBox(height: 15),
-                    if (widget.syncController != null) ...[
-                      Material(
-                        color: Colors.transparent,
-                        child: ListenableBuilder(
-                          listenable: widget.syncController!,
-                          builder: (_, _) => ListTile(
-                        key: const ValueKey('library-refresh'),
-                        enabled: !widget.syncController!.busy,
-                        leading: Icon(Icons.refresh_rounded, color: AppColors.goldOf(context)),
-                        title: const Text('Actualizar biblioteca'),
-                        onTap: widget.syncController!.busy ? null : () {
-                          if (widget.syncController!.busy) return;
-                          Navigator.of(sheetContext).pop();
-                          widget.syncController!.load();
-                        },
-                          ),
-                        ),
+                    _libraryOptionTile(
+                      icon: Icons.file_open_outlined,
+                      title: 'Importar libro .epub',
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: onImport == null
+                          ? null
+                          : () {
+                              Navigator.of(sheetContext).pop();
+                              // Run the existing EPUB import action; keep the picker,
+                              // validations and local-only storage unchanged.
+                              onImport();
+                            },
+                    ),
+                    if (!widget.isGuest) ...[
+                      const SizedBox(height: 8),
+                      _libraryOptionTile(
+                        icon: Icons.menu_book_rounded,
+                        title: 'Registra tu libro físico',
+                        highlighted: true,
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap:
+                            widget.syncController?.canWrite == true &&
+                                widget.onAddBook != null
+                            ? () {
+                                Navigator.of(sheetContext).pop();
+                                Future<void>.delayed(
+                                  const Duration(milliseconds: 180),
+                                  widget.onAddBook!,
+                                );
+                              }
+                            : null,
                       ),
                       const SizedBox(height: 8),
+                      _libraryOptionTile(
+                        icon: Icons.add_box_outlined,
+                        title: 'Crear lista',
+                        highlighted: true,
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () {
+                          Navigator.of(sheetContext).pop();
+                          Future<void>.delayed(
+                            const Duration(milliseconds: 180),
+                            _showCreateListSheet,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      _libraryOptionTile(
+                        icon: Icons.download_outlined,
+                        title: 'Exportar mi biblioteca',
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () {
+                          Navigator.of(sheetContext).pop();
+                          Future<void>.delayed(
+                            const Duration(milliseconds: 160),
+                            _showExportLibraryDialog,
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      _libraryOptionTile(
+                        icon: Icons.ios_share_outlined,
+                        title: 'Exportar mi lista',
+                        trailing: const Icon(Icons.chevron_right_rounded),
+                        onTap: () {
+                          Navigator.of(sheetContext).pop();
+                          Future<void>.delayed(
+                            const Duration(milliseconds: 160),
+                            _showExportListDialog,
+                          );
+                        },
+                      ),
                     ],
-                    _libraryOptionTile(
-                      icon: Icons.add_box_outlined,
-                      title: 'Crear lista',
-                      highlighted: true,
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () {
-                        Navigator.of(sheetContext).pop();
-                        Future<void>.delayed(
-                          const Duration(milliseconds: 180),
-                          _showCreateListSheet,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    _libraryOptionTile(
-                      icon: Icons.download_outlined,
-                      title: 'Exportar mi biblioteca',
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () {
-                        Navigator.of(sheetContext).pop();
-                        Future<void>.delayed(
-                          const Duration(milliseconds: 160),
-                          _showExportLibraryDialog,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 8),
-                    _libraryOptionTile(
-                      icon: Icons.ios_share_outlined,
-                      title: 'Exportar mi lista',
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () {
-                        Navigator.of(sheetContext).pop();
-                        Future<void>.delayed(
-                          const Duration(milliseconds: 160),
-                          _showExportListDialog,
-                        );
-                      },
-                    ),
                   ],
                 ),
               ),
@@ -729,7 +739,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     required IconData icon,
     required String title,
     required Widget trailing,
-    required VoidCallback onTap,
+    required VoidCallback? onTap,
     bool highlighted = false,
   }) {
     return InkWell(
@@ -746,18 +756,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
               : AppColors.surfaceOf(context),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: AppColors.goldOf(context).withValues(
-              alpha: highlighted ? 0.70 : 0.42,
-            ),
+            color: AppColors.goldOf(context)
+                .withValues(alpha: highlighted ? 0.70 : 0.42),
           ),
         ),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: AppColors.deepOf(context),
-              size: 20,
-            ),
+            Icon(icon, color: AppColors.deepOf(context), size: 20),
             const SizedBox(width: 11),
             Expanded(
               child: Text(
@@ -798,8 +803,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       summaryTitle: 'Se exportarán estos libros:',
       summaryMain:
           '$total ${total == 1 ? 'libro en tu biblioteca' : 'libros en tu biblioteca'}',
-      summaryDetail:
-          '$read leídos · $reading leyendo · $pending por leer',
+      summaryDetail: '$read leídos · $reading leyendo · $pending por leer',
       linkText:
           'Capítulo 0 · Mi biblioteca · $total libros · $read leídos · $reading leyendo · $pending por leer',
     );
@@ -838,7 +842,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
       setState(() {
         for (var i = 0; i < _personalLists.length; i++) {
           final list = _personalLists[i];
-          _personalLists[i] = list.copyWith(bookIds: list.bookIds.where((id) => id != book.id).toList());
+          _personalLists[i] = list.copyWith(
+            bookIds: list.bookIds.where((id) => id != book.id).toList(),
+          );
         }
       });
     }
@@ -852,7 +858,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
           book: book,
           readStatus: () => widget.statuses[book.id],
           readProgress: () => widget.progresses[book.id] ?? 0,
-          onRemove: widget.onRemoveBook == null ? null : () => _removeBook(book),
+          onRemove: widget.onRemoveBook == null
+              ? null
+              : () => _removeBook(book),
           onRead: () =>
               widget.onReadBook?.call(context, book.id) ?? Future<int?>.value(),
           currentUsername: widget.currentUsername,
@@ -897,6 +905,4 @@ class _LibraryScreenState extends State<LibraryScreen> {
       },
     );
   }
-
 }
-

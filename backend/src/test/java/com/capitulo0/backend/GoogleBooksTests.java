@@ -72,6 +72,12 @@ class GoogleBooksTests {
             var transport=new GoogleBooksClient("http://127.0.0.1:"+server.getAddress().getPort(),"fixture-key",500);
             transport.search("autor & título",0,20,"es");
             assertThat(request.get()).contains("%26","startIndex=0","langRestrict=es");
+            new GoogleBooksService(transport).search("\"Mercedes Ron\"", "author", 24, 24, "es");
+            assertThat(java.net.URLDecoder.decode(request.get(), StandardCharsets.UTF_8))
+                .contains("q=inauthor:\"Mercedes Ron\"", "startIndex=24", "langRestrict=es");
+            new GoogleBooksService(transport).search("\"La casa de los espíritus\"", "title", 0, 24, "es");
+            assertThat(java.net.URLDecoder.decode(request.get(), StandardCharsets.UTF_8))
+                .contains("q=intitle:\"La casa de los espíritus\"");
             assertThatThrownBy(() -> transport.volume("missing")).isInstanceOf(ApiException.class).hasMessageNotContaining("fixture-key");
             assertThatThrownBy(() -> transport.volume("quota")).isInstanceOf(ApiException.class);
             assertThatThrownBy(() -> transport.volume("bad")).isInstanceOf(ApiException.class);

@@ -34,6 +34,9 @@ public class SecurityConfiguration {
             .authorizeHttpRequests(auth -> auth
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/health", "/api/books", "/api/books/*", "/api/catalog/search", "/api/catalog/google-books/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/clubs/mine").authenticated()
+                .requestMatchers(HttpMethod.GET,"/api/clubs","/api/clubs/home").permitAll()
+                .requestMatchers(HttpMethod.GET,"/api/clubs/{id:[0-9]+}").permitAll()
                 .requestMatchers("/api/users", "/api/users/").denyAll()
                 .anyRequest().authenticated())
             .addFilterBefore(new FirebaseBearerFilter(verifier, errors), AnonymousAuthenticationFilter.class)

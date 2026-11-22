@@ -9,10 +9,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class HomeQuoteSection extends StatefulWidget {
-  const HomeQuoteSection({
-    super.key,
-    required this.quotes,
-  });
+  const HomeQuoteSection({super.key, required this.quotes});
 
   final List<Map<String, String>> quotes;
 
@@ -382,8 +379,6 @@ class _HomeQuoteSectionState extends State<HomeQuoteSection> {
       quoteSharedOn = null;
     });
   }
-
-
 
   @override
   Widget build(BuildContext context) => _buildQuote();

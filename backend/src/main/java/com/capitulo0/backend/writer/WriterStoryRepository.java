@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 public interface WriterStoryRepository extends JpaRepository<WriterStoryEntity,Long> {
  Optional<WriterStoryEntity> findByStoryKey(String storyKey);
+ List<WriterStoryEntity> findAllByOrderByUpdatedAtDesc();
  List<WriterStoryEntity> findByOwnerIdNotOrderByUpdatedAtDesc(Long ownerId);
  List<WriterStoryEntity> findByOwnerIdOrderByUpdatedAtDesc(Long ownerId);
  Optional<WriterStoryEntity> findByStoryKeyAndOwnerId(String id,Long ownerId);

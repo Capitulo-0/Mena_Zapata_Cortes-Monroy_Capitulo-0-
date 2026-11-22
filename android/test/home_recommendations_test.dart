@@ -14,7 +14,6 @@ import 'package:android/features/home/presentation/home_recommendation_controlle
 import 'package:android/features/home/presentation/screens/home_screen.dart';
 import 'package:android/features/home/presentation/screens/home_book_detail_screen.dart';
 import 'package:android/features/home/presentation/widgets/library_recommendations_section.dart';
-import 'package:android/features/home/presentation/widgets/main_header.dart';
 import 'package:android/features/library/presentation/screens/library_screen.dart';
 
 import 'support/auth_fakes.dart';
@@ -65,25 +64,12 @@ class RecommendationsFake implements HomeRecommendationRepository {
 Widget home(
   RecommendationsFake repo, {
   CatalogRepository? catalog,
-  GlobalKey<HomeScreenState>? homeKey,
   List<Map<String, dynamic>> library = const [],
   Map<int, BookStatus> statuses = const {},
 }) => MaterialApp(
   theme: AppTheme.light,
   home: Scaffold(
-    appBar: homeKey == null
-        ? null
-        : PreferredSize(
-            preferredSize: const Size.fromHeight(70),
-            child: MainHeader(
-              compact: false,
-              isGuest: false,
-              onScannerTap: () {},
-              onGeminiTap: () => homeKey.currentState?.showGeminiAssistant(),
-            ),
-          ),
     body: HomeScreen(
-      key: homeKey,
       recommendationRepository: repo,
       catalogRepository: catalog,
       catalogBooks: library,
@@ -379,41 +365,12 @@ void main() {
   );
 
   testWidgets(
-    'Gemini consent cancels without provider call then confirms and navigates real details',
+    'Home navigates to a verified recommendation without changing its selection',
     (tester) async {
       final repo = RecommendationsFake('a');
       final catalog = CatalogFake();
-      await tester.pumpWidget(
-        home(repo, catalog: catalog, homeKey: GlobalKey<HomeScreenState>()),
-      );
+      await tester.pumpWidget(home(repo, catalog: catalog));
       repo.loads.single.complete(result('real'));
-      await tester.pumpAndSettle();
-      final button = find.byTooltip('Selección inteligente con Gemini');
-      expect(
-        find.byKey(const ValueKey('recommendations-gemini')),
-        findsNothing,
-      );
-      await tester.tap(button);
-      await tester.pumpAndSettle();
-      expect(
-        find.textContaining('No se envían datos de tu cuenta'),
-        findsOneWidget,
-      );
-      await tester.tap(find.text('Cerrar'));
-      await tester.pumpAndSettle();
-      expect(repo.enrichments, isEmpty);
-      await tester.tap(button);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Solicitar selección'));
-      await tester.pump();
-      expect(repo.enrichments, hasLength(1));
-      repo.enrichments.single.complete(result('real', status: 'ENRICHED'));
-      await tester.pumpAndSettle();
-      expect(
-        find.text('La selección está aplicada a tus recomendaciones.'),
-        findsOneWidget,
-      );
-      await tester.tap(find.text('Cerrar'));
       await tester.pumpAndSettle();
       final card = find.text('Real fixture real');
       await tester.scrollUntilVisible(

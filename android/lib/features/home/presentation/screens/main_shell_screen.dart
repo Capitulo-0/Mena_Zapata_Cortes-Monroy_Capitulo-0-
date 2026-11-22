@@ -10,6 +10,9 @@ import '../../../catalog/data/catalog_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../clubs/models/reading_club.dart';
+import '../../../clubs/data/reading_club_repository.dart';
+import '../../../verification/data/organizer_verification_repository.dart';
 import '../../../profile/data/user_search_repository.dart';
 import '../../../profile/data/public_profile_repository.dart';
 import '../../../notifications/data/notification_repository.dart';
@@ -18,7 +21,7 @@ import '../../../notifications/presentation/screens/notifications_screen.dart';
 import '../../../auth/domain/domain_user.dart';
 import '../../../auth/data/account_repository.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../clubs/models/reading_club.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../library/presentation/screens/library_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../profile/presentation/screens/public_profile_screen.dart';
@@ -30,9 +33,12 @@ import '../../../library/presentation/dialogs/reading_record_dialog.dart';
 import '../widgets/main_header.dart';
 import '../../../writer/models/writer_story.dart';
 import '../../../writer/services/writer_repository.dart';
+import '../../../writer/services/literary_chat.dart';
+import '../../../writer/presentation/widgets/literary_chat_screen.dart';
 import '../../../writer/presentation/screens/writer_screen.dart';
 
 import 'package:android/features/maps/presentation/screens/maps_screen.dart';
+import 'package:android/features/maps/models/map_point.dart';
 
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({
@@ -53,6 +59,8 @@ class MainShellScreen extends StatefulWidget {
     this.followRepository,
     this.accountRepository,
     this.onProfileUpdated,
+    this.verificationRepository,
+    this.readingClubRepository,
     required this.onDarkModeChanged,
   });
 
@@ -63,6 +71,8 @@ class MainShellScreen extends StatefulWidget {
   final UserSearchRepository? userSearchRepository;
   final PublicProfileRepository? publicProfileRepository;
   final NotificationRepository? notificationRepository;
+  final OrganizerVerificationRepository? verificationRepository;
+  final ReadingClubRepository? readingClubRepository;
   final FollowRepository? followRepository;
   final String? profileDisplayName;
   final DomainUser? profileUser;
@@ -80,6 +90,41 @@ class MainShellScreen extends StatefulWidget {
 
 class _MainShellScreenState extends State<MainShellScreen> {
   int selectedIndex = 0;
+  MapPoint? _homeHighlightedPoint;
+  bool _verifiedOrganizer = false;
+  int _verificationRequestGeneration = 0;
+
+  Future<void> _loadOrganizerVerification() async {
+    final generation = ++_verificationRequestGeneration;
+    final repository = widget.verificationRepository;
+
+    if (widget.isGuest || repository == null) {
+      if (mounted) {
+        setState(() => _verifiedOrganizer = false);
+      }
+      return;
+    }
+
+    try {
+      final verification = await repository.myStatus();
+
+      if (!mounted || generation != _verificationRequestGeneration) {
+        return;
+      }
+
+      setState(() {
+        _verifiedOrganizer =
+            verification?.status == OrganizerVerificationStatus.approved;
+      });
+    } catch (_) {
+      if (!mounted || generation != _verificationRequestGeneration) {
+        return;
+      }
+
+      // Ante un error no mostramos una verificación sin confirmar.
+      setState(() => _verifiedOrganizer = false);
+    }
+  }
 
   // null: perfil propio; username: perfil de otra persona.
   String? _visitingUsername;
@@ -148,7 +193,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
     );
     if (mounted) unawaited(_refreshUnreadNotifications());
   }
-
 
   List<WriterStory> _writerStories = <WriterStory>[];
   int _writerStoriesRequest = 0;
@@ -241,7 +285,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
   void initState() {
     super.initState();
     _loadWriterStories();
+    unawaited(_loadPersistedFavoriteBooks());
     unawaited(_refreshUnreadNotifications());
+    unawaited(_loadOrganizerVerification());
+    unawaited(_loadHomeClubs());
+    unawaited(_loadMyClubs());
     if (!widget.isGuest && widget.libraryRepository != null) {
       _libraryBooks.clear();
       _bookStatuses.clear();
@@ -253,6 +301,94 @@ class _MainShellScreenState extends State<MainShellScreen> {
       _remoteLibrary = LibraryController(widget.libraryRepository!)
         ..addListener(_syncRemoteLibrary);
       unawaited(_remoteLibrary!.load());
+    }
+  }
+
+  // Recupera las membresías de la cuenta autenticada desde Neon.
+  Future<void> _loadMyClubs() async {
+    final repository = widget.readingClubRepository;
+    final request = ++_myClubsRequestGeneration;
+
+    if (widget.isGuest || repository == null) {
+      if (!mounted) return;
+      setState(() {
+        _myClubs.clear();
+        _joinedClubIds.clear();
+      });
+      return;
+    }
+
+    try {
+      final clubs = await repository.myClubs();
+      if (!mounted || request != _myClubsRequestGeneration) return;
+
+      setState(() {
+        _myClubs
+          ..clear()
+          ..addAll(clubs);
+        _joinedClubIds
+          ..clear()
+          ..addAll(clubs.map((club) => club.id));
+      });
+    } on ApiFailure catch (error) {
+      if (!mounted || request != _myClubsRequestGeneration) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No pudimos cargar tus clubes: ${error.message}'),
+        ),
+      );
+    } catch (_) {
+      if (!mounted || request != _myClubsRequestGeneration) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No pudimos recuperar tus clubes de lectura.'),
+        ),
+      );
+    }
+  }
+
+  // Consulta los clubes activos desde Neon, también en modo invitado.
+  Future<void> _loadHomeClubs() async {
+    if (_clubsLoading) return;
+
+    final repository = widget.readingClubRepository;
+    if (repository == null) {
+      if (!mounted) return;
+      setState(() {
+        _clubs.clear();
+        _clubsError = 'No está disponible la consulta de clubes.';
+      });
+      return;
+    }
+
+    setState(() {
+      _clubsLoading = true;
+      _clubsError = null;
+    });
+
+    try {
+      final clubs = await repository.homeClubs();
+      if (!mounted) return;
+      setState(() {
+        _clubs
+          ..clear()
+          ..addAll(clubs);
+        _clubsLoading = false;
+        _clubsError = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _clubsLoading = false;
+        _clubsError = 'No pudimos cargar los clubes de lectura.';
+      });
+      // Sin datos ficticios: la interfaz de error/reintento se completará
+      // en la integración de Home.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _clubsError == null) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(_clubsError!)));
+      });
     }
   }
 
@@ -274,44 +410,24 @@ class _MainShellScreenState extends State<MainShellScreen> {
     // No hacemos setState aquí porque WriterScreen está actualmente visible.
     // El cambio se reflejará cuando MainShell cambie de pestaña.
     _writerStories = List<WriterStory>.from(stories);
+    _homeKey.currentState?.reloadCommunityStories();
   }
 
   List<WriterStory> get _publishedWriterStories =>
       _writerStories.where((story) => story.isPublished).toList()
         ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
-  // Estado compartido de clubes de lectura.
-  final List<ReadingClub> _clubs = [
-    const ReadingClub(
-      id: 1,
-      name: 'Adictos a los Clásicos ☕',
-      members: 342,
-      book: 'Cumbres Borrascosas',
-      date: 'Viernes 20:00',
-      modality: 'Presencial',
-      description: 'Un espacio para quienes aman los grandes clásicos de la literatura universal. Cada semana conversamos sobre capítulos, personajes y contexto histórico.',
-    ),
-    const ReadingClub(
-      id: 2,
-      name: 'Mansión Gótica 🕯️',
-      members: 189,
-      book: 'Jane Eyre',
-      date: 'Sábado 18:30',
-      modality: 'Online',
-      description: 'Para amantes de la literatura gótica y victoriana. Misterio, romanticismo oscuro y personajes inolvidables.',
-    ),
-    const ReadingClub(
-      id: 3,
-      name: 'Plumas del Sur ✍️',
-      members: 98,
-      book: 'El Jardín de los Recuerdos',
-      date: 'Miércoles 19:00',
-      modality: 'Presencial',
-      description: 'Club dedicado a literatura latinoamericana contemporánea y autores independientes.',
-    ),
-  ];
+  // Estado compartido de clubes de lectura. Fuente real: Neon.
+  final List<ReadingClub> _clubs = <ReadingClub>[];
+  bool _clubsLoading = false;
+  String? _clubsError;
 
   final Set<int> _joinedClubIds = <int>{};
+  final List<ReadingClub> _myClubs = <ReadingClub>[];
+  int _myClubsRequestGeneration = 0;
+
+  // Evita enviar dos solicitudes simultáneas para el mismo club.
+  final Set<int> _clubMembershipRequests = <int>{};
 
   // Estado compartido de Biblioteca. En el siguiente paso Perfil consumirá
   // exactamente estas mismas colecciones para mantener contadores, reto y estante
@@ -621,7 +737,27 @@ class _MainShellScreenState extends State<MainShellScreen> {
     ),
   };
 
-  final Set<int> _favoriteBookIds = {1, 2, 3, 4};
+  final Set<int> _favoriteBookIds = <int>{};
+  int _favoriteBooksGeneration = 0;
+
+  Future<void> _loadPersistedFavoriteBooks() async {
+    final repository = widget.publicProfileRepository;
+    final request = ++_favoriteBooksGeneration;
+    if (widget.isGuest || repository is! ProfileActivitySource) return;
+    final ProfileActivitySource source = repository as ProfileActivitySource;
+    try {
+      final favoriteIds = await source.getMyFavoriteBooks();
+      if (!mounted || request != _favoriteBooksGeneration) return;
+      setState(() {
+        _favoriteBookIds
+          ..clear()
+          ..addAll(favoriteIds);
+      });
+    } catch (_) {
+      // No se muestran favoritos ficticios ni datos de otra cuenta.
+    }
+  }
+
   final Map<String, WriterStory> _favoriteCommunityStories =
       <String, WriterStory>{};
 
@@ -631,7 +767,33 @@ class _MainShellScreenState extends State<MainShellScreen> {
   final Map<int, ReadingRecord> _lastIncompleteRecords = {};
 
   @override
+  void didUpdateWidget(covariant MainShellScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.profileUser?.id != widget.profileUser?.id ||
+        oldWidget.isGuest != widget.isGuest ||
+        oldWidget.publicProfileRepository != widget.publicProfileRepository) {
+      ++_favoriteBooksGeneration;
+      _favoriteBookIds.clear();
+      unawaited(_loadPersistedFavoriteBooks());
+    }
+
+    if (oldWidget.isGuest != widget.isGuest ||
+        oldWidget.profileUser?.id != widget.profileUser?.id ||
+        oldWidget.verificationRepository != widget.verificationRepository ||
+        oldWidget.readingClubRepository != widget.readingClubRepository) {
+      ++_verificationRequestGeneration;
+      _verifiedOrganizer = false;
+      unawaited(_loadOrganizerVerification());
+      unawaited(_loadMyClubs());
+    }
+  }
+
+  @override
   void dispose() {
+    ++_verificationRequestGeneration;
+    ++_myClubsRequestGeneration;
+    ++_favoriteBooksGeneration;
     _finishReadingTimer?.cancel();
     _remoteLibrary
       ?..removeListener(_syncRemoteLibrary)
@@ -934,14 +1096,44 @@ class _MainShellScreenState extends State<MainShellScreen> {
     });
   }
 
-  void _toggleFavoriteBook(int bookId) {
-    setState(() {
-      if (_favoriteBookIds.contains(bookId)) {
-        _favoriteBookIds.remove(bookId);
-      } else {
-        _favoriteBookIds.add(bookId);
-      }
-    });
+  Future<void> _toggleFavoriteBook(int bookId) async {
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+    final repository = widget.publicProfileRepository;
+    final ProfileActivitySource? source = repository is ProfileActivitySource
+        ? repository as ProfileActivitySource
+        : null;
+    final adding = !_favoriteBookIds.contains(bookId);
+    if (source == null) {
+      // Compatibilidad con los dobles de prueba que no utilizan API remota.
+      setState(() {
+        if (adding) {
+          _favoriteBookIds.add(bookId);
+        } else {
+          _favoriteBookIds.remove(bookId);
+        }
+      });
+      return;
+    }
+    // Persistir primero: un error no debe presentar un favorito inexistente.
+    try {
+      await source.setMyFavoriteBook(bookId, favorite: adding);
+      if (!mounted) return;
+      setState(() {
+        if (adding) {
+          _favoriteBookIds.add(bookId);
+        } else {
+          _favoriteBookIds.remove(bookId);
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pudimos actualizar tus favoritos.')),
+      );
+    }
   }
 
   void _toggleFavoriteCommunityStory(WriterStory story) {
@@ -954,40 +1146,91 @@ class _MainShellScreenState extends State<MainShellScreen> {
     });
   }
 
-  void _toggleClub(int clubId) {
-    final index = _clubs.indexWhere((club) => club.id == clubId);
-
-    if (index == -1) {
+  Future<void> _toggleClub(int clubId) async {
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
       return;
     }
 
-    final currentClub = _clubs[index];
+    final repository = widget.readingClubRepository;
+
+    if (repository == null || _clubMembershipRequests.contains(clubId)) {
+      return;
+    }
+
     final wasJoined = _joinedClubIds.contains(clubId);
 
-    final updatedMembers = wasJoined
-        ? (currentClub.members > 0 ? currentClub.members - 1 : 0)
-        : currentClub.members + 1;
+    _clubMembershipRequests.add(clubId);
 
-    setState(() {
-      if (wasJoined) {
-        _joinedClubIds.remove(clubId);
-      } else {
-        _joinedClubIds.add(clubId);
-      }
+    try {
+      // Neon confirma primero la operación.
+      final updatedClub = wasJoined
+          ? await repository.leaveClub(clubId)
+          : await repository.joinClub(clubId);
 
-      _clubs[index] = ReadingClub(
-        id: currentClub.id,
-        name: currentClub.name,
-        members: updatedMembers,
-        book: currentClub.book,
-        date: currentClub.date,
-        description: currentClub.description,
-        modality: currentClub.modality,
+      if (!mounted) return;
+
+      // Una respuesta de membresía confirmada prevalece sobre cualquier
+      // consulta de Mis clubes iniciada antes de esta operación.
+      ++_myClubsRequestGeneration;
+      setState(() {
+        if (updatedClub.joined) {
+          _joinedClubIds.add(clubId);
+          final personalIndex = _myClubs.indexWhere(
+            (club) => club.id == clubId,
+          );
+          if (personalIndex == -1) {
+            _myClubs.insert(0, updatedClub);
+          } else {
+            _myClubs[personalIndex] = updatedClub;
+          }
+        } else {
+          _joinedClubIds.remove(clubId);
+          _myClubs.removeWhere((club) => club.id == clubId);
+        }
+
+        final homeIndex = _clubs.indexWhere((club) => club.id == clubId);
+        if (homeIndex != -1) {
+          _clubs[homeIndex] = updatedClub;
+        }
+      });
+    } on ApiFailure catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No pudimos actualizar tu membresía. '
+            'Revisa tu conexión e inténtalo nuevamente.',
+          ),
+        ),
       );
+    } finally {
+      _clubMembershipRequests.remove(clubId);
+    }
+  }
+
+  void _openNearbyPointOnMap(MapPoint point) {
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+    setState(() {
+      _homeHighlightedPoint = point;
+      selectedIndex = 3;
+      _headerCompact = false;
     });
   }
 
   void _selectTab(int index) {
+    if (index == 0 && selectedIndex != 0) {
+      _homeKey.currentState?.reloadCommunityStories();
+    }
     if (widget.isGuest && (index == 3 || index == 4)) {
       _showGuestAccessDialog();
       return;
@@ -995,6 +1238,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
     setState(() {
       selectedIndex = index;
+      if (index == 3) _homeHighlightedPoint = null;
       _headerCompact = false;
 
       if (index == 4) {
@@ -1025,7 +1269,22 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openHeaderGemini() {
-    _homeKey.currentState?.showGeminiAssistant();
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+    if (widget.writerRepository case LiteraryChatRepository repository) {
+      unawaited(
+        LiteraryChatScreen.open(
+          context,
+          LiteraryChatScreen(
+            repository: repository,
+            onBook: (book) async =>
+                _homeKey.currentState?.openAssistantBook(book),
+          ),
+        ),
+      );
+    }
   }
 
   void _showGuestAccessDialog() {
@@ -1212,8 +1471,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
   List<Widget> _mainScreens() {
     return [
       HomeScreen(
+        readingClubRepository: widget.readingClubRepository,
         catalogRepository: widget.catalogRepository,
         userSearchRepository: widget.userSearchRepository,
+        communityWriterRepository:
+            widget.writerRepository is CommunityWriterRepository
+            ? widget.writerRepository! as CommunityWriterRepository
+            : null,
         onOpenUserProfile: _openUserProfile,
         catalogBooks: _remoteLibrary == null
             ? null
@@ -1254,12 +1518,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
         },
         clubs: _clubs,
         joinedClubIds: _joinedClubIds,
-        onToggleClub: (clubId) {
+        onToggleClub: (clubId) async {
           if (widget.isGuest) {
             _showGuestAccessDialog();
             return;
           }
-          _toggleClub(clubId);
+          await _toggleClub(clubId);
         },
         continueReadingBook: widget.isGuest ? null : _lastAdvancedBook,
         continueReadingProgress: widget.isGuest ? 0 : _lastAdvancedBookProgress,
@@ -1274,6 +1538,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onOpenLibrary: () => _selectTab(1),
         onOpenWriter: () => _selectTab(2),
         onOpenPoints: () => _selectTab(3),
+        onOpenNearbyPoint: _openNearbyPointOnMap,
         onOpenProfile: () => _selectTab(4),
       ),
       LibraryScreen(
@@ -1307,10 +1572,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onStoriesChanged: _handleWriterStoriesChanged,
       ),
       MapsScreen(
-        clubs: _clubs,
-        joinedClubIds: _joinedClubIds,
         currentUsername: _profileUsername,
         currentName: _profileName,
+        highlightedPointId: _homeHighlightedPoint?.id,
+        highlightedPoint: _homeHighlightedPoint,
       ),
       if (_visitingUsername != null && widget.publicProfileRepository != null)
         PublicProfileScreen(
@@ -1321,6 +1586,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
         )
       else
         ProfileScreen(
+          readingMoodSource: widget.isGuest
+              ? null
+              : (widget.publicProfileRepository is ReadingMoodSource
+                    ? widget.publicProfileRepository as ReadingMoodSource
+                    : null),
+          verifiedOrganizer: !widget.isGuest && _verifiedOrganizer,
           followRepository: widget.isGuest ? null : widget.followRepository,
           onOpenSocialProfile: _openUserProfile,
           onReadBook: _openReading,
@@ -1336,7 +1607,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
           createdAt: widget.isGuest ? null : widget.profileUser?.createdAt,
           readingFormat: _readingFormat,
           annualGoal: _annualGoal,
-          clubs: _clubs,
+          clubs: _myClubs,
           joinedClubIds: _joinedClubIds,
           onToggleClub: _toggleClub,
           books: _libraryBooks,
@@ -1360,11 +1631,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
     if (showSettings) {
       return SettingsScreen(
         accountRepository: widget.accountRepository,
+        readingClubRepository: widget.isGuest
+            ? null
+            : widget.readingClubRepository,
         onProfileUpdated: widget.onProfileUpdated,
         onBack: () {
           setState(() {
             showSettings = false;
           });
+          // Refresca los clubes desde Neon al volver de Configuración,
+          // incluido un club que se haya creado durante esta visita.
+          unawaited(_loadHomeClubs());
+          unawaited(_loadMyClubs());
         },
         onLogout: widget.onLogout,
         onDeleteAccount: () {
@@ -1384,6 +1662,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         initialUsername: _profileUsername,
         initialBiography: _profileBiography,
         initialReadingFormat: _readingFormat,
+        verificationRepository: widget.verificationRepository,
         initialAnnualGoal: _annualGoal,
 
         onProfileSaved: (name, username, biography, readingFormat, annualGoal) {

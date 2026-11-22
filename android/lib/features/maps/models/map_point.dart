@@ -9,6 +9,7 @@ class MapPoint {
     required this.type,
     required this.position,
     required this.address,
+    this.commune,
     required this.description,
     this.schedule,
     this.date,
@@ -21,6 +22,7 @@ class MapPoint {
   final String name;
   final MapPointType type;
   final LatLng position;
+  final String? commune;
   final String address;
   final String description;
   final String? schedule;

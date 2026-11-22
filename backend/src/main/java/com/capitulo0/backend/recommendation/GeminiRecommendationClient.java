@@ -8,34 +8,58 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 import static com.capitulo0.backend.recommendation.Recommendations.*;
 
 /** Official stateless Interactions REST API. Fixed origin, no redirects, bounded response. */
 @Component
 public class GeminiRecommendationClient implements Provider {
+    private static final Logger log = LoggerFactory.getLogger(GeminiRecommendationClient.class);
     private final String key;
     private final String model;
     private final HttpClient http;
     private final URI endpoint;
-    private final Duration timeout;
+    private final Duration recommendationTimeout;
+    private final Duration writerTimeout;
     private long availabilityExpires;
     private boolean modelAvailable;
     private final JsonMapper json = JsonMapper.builder().build();
 
     @org.springframework.beans.factory.annotation.Autowired
     public GeminiRecommendationClient(@Value("${GEMINI_API_KEY:}") String key,
-            @Value("${GEMINI_MODEL:gemini-4-hydrogen}") String model) {
+            @Value("${GEMINI_MODEL:gemini-4-hydrogen}") String model,
+            @Value("${GEMINI_WRITER_TIMEOUT_SECONDS:40}") int writerTimeoutSeconds) {
         this(key, model, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3))
             .followRedirects(HttpClient.Redirect.NEVER).build(),
-            URI.create("https://generativelanguage.googleapis.com/v1beta/interactions"), Duration.ofSeconds(8));
+            URI.create("https://generativelanguage.googleapis.com/v1beta/interactions"),
+            Duration.ofSeconds(8), writerTimeout(writerTimeoutSeconds));
     }
     // Package-private transport seam for loopback tests; production origin cannot be supplied by users.
     GeminiRecommendationClient(String key, String model, HttpClient http, URI endpoint, Duration timeout) {
-        this.key = key; this.model = model; this.http = http; this.endpoint = endpoint; this.timeout = timeout;
+        this(key, model, http, endpoint, timeout, timeout);
+    }
+
+    GeminiRecommendationClient(String key, String model, HttpClient http, URI endpoint,
+            Duration recommendationTimeout, Duration writerTimeout) {
+        this.key = key;
+        this.model = model;
+        this.http = http;
+        this.endpoint = endpoint;
+        this.recommendationTimeout = recommendationTimeout;
+        this.writerTimeout = writerTimeout;
+    }
+
+    private static Duration writerTimeout(int seconds) {
+        if (seconds < 1 || seconds > 45)
+            throw new IllegalArgumentException("GEMINI_WRITER_TIMEOUT_SECONDS must be between 1 and 45");
+        return Duration.ofSeconds(seconds);
     }
     @Override public boolean configured() { return key != null && !key.isBlank(); }
     /** Metadata-only account/model check; never sends literary preferences or generates text. */
@@ -78,41 +102,96 @@ public class GeminiRecommendationClient implements Provider {
             + "Return only candidate ids with one of that candidate's allowedReasons as reasonCode. "
             + "Do not invent any books, ids, facts or reasons.\n" + json.writeValueAsString(input);
         if (prompt.length() > 24000) throw new Unavailable("INVALID");
-        var body = Map.of("model", model, "input", prompt, "store", false,
-            "generation_config", Map.of("max_output_tokens", 1024),
-            "response_format", Map.of("type", "text", "mime_type", "application/json", "schema", OUTPUT_SCHEMA));
+        var selections = interaction(prompt, null, OUTPUT_SCHEMA, Map.of("max_output_tokens", 1024)).path("selections");
+        if (!selections.isArray() || selections.isEmpty() || selections.size() > 6)
+            throw new Unavailable("INVALID");
+        var result = new ArrayList<Selection>();
+        for (var selection : selections)
+            result.add(new Selection(selection.path("id").asText(""), selection.path("reasonCode").asText("")));
+        return List.copyOf(result);
+    }
+
+    /** Stateless structured generation. Instructions are separate from the caller's literary data. */
+    public JsonNode generate(String instructions, Map<String, String> data, Map<String, Object> schema,
+            int maxTokens, String thinkingLevel) {
+        if (!configured()) throw new Unavailable("NOT_CONFIGURED");
+        if (!model.matches("[a-zA-Z0-9._-]{1,80}")) throw new Unavailable("INVALID");
+        return interaction(json.writeValueAsString(data), instructions, schema,
+            Map.of("max_output_tokens", maxTokens, "thinking_level", thinkingLevel));
+    }
+
+    private JsonNode interaction(String input, String instructions, Map<String, Object> schema,
+            Map<String, Object> config) {
+        var body = new LinkedHashMap<String, Object>(Map.of("model", model, "input", input, "store", false,
+            "generation_config", config,
+            "response_format", Map.of("type", "text", "mime_type", "application/json", "schema", schema)));
+        if (instructions != null) body.put("system_instruction", instructions);
+        boolean writer = instructions != null;
+        var timeout = writer ? writerTimeout : recommendationTimeout;
         var request = HttpRequest.newBuilder(endpoint).timeout(timeout)
             .header("x-goog-api-key", key).header("Content-Type", "application/json")
             .header("Api-Revision", "2026-05-20")
             .POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build();
         CompletableFuture<HttpResponse<byte[]>> pending = null;
+        var started = System.nanoTime();
+        var providerStatus = new AtomicInteger();
+        String outcome = "OK";
         try {
-            pending = http.sendAsync(request, ignored -> new LimitedBody());
+            pending = http.sendAsync(request, info -> {
+                providerStatus.set(info.statusCode());
+                return new LimitedBody();
+            });
             var response = pending.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
-            if (response.statusCode() != 200) throw new Unavailable(
-                response.statusCode() == 429 ? "QUOTA" : "HTTP_ERROR");
+            if (response.statusCode() == 429) throw new Unavailable("QUOTA",
+                response.headers().firstValue("Retry-After").map(GeminiRecommendationClient::retrySeconds).orElse(null));
+            if (response.statusCode() != 200) throw new Unavailable("HTTP_ERROR");
             var root = json.readTree(new String(response.body(), StandardCharsets.UTF_8));
             if (!"completed".equals(root.path("status").asText())) throw new Unavailable("INVALID");
             StringBuilder output = new StringBuilder();
             for (var step : root.path("steps")) if ("model_output".equals(step.path("type").asText()))
                 for (var part : step.path("content")) if ("text".equals(part.path("type").asText()))
                     output.append(part.path("text").asText());
-            var selections = json.readTree(output.toString()).path("selections");
-            if (!selections.isArray() || selections.isEmpty() || selections.size() > 6)
-                throw new Unavailable("INVALID");
-            var result = new ArrayList<Selection>();
-            for (var selection : selections)
-                result.add(new Selection(selection.path("id").asText(""), selection.path("reasonCode").asText("")));
-            return List.copyOf(result);
-        } catch (TimeoutException e) { throw new Unavailable("TIMEOUT");
-        } catch (ExecutionException e) {
-            if (e.getCause() instanceof HttpTimeoutException) throw new Unavailable("TIMEOUT");
-            if (e.getCause() instanceof Unavailable unavailable) throw unavailable;
-            throw new Unavailable("UNAVAILABLE");
-        } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new Unavailable("UNAVAILABLE");
-        } catch (Unavailable e) { throw e;
-        } catch (Exception e) { throw new Unavailable("UNAVAILABLE");
-        } finally { if (pending != null && !pending.isDone()) pending.cancel(true); }
+            if (output.toString().isBlank()) throw new Unavailable(instructions == null ? "INVALID" : "EMPTY");
+            try {
+                return json.readTree(output.toString());
+            } catch (Exception ignored) {
+                throw new Unavailable(instructions == null ? "UNAVAILABLE" : "INVALID");
+            }
+        } catch (Exception error) {
+            if (error instanceof InterruptedException) Thread.currentThread().interrupt();
+            var cause = error instanceof ExecutionException ? error.getCause() : error;
+            var failure = switch (cause) {
+                case Unavailable unavailable -> unavailable;
+                case TimeoutException ignored -> new Unavailable("TIMEOUT");
+                case HttpTimeoutException ignored -> new Unavailable("TIMEOUT");
+                default -> new Unavailable("UNAVAILABLE");
+            };
+            outcome = failure.status;
+            throw failure;
+        } finally {
+            if (pending != null && !pending.isDone()) pending.cancel(true);
+            if (writer) {
+                int status = providerStatus.get();
+                log.info("writer_gemini duration_ms={} provider_http={} outcome={}",
+                    TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started),
+                    status == 0 ? "none" : Integer.toString(status), outcome);
+            }
+        }
+    }
+
+    private static Integer retrySeconds(String header) {
+        try {
+            long seconds;
+            if (header.matches("[0-9]+")) {
+                seconds = Long.parseLong(header);
+            } else {
+                var retryAt = java.time.ZonedDateTime.parse(header, java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME);
+                seconds = Duration.between(java.time.Instant.now(), retryAt.toInstant()).toSeconds() + 1;
+            }
+            return (int) Math.max(0, Math.min(Integer.MAX_VALUE, seconds));
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     private static final class LimitedBody implements HttpResponse.BodySubscriber<byte[]> {

@@ -8,6 +8,7 @@ enum RegisterValidationResult {
   invalidUsername,
   invalidPassword,
   passwordMismatch,
+  legalConsentRequired,
 }
 
 class AuthController extends ChangeNotifier {
@@ -46,6 +47,17 @@ class AuthController extends ChangeNotifier {
 
   String? selectedGender;
   String? customGender;
+  bool termsAccepted = false;
+  bool privacyAccepted = false;
+  void setTermsAccepted(bool value) {
+    termsAccepted = value;
+    notifyListeners();
+  }
+
+  void setPrivacyAccepted(bool value) {
+    privacyAccepted = value;
+    notifyListeners();
+  }
 
   bool get passwordHasMinLength => registerPasswordController.text.length >= 8;
 
@@ -62,9 +74,9 @@ class AuthController extends ChangeNotifier {
       RegExp(r'[!@#\$%^&*()_\-+=\[\]{};:"\\|,.<>/?`~]')
           .hasMatch(registerPasswordController.text);
 
-  bool get usernameIsValid => RegExp(
-    r'^[a-z0-9_]{3,30}$',
-  ).hasMatch(registerUsernameController.text.trim());
+  bool get usernameIsValid =>
+      RegExp(r'^[a-z0-9_]{3,30}$')
+          .hasMatch(registerUsernameController.text.trim());
 
   bool get passwordIsValid =>
       passwordHasMinLength &&
@@ -160,7 +172,9 @@ class AuthController extends ChangeNotifier {
     isGoogleSigningIn = true;
     notifyListeners();
     try {
-      await session.google();
+      await session.google(
+        legalAccepted: !isLogin && termsAccepted && privacyAccepted,
+      );
     } finally {
       if (!_disposed) {
         isGoogleSigningIn = false;
@@ -192,6 +206,9 @@ class AuthController extends ChangeNotifier {
       return RegisterValidationResult.passwordMismatch;
     }
 
+    if (!termsAccepted || !privacyAccepted) {
+      return RegisterValidationResult.legalConsentRequired;
+    }
     return RegisterValidationResult.valid;
   }
 
@@ -225,6 +242,8 @@ class AuthController extends ChangeNotifier {
 
     selectedGender = null;
     customGender = null;
+    termsAccepted = false;
+    privacyAccepted = false;
     isGenderMenuOpen = false;
     obscurePassword = true;
     obscureConfirmPassword = true;

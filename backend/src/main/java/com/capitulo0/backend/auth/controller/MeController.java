@@ -50,7 +50,11 @@ public class MeController {
 
         return provisioning.provision(
             current.requireIdentity(),
-            username
+            username,
+            request == null ? null : request.termsAccepted(),
+            request == null ? null : request.privacyAccepted(),
+            request == null ? null : request.termsVersion(),
+            request == null ? null : request.privacyVersion()
         );
     }
 

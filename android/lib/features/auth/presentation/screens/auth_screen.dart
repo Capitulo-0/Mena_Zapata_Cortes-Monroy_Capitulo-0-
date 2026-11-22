@@ -73,6 +73,11 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   Future<void> _google() async {
+    if (!_controller.isLogin &&
+        (!_controller.termsAccepted || !_controller.privacyAccepted)) {
+      showAuthErrorMessage(context, 'Debes aceptar ambos documentos antes de crear tu cuenta.');
+      return;
+    }
     await _controller.google();
     if (mounted && widget.session.message != null) {
       showAuthErrorMessage(context, widget.session.message!);
@@ -98,6 +103,9 @@ class _AuthScreenState extends State<AuthScreen> {
         return;
       case RegisterValidationResult.passwordMismatch:
         showAuthErrorMessage(context, 'Las contraseñas no son iguales');
+        return;
+      case RegisterValidationResult.legalConsentRequired:
+        showAuthErrorMessage(context, 'Debes aceptar los Términos y condiciones y la Política de privacidad.');
         return;
       case RegisterValidationResult.valid:
         break;

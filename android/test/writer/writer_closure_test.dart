@@ -18,6 +18,7 @@ import 'package:android/features/writer/services/writer_draft_store.dart';
 import 'package:android/features/writer/presentation/screens/chapter_editor_screen.dart';
 import 'package:android/features/writer/presentation/screens/published_story_screen.dart';
 import 'package:android/features/writer/presentation/screens/writer_screen.dart';
+import 'package:android/features/writer/presentation/screens/writer_community_screen.dart';
 
 import '../library_regression_test.dart' show installLocalTestAssets;
 import '../support/auth_fakes.dart';
@@ -217,15 +218,13 @@ void main() {
       await t.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,
-          home: WriterScreen(
+          home: WriterCommunityScreen(
             repository: repo,
-            currentName: 'Lector',
             currentUsername: '@lector',
           ),
         ),
       );
       await t.pumpAndSettle();
-      await press(t, find.byKey(const ValueKey('writer-community')));
       await press(t, find.byKey(const ValueKey('writer-read-original')));
       expect(repo.reads, 1);
       expect(find.byType(PublishedStoryScreen), findsOneWidget);
@@ -250,15 +249,13 @@ void main() {
       await t.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,
-          home: WriterScreen(
+          home: WriterCommunityScreen(
             repository: repo,
-            currentName: 'Lector',
             currentUsername: '@lector',
           ),
         ),
       );
       await t.pumpAndSettle();
-      await press(t, find.byKey(const ValueKey('writer-community')));
       repo.visible = false;
       await press(t, find.byKey(const ValueKey('writer-read-original')));
       expect(find.byType(PublishedStoryScreen), findsNothing);
@@ -266,6 +263,35 @@ void main() {
       expect(t.takeException(), isNull);
     },
   );
+  testWidgets('Writer personal no muestra Comunidad ni menú anterior', (
+    t,
+  ) async {
+    final repo = CommunityFixture();
+    await t.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: WriterScreen(
+          repository: repo,
+          currentName: 'Autora',
+          currentUsername: 'autora',
+        ),
+      ),
+    );
+    await t.pumpAndSettle();
+    expect(find.byKey(const ValueKey('writer-community')), findsNothing);
+    expect(find.byKey(const ValueKey('writer-my-works')), findsNothing);
+    expect(find.byKey(const ValueKey('writer-options')), findsNothing);
+    expect(find.byKey(const ValueKey('writer-create-story')), findsOneWidget);
+    expect(
+      find.textContaining('Escribe, guarda y comparte tus historias, Autora'),
+      findsOneWidget,
+    );
+    expect(find.text('Todas'), findsOneWidget);
+    expect(find.text('Publicadas'), findsWidgets);
+    expect(find.text('Borradores'), findsWidgets);
+    expect(t.takeException(), isNull);
+  });
+
   test('API community catalogue and reading carry Firebase token and matching owner UID', () async {
     final auth = FakeAuth()..identity = fixtureIdentity;
     addTearDown(auth.close);

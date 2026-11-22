@@ -13,9 +13,7 @@ extension _ManageStoryManagementSection on _ManageStoryScreenState {
           decoration: BoxDecoration(
             color: _surfaceColor,
             borderRadius: BorderRadius.circular(13),
-            border: Border.all(
-              color: AppColors.gold.withValues(alpha: 0.22),
-            ),
+            border: Border.all(color: AppColors.gold.withValues(alpha: 0.22)),
           ),
           child: Column(
             children: [
@@ -61,10 +59,7 @@ extension _ManageStoryManagementSection on _ManageStoryScreenState {
       onTap: onTap,
       borderRadius: BorderRadius.circular(9),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 4,
-          vertical: 7,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 7),
         child: Row(
           children: [
             Container(

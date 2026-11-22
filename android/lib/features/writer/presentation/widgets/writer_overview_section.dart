@@ -2,43 +2,10 @@ part of '../screens/writer_screen.dart';
 
 extension _WriterOverviewSection on _WriterScreenState {
   Widget _buildHeader() => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+    padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
     child: WriterHeader(
       onCreate: _openCreateStory,
-      onLegacy: _openLegacy,
-      onRefresh: () => _loadStories(notifyParent: true),
-      onDiagnostics: _showCoverDiagnostics,
-    ),
-  );
-
-  Widget _buildNavigation() => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-    child: Row(
-      children: [
-        Expanded(
-          child: FilledButton.tonal(
-            key: const ValueKey('writer-my-works'),
-            onPressed: () =>
-                _updateState(() => _selectedFilter = _StoryFilter.all),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              foregroundColor: AppColors.background,
-            ),
-            child: const Text('Mis obras'),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: OutlinedButton(
-            key: const ValueKey('writer-community'),
-            onPressed:
-                widget.isGuest || _writerService is CommunityWriterRepository
-                ? _openCommunity
-                : null,
-            child: const Text('Comunidad'),
-          ),
-        ),
-      ],
+      displayName: _writerDisplayName,
     ),
   );
 

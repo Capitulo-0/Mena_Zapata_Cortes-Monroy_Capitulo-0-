@@ -6,12 +6,11 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../follow/data/follow_repository.dart';
 import '../../data/public_profile_repository.dart';
 import '../../domain/public_profile.dart';
+import '../../domain/public_profile_activity.dart';
 import '../widgets/profile_main_card.dart';
 import 'profile_screen.dart';
 import '../../../library/presentation/screens/library_screen.dart';
 
-/// Perfil de otro lector dentro de la pestaña Perfil de MainShellScreen.
-/// No crea su propio Scaffold: conserva la cabecera y la navegación inferior.
 class PublicProfileScreen extends StatefulWidget {
   const PublicProfileScreen({
     super.key,
@@ -32,6 +31,7 @@ class PublicProfileScreen extends StatefulWidget {
 
 class _PublicProfileScreenState extends State<PublicProfileScreen> {
   late Future<PublicProfile> _profileFuture;
+  Future<PublicProfileActivity>? _activityFuture;
   FollowStatus? _followStatus;
   bool _loadingFollowStatus = false;
   bool _changingFollow = false;
@@ -60,6 +60,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
 
   void _loadProfile() {
     _profileFuture = widget.repository.getProfile(widget.username);
+    _activityFuture = null;
   }
 
   void _retry() {
@@ -402,22 +403,112 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                 : displayName;
             // Una respuesta previa no debe mantener desbloqueado un perfil
             // privado si se cancela el seguimiento o cambia la relación.
-            final canViewContent = profile.canViewContent &&
+            final canViewContent =
+                profile.canViewContent &&
                 (!profile.isPrivate ||
                     (!_loadingFollowStatus &&
-                     _followError == null &&
-                     _followStatus == FollowStatus.accepted));
+                        _followError == null &&
+                        _followStatus == FollowStatus.accepted));
             final biography = profile.biography?.trim();
 
             // Las mismas tarjetas y pestañas que el perfil propio, reutilizadas
             // con datos vacíos y callbacks inertes hasta tener consultas
             // autorizadas de la biblioteca de este propietario.
             if (canViewContent) {
+              // La API vuelve a comprobar los permisos de seguimiento en cada
+              // lectura. Nunca reutilizamos datos de una cuenta diferente.
+              final source = widget.repository;
+              if (source is ProfileActivitySource) {
+                final ProfileActivitySource activitySource =
+                    source as ProfileActivitySource;
+                final activityFuture = _activityFuture ??= activitySource
+                    .getActivity(profile.username);
+                return FutureBuilder<PublicProfileActivity>(
+                  future: activityFuture,
+                  builder: (context, activitySnapshot) {
+                    if (activitySnapshot.connectionState !=
+                        ConnectionState.done) {
+                      return Center(
+                        child: CircularProgressIndicator(color: gold),
+                      );
+                    }
+                    if (activitySnapshot.hasError ||
+                        !activitySnapshot.hasData) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'No pudimos cargar la actividad de este perfil.',
+                              style: GoogleFonts.merriweather(color: primary),
+                            ),
+                            TextButton.icon(
+                              onPressed: _retry,
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Reintentar'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    final activity = activitySnapshot.data!;
+                    return ProfileScreen(
+                      key: ValueKey('reader-${profile.username}'),
+                      readOnly: true,
+                      verifiedOrganizer: profile.verifiedOrganizer,
+                      readingMood: profile.readingMood,
+                      visitorIsPrivate: profile.isPrivate,
+                      visitorHeader: _buildHeader(
+                        context,
+                        isPrivate: profile.isPrivate,
+                      ),
+                      visitorAction: _buildFollowButton(context),
+                      visitorFollowersCount: profile.followersCount,
+                      visitorFollowingCount: profile.followingCount,
+                      followRepository: widget.followRepository,
+                      name: name,
+                      username: profile.username,
+                      biography: biography == null || biography.isEmpty
+                          ? 'Sin biografía.'
+                          : biography,
+                      avatarUrl: profile.avatarUrl,
+                      createdAt: profile.createdAt,
+                      readingFormat: '',
+                      annualGoal: activity.annualGoal,
+                      clubs: activity.clubs,
+                      joinedClubIds: activity.clubs
+                          .map((club) => club.id)
+                          .toSet(),
+                      onToggleClub: (_) {},
+                      books: activity.books,
+                      statuses: activity.statuses,
+                      progresses: activity.progresses,
+                      reviews: const <int, BookReview>{},
+                      favorites: activity.favorites,
+                      favoriteCommunityStories: const [],
+                      onToggleCommunityStoryFavorite: (_) {},
+                      onStatusChanged: (_, _) {},
+                      onProgressChanged: (_, _) {},
+                      onReviewSaved: (_, _) {},
+                      onToggleFavorite: (_) {},
+                      publishedStories: activity.publishedStories,
+                      onOpenSettings: () {},
+                    );
+                  },
+                );
+              }
+              // Mantener el contrato visual para repositorios existentes en
+              // pruebas. La aplicación real usa ProfileActivitySource.
               return ProfileScreen(
                 key: ValueKey('reader-${profile.username}'),
                 readOnly: true,
+                verifiedOrganizer: profile.verifiedOrganizer,
+                readingMood: profile.readingMood,
                 visitorIsPrivate: profile.isPrivate,
-                visitorHeader: _buildHeader(context, isPrivate: profile.isPrivate),
+                visitorHeader: _buildHeader(
+                  context,
+                  isPrivate: profile.isPrivate,
+                ),
                 visitorAction: _buildFollowButton(context),
                 visitorFollowersCount: profile.followersCount,
                 visitorFollowingCount: profile.followingCount,
@@ -425,7 +516,8 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                 name: name,
                 username: profile.username,
                 biography: biography == null || biography.isEmpty
-                    ? 'Sin biografía.' : biography,
+                    ? 'Sin biografía.'
+                    : biography,
                 avatarUrl: profile.avatarUrl,
                 createdAt: profile.createdAt,
                 readingFormat: '',
@@ -457,6 +549,7 @@ class _PublicProfileScreenState extends State<PublicProfileScreen> {
                 ProfileMainCard(
                   name: name,
                   username: '@${profile.username}',
+                  verifiedOrganizer: profile.verifiedOrganizer,
                   biography: biography == null || biography.isEmpty
                       ? 'Sin biografía.'
                       : biography,

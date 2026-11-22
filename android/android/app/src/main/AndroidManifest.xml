@@ -1,14 +1,15 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Acceso a Internet para backend y mapas -->
-    <uses-permission android:name="android.permission.INTERNET" />
+<!-- Internet para backend, mapas y contenido -->
+<uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Ubicacion aproximada del usuario -->
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+<!-- Ubicacion aproximada y precisa -->
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
-    <!-- Ubicacion precisa del usuario -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+<!-- Microfono para las funciones de voz -->
+<uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:label="android"
@@ -53,6 +54,9 @@
 
     <!-- Consultas de actividades que procesan texto -->
     <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService"/>
+        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

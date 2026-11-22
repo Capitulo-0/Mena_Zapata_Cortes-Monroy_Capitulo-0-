@@ -11,8 +11,7 @@ Future<void> showHomeGeminiAssistantSheet({
   final messages = <Map<String, String>>[
     {
       'role': 'assistant',
-      'text':
-          'Hola ✦ Soy tu asistente literario. Puedo recomendarte lecturas, ayudarte a elegir tu próxima historia o conversar sobre géneros y autores.',
+      'text': 'Hola ✦ Soy tu asistente literario. Puedo recomendarte lecturas, ayudarte a elegir tu próxima historia o conversar sobre géneros y autores.',
     },
   ];
 
@@ -63,9 +62,7 @@ Future<void> showHomeGeminiAssistantSheet({
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24),
                   ),
-                  border: Border(
-                    top: BorderSide(color: gold, width: 1.5),
-                  ),
+                  border: Border(top: BorderSide(color: gold, width: 1.5)),
                 ),
                 child: Column(
                   children: [
@@ -113,8 +110,7 @@ Future<void> showHomeGeminiAssistantSheet({
                             ),
                           ),
                           IconButton(
-                            onPressed: () =>
-                                Navigator.of(sheetContext).pop(),
+                            onPressed: () => Navigator.of(sheetContext).pop(),
                             icon: const Icon(Icons.close_rounded),
                           ),
                         ],
@@ -134,8 +130,7 @@ Future<void> showHomeGeminiAssistantSheet({
                                 ? Alignment.centerRight
                                 : Alignment.centerLeft,
                             child: Container(
-                              constraints:
-                                  const BoxConstraints(maxWidth: 280),
+                              constraints: const BoxConstraints(maxWidth: 280),
                               margin: const EdgeInsets.only(bottom: 9),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 11,
@@ -147,15 +142,13 @@ Future<void> showHomeGeminiAssistantSheet({
                                 border: isUser
                                     ? null
                                     : Border.all(
-                                        color:
-                                            gold.withValues(alpha: 0.4),
+                                        color: gold.withValues(alpha: 0.4),
                                       ),
                               ),
                               child: Text(
                                 message['text']!,
                                 style: GoogleFonts.inter(
-                                  color:
-                                      isUser ? onAccent : textPrimary,
+                                  color: isUser ? onAccent : textPrimary,
                                   fontSize: 10,
                                   height: 1.45,
                                 ),
@@ -186,22 +179,18 @@ Future<void> showHomeGeminiAssistantSheet({
                                   color: textSecondary,
                                   fontSize: 9,
                                 ),
-                                contentPadding:
-                                    const EdgeInsets.symmetric(
+                                contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 12,
                                   vertical: 10,
                                 ),
                                 enabledBorder: OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(9),
+                                  borderRadius: BorderRadius.circular(9),
                                   borderSide: BorderSide(
-                                    color:
-                                        gold.withValues(alpha: 0.5),
+                                    color: gold.withValues(alpha: 0.5),
                                   ),
                                 ),
                                 focusedBorder: OutlineInputBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(9),
+                                  borderRadius: BorderRadius.circular(9),
                                   borderSide: BorderSide(color: gold),
                                 ),
                               ),
@@ -218,14 +207,10 @@ Future<void> showHomeGeminiAssistantSheet({
                                 foregroundColor: onAccent,
                                 padding: EdgeInsets.zero,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius:
-                                      BorderRadius.circular(9),
+                                  borderRadius: BorderRadius.circular(9),
                                 ),
                               ),
-                              child: const Icon(
-                                Icons.send_rounded,
-                                size: 17,
-                              ),
+                              child: const Icon(Icons.send_rounded, size: 17),
                             ),
                           ),
                         ],

@@ -6,10 +6,7 @@ class PendingUsernameStore {
   Future<void> save(String uid, String username) async {
     final preferences = await SharedPreferences.getInstance();
 
-    await preferences.setString(
-      _key(uid),
-      username,
-    );
+    await preferences.setString(_key(uid), username);
   }
 
   Future<String?> get(String uid) async {

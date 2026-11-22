@@ -137,6 +137,162 @@ public class RecommendationService {
             return state.normal;
         }
     }
+    public record Discovery(List<String> queries, List<String> terms, List<String> excludedWorks,
+                            List<String> excludedTopics, boolean narrative, int maxPages, List<String> excludedAuthors) {
+        public Discovery(List<String> queries, List<String> terms, List<String> excludedWorks,
+                         List<String> excludedTopics, boolean narrative, int maxPages) {
+            this(queries, terms, excludedWorks, excludedTopics, narrative, maxPages, List.of());
+        }
+    }
+
+    public enum LookupKind { AUTHOR, TITLE, SERIES }
+    public record Lookup(LookupKind kind, String text) {}
+    public record CatalogResult(List<GoogleBook> books, int received) {}
+
+    public CatalogResult lookup(Lookup lookup) {
+        String mode = switch (lookup.kind()) {
+            case AUTHOR -> "author";
+            case TITLE -> "title";
+            case SERIES -> "all";
+        };
+        var candidates = new ArrayList<GoogleBook>();
+        var preferred = new Query(quoted(lookup.text()), mode, 0);
+        var recovery = new Query(lookup.text(), mode, 0);
+        var pending = new ArrayDeque<Query>();
+        pending.add(preferred);
+        pending.add(recovery);
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(4).toNanos();
+        int received = 0;
+        int completed = 0;
+        ApiException failure = null;
+        var result = List.<GoogleBook>of();
+        for (int attempts = 0; attempts < 3 && !pending.isEmpty() && System.nanoTime() < deadline; attempts++) {
+            var query = pending.removeFirst();
+            boolean spanishQuery = query.text().equals(preferred.text());
+            try {
+                var page = GoogleBooksClient.withinRecommendationDeadline(deadline,
+                    () -> books.search(query.text(), query.mode(), query.start(), 24, spanishQuery ? "es" : null));
+                completed++;
+                received += page.receivedItems();
+                for (var candidate : page.items()) {
+                    if (matchesLookup(candidate, lookup)) candidates.add(candidate);
+                }
+                if (page.nextStartIndex() != null && page.nextStartIndex() > query.start())
+                    pending.addFirst(new Query(query.text(), query.mode(), page.nextStartIndex()));
+                result = uniqueItems(candidates.stream()
+                    .sorted(Comparator.comparing((GoogleBook book) -> !SpanishBooks.declaresSpanish(book))
+                        .thenComparing(Comparator.comparingInt(RecommendationService::metadataQuality).reversed()))
+                    .map(book -> new Item(book, "", List.of())).toList()).stream().map(Item::book).toList();
+                long spanish = result.stream().filter(SpanishBooks::declaresSpanish).count();
+                if (spanish >= (lookup.kind() == LookupKind.TITLE ? 1 : TARGET)) break;
+            } catch (ApiException error) {
+                failure = error;
+            }
+        }
+        if (failure != null && (completed == 0 || candidates.isEmpty())) throw failure;
+        if (lookup.kind() == LookupKind.TITLE) result = result.stream().limit(1).toList();
+        return new CatalogResult(result, received);
+    }
+
+    private static boolean matchesLookup(GoogleBook book, Lookup lookup) {
+        if (book == null || book.volumeId() == null || !book.volumeId().matches("[A-Za-z0-9_-]{1,128}")
+                || clean(book.title()).isBlank() || safe(book.authors()).stream().allMatch(a -> clean(a).isBlank()))
+            return false;
+        if ((!SpanishBooks.declaresSpanish(book) && !SpanishBooks.languageUnknown(book))
+                || norm(book.title()).matches(".*\\b(english edition|in english)\\b.*")) return false;
+        return switch (lookup.kind()) {
+            case AUTHOR -> safe(book.authors()).stream().anyMatch(author -> matchesAuthor(author, lookup.text()));
+            case TITLE -> workTitle(book.title()).equals(workTitle(lookup.text()))
+                || norm(clean(book.title()) + " " + clean(book.subtitle())).equals(norm(lookup.text()));
+            case SERIES -> hasPhrase(norm(clean(book.title()) + " " + clean(book.subtitle())), lookup.text())
+                || List.of("saga ", "serie ", "trilogia ", "coleccion ").stream()
+                    .anyMatch(prefix -> hasPhrase(norm(clean(book.description())), prefix + lookup.text()));
+        };
+    }
+
+    private static boolean matchesAuthor(String author, String name) {
+        var credited = norm(author);
+        var requested = norm(name);
+        if (credited.equals(requested)) return true;
+        var tokens = requested.split(" ");
+        if (tokens.length < 2 || Arrays.stream(tokens).anyMatch(token -> !hasPhrase(credited, token))) return false;
+        return credited.startsWith(tokens[0] + " ") || credited.split(" ").length == tokens.length;
+    }
+
+    public CatalogResult discover(Long owner, Discovery intent, boolean useLibrary) {
+        var ownProfile = profile(library.list(owner));
+        var searchProfile = useLibrary ? ownProfile : new Profile(Map.of(), Map.of(), List.of(), ownProfile.owned());
+        var queries = new LinkedHashSet<Query>();
+        for (var query : intent.queries()) queries.add(new Query(query, "all", 0));
+        if (queries.isEmpty() && useLibrary)
+            queries.addAll(additionalQueries(searchProfile).stream().limit(2).toList());
+        if (queries.isEmpty() || (intent.queries().isEmpty() && queries.size() < 3)) {
+            for (var genre : List.of("fiction", "mystery", "fantasy", "romance"))
+                queries.add(new Query("subject:" + genre, "all", 0));
+        }
+        long deadline = System.nanoTime() + java.time.Duration.ofSeconds(4).toNanos();
+        var pool = new ArrayList<GoogleBook>();
+        ApiException failure = null;
+        int completed = 0;
+        int received = 0;
+        var pending = new ArrayDeque<>(queries);
+        for (int attempts = 0; attempts < 3 && !pending.isEmpty() && System.nanoTime() < deadline; attempts++) {
+            var entry = pending.removeFirst();
+            try {
+                var candidates = GoogleBooksClient.withinRecommendationDeadline(deadline,
+                    () -> books.search(entry.text(), entry.mode(), entry.start(), 24, "es"));
+                completed++;
+                received += candidates.receivedItems();
+                if (candidates.nextStartIndex() != null && candidates.nextStartIndex() > entry.start())
+                    pending.addLast(new Query(entry.text(), entry.mode(), candidates.nextStartIndex()));
+                for (var book : candidates.items()) {
+                    if (book != null && relevant(book, intent)) pool.add(book);
+                }
+            } catch (ApiException e) {
+                failure = e;
+            }
+        }
+        if (failure != null && (completed == 0 || pool.isEmpty())) throw failure;
+        var ids = pool.stream().map(GoogleBook::volumeId).collect(java.util.stream.Collectors.toSet());
+        var ranked = rank(pool, searchProfile, new SearchStats(), ids, 0, book -> semanticScore(book, intent))
+            .stream().map(Item::book).toList();
+        return new CatalogResult(ranked, received);
+    }
+
+    private static boolean relevant(GoogleBook book, Discovery intent) {
+        if (safe(book.authors()).stream().allMatch(author -> clean(author).isBlank())) return false;
+        if (intent.maxPages() > 0 && (book.pageCount() == null || book.pageCount() <= 0
+                || book.pageCount() > intent.maxPages())) return false;
+        var title = norm(clean(book.title()) + " " + clean(book.subtitle()));
+        var categories = norm(String.join(" ", safe(book.categories())));
+        var searchable = title + " " + categories + " " + norm(clean(book.description()));
+        if (intent.excludedAuthors().stream().anyMatch(name -> safe(book.authors()).stream()
+                    .anyMatch(author -> matchesAuthor(author, name)))
+                || intent.excludedWorks().stream().anyMatch(term -> hasPhrase(title, term))
+                || intent.excludedTopics().stream().anyMatch(term -> hasPhrase(searchable, term))) return false;
+        if (intent.narrative() && (categories.matches(".*\\b(literary criticism|literary collections|literary study|history|reference|education|nonfiction|philosophy|social science|language arts)\\b.*")
+                || title.matches(".*\\b(historia de la literatura|critica literaria|estudios literarios|teoria literaria|manual de|introduccion a la literatura)\\b.*"))) return false;
+        return intent.terms().isEmpty() || semanticScore(book, intent) > 0;
+    }
+
+    private static int semanticScore(GoogleBook book, Discovery intent) {
+        var categories = norm(String.join(" ", safe(book.categories())));
+        var title = norm(clean(book.title()) + " " + clean(book.subtitle()));
+        var description = norm(clean(book.description()));
+        int score = 0;
+        for (var term : intent.terms()) {
+            if (hasPhrase(categories, term)) score += 8;
+            if (hasPhrase(title, term)) score += 4;
+            if (hasPhrase(description, term)) score += 2;
+        }
+        return score;
+    }
+
+    private static boolean hasPhrase(String text, String phrase) {
+        var key = norm(phrase);
+        return !key.isBlank() && (" " + text + " ").contains(" " + key + " ");
+    }
+
     public Result enrich(Long uid, String candidateSetId) {
         State state = state(uid);
         String fingerprint = fingerprint(List.copyOf(library.list(uid)));
@@ -310,6 +466,10 @@ public class RecommendationService {
     }
     SearchStats searchStats(Long uid) { return state(uid).stats; }
     private static List<Item> rank(List<GoogleBook> pool,Profile profile,SearchStats stats,Set<String> discoveryIds,long rotation) {
+        return rank(pool, profile, stats, discoveryIds, rotation, book -> 0);
+    }
+    private static List<Item> rank(List<GoogleBook> pool, Profile profile, SearchStats stats,
+            Set<String> discoveryIds, long rotation, java.util.function.ToIntFunction<GoogleBook> relevance) {
         stats.language=stats.metadata=stats.owned=stats.unrelated=stats.duplicates=0;
         var scored=new ArrayList<Scored>();
         boolean personalized=!profile.authors.isEmpty() || !profile.genres.isEmpty();
@@ -321,7 +481,7 @@ public class RecommendationService {
             int score=match(safe(book.authors()),profile.authors,"AUTHOR:",reasons)+match(safe(book.categories()),profile.genres,"GENRE:",reasons);
             if(personalized && reasons.isEmpty() && !discoveryIds.contains(book.volumeId())) { stats.unrelated++;continue; }
             if(reasons.isEmpty()) { reasons.add(discoveryIds.contains(book.volumeId())?"DISCOVER":"EXPLORE");score=-1; }
-            scored.add(new Scored(new Item(book,reason(reasons.getFirst()),List.copyOf(reasons)),score));
+            scored.add(new Scored(new Item(book,reason(reasons.getFirst()),List.copyOf(reasons)),score + 20 * relevance.applyAsInt(book)));
         }
         scored.sort(Comparator.comparingInt(Scored::score).reversed().thenComparing(Comparator.comparingInt((Scored x)->metadataQuality(x.item().book())).reversed())
             .thenComparingLong(x->x.item().reasonCodes().contains("DISCOVER")?Objects.hash(rotation,x.item().book().volumeId()):0));

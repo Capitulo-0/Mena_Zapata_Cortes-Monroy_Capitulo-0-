@@ -26,9 +26,7 @@ class RecoveryHeader extends StatelessWidget {
             height: 92,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppColors.gold.withValues(alpha: 0.55),
-              ),
+              border: Border.all(color: AppColors.gold.withValues(alpha: 0.55)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.16),
@@ -87,10 +85,7 @@ class RecoveryHeader extends StatelessWidget {
 }
 
 class RecoveryStepIndicator extends StatelessWidget {
-  const RecoveryStepIndicator({
-    super.key,
-    required this.stepNumber,
-  });
+  const RecoveryStepIndicator({super.key, required this.stepNumber});
 
   final int stepNumber;
 
@@ -162,23 +157,15 @@ InputDecoration recoveryInputDecoration({
     suffixIcon: suffix,
     filled: true,
     fillColor: AppColors.surface,
-    hintStyle: GoogleFonts.inter(
-      color: AppColors.textSecondary,
-      fontSize: 12,
-    ),
+    hintStyle: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 12),
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(
-        color: AppColors.gold.withValues(alpha: 0.55),
-      ),
+      borderSide: BorderSide(color: AppColors.gold.withValues(alpha: 0.55)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(
-        color: AppColors.gold,
-        width: 1.2,
-      ),
+      borderSide: const BorderSide(color: AppColors.gold, width: 1.2),
     ),
   );
 }
@@ -228,10 +215,7 @@ class RecoveryPrimaryButton extends StatelessWidget {
         ),
         child: Text(
           text,
-          style: GoogleFonts.inter(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w700,
-          ),
+          style: GoogleFonts.inter(fontSize: 13.5, fontWeight: FontWeight.w700),
         ),
       ),
     );

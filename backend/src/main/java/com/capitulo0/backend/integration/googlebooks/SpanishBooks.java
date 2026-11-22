@@ -4,10 +4,17 @@ import java.util.regex.Pattern;
 /** Conservative recommendation eligibility; never translates or invents titles. */
 public final class SpanishBooks {
  private SpanishBooks() {}
+ public static boolean declaresSpanish(GoogleBook book) {
+  if (book == null || book.language() == null) return false;
+  String language = book.language().strip().toLowerCase(Locale.ROOT);
+  return language.equals("es") || language.startsWith("es-");
+ }
+ public static boolean languageUnknown(GoogleBook book) {
+  return book != null && (book.language() == null || book.language().isBlank()
+      || "und".equalsIgnoreCase(book.language().strip()));
+ }
  public static boolean accepts(GoogleBook book) {
-  if(book==null || book.language()==null) return false;
-  String language=book.language().strip().toLowerCase(Locale.ROOT);
-  if(!language.equals("es") && !language.startsWith("es-")) return false;
+  if (!declaresSpanish(book)) return false;
   String title=book.title()==null?"":book.title().strip().toLowerCase(Locale.ROOT);
   if(Pattern.compile("^(the |how to |a tale of |stories of )|english edition|in english").matcher(title).find()) return false;
   String text=title+" "+(book.description()==null?"":book.description().toLowerCase(Locale.ROOT));

@@ -52,18 +52,8 @@ class FakeAuth implements AuthRepository {
   }
 
   @override
-  Future<void> register(
-    String name,
-    String email,
-    String password,
-  ) async {
-    emit(
-      AuthIdentity(
-        uid: 'fixture-user',
-        email: email,
-        emailVerified: false,
-      ),
-    );
+  Future<void> register(String name, String email, String password) async {
+    emit(AuthIdentity(uid: 'fixture-user', email: email, emailVerified: false));
     verificationCalls++;
   }
 
@@ -98,8 +88,8 @@ class FakeAuth implements AuthRepository {
     return identity == null
         ? null
         : forceRefresh
-            ? 'refreshed-fixture-token'
-            : 'fixture-token';
+        ? 'refreshed-fixture-token'
+        : 'fixture-token';
   }
 
   @override
@@ -117,7 +107,10 @@ class FakeAccounts implements AccountRepository {
   Future<DomainUser> Function()? handler;
 
   @override
-  Future<DomainUser> provisionAndLoad({String? username}) async {
+  Future<DomainUser> provisionAndLoad({
+    String? username,
+    bool legalAccepted = false,
+  }) async {
     calls++;
 
     if (handler != null) {
@@ -146,9 +139,7 @@ class FakeAccounts implements AccountRepository {
   }
 
   @override
-  Future<DomainUser> updatePrivacy({
-    required bool isPrivate,
-  }) async {
+  Future<DomainUser> updatePrivacy({required bool isPrivate}) async {
     if (failure != null) {
       throw failure!;
     }

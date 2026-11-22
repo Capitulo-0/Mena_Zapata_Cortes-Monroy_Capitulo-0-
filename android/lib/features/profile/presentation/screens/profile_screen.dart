@@ -1,5 +1,6 @@
 import '../../../../core/widgets/literary_cover.dart';
 import '../../../writer/presentation/widgets/writer_cover.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../follow/data/follow_repository.dart';
 import '../../../follow/presentation/screens/follow_lists_screen.dart';
 import '../../data/profile_demo_data.dart';
+import '../../data/public_profile_repository.dart';
+import '../../domain/reading_mood.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/profile_main_card.dart';
 import '../../../home/presentation/screens/home_book_detail_screen.dart';
@@ -38,6 +41,9 @@ class ProfileScreen extends StatefulWidget {
     this.visitorHeader,
     this.visitorFollowersCount,
     this.visitorFollowingCount,
+    this.verifiedOrganizer = false,
+    this.readingMoodSource,
+    this.readingMood,
     required this.onOpenSettings,
     required this.name,
     required this.username,
@@ -68,13 +74,15 @@ class ProfileScreen extends StatefulWidget {
   final FollowRepository? followRepository;
   final ValueChanged<String>? onOpenSocialProfile;
 
-  /// Vista compartida de otro lector: todas las operaciones son de consulta.
   final bool readOnly;
   final bool visitorIsPrivate;
   final Widget? visitorAction;
   final Widget? visitorHeader;
   final int? visitorFollowersCount;
   final int? visitorFollowingCount;
+  final bool verifiedOrganizer;
+  final ReadingMoodSource? readingMoodSource;
+  final ReadingMood? readingMood;
 
   final VoidCallback onOpenSettings;
 
@@ -119,7 +127,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    if (!widget.readOnly) _loadSocialCounts();
+    if (!widget.readOnly) {
+      if (widget.readingMoodSource != null) _hasReadingMood = false;
+      _loadSocialCounts();
+      _loadReadingMood();
+    }
   }
 
   @override
@@ -127,18 +139,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.didUpdateWidget(oldWidget);
     if (widget.username != oldWidget.username ||
         widget.followRepository != oldWidget.followRepository ||
-        widget.readOnly != oldWidget.readOnly) {
+        widget.readOnly != oldWidget.readOnly ||
+        widget.readingMoodSource != oldWidget.readingMoodSource) {
       _socialRequestGeneration++;
+      _moodGeneration++;
       _socialCounts = null;
       _socialCountsError = null;
       _socialCountsLoading = false;
-      if (!widget.readOnly) _loadSocialCounts();
+      if (!widget.readOnly) {
+        _hasReadingMood = widget.readingMoodSource == null;
+        _loadSocialCounts();
+        _loadReadingMood();
+      }
     }
   }
 
   @override
   void dispose() {
     _socialRequestGeneration++;
+    _moodGeneration++;
     super.dispose();
   }
 
@@ -217,9 +236,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _selectedTab = 'favoritos';
   int _quoteIndex = 0;
   int _moodIndex = 0;
+  bool _hasReadingMood = true;
   String _customMoodEmoji = '✨';
   String _customMoodLabel = 'Mi propio estado';
   String _customMoodDetail = 'Una lectura a mi manera';
+  int _moodGeneration = 0;
+  bool _moodSaving = false;
+
+  Future<void> _loadReadingMood() async {
+    final source = widget.readingMoodSource;
+    if (source == null || widget.readOnly) return;
+    final generation = ++_moodGeneration;
+    try {
+      final mood = await source.getMyReadingMood();
+      if (!mounted || generation != _moodGeneration) return;
+      setState(() => _applyReadingMood(mood));
+    } catch (_) {
+      if (mounted && generation == _moodGeneration) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          const SnackBar(content: Text('No pudimos cargar tu estado lector.')),
+        );
+      }
+    }
+  }
+
+  void _applyReadingMood(ReadingMood? mood) {
+    if (mood == null) {
+      _hasReadingMood = false;
+      return;
+    }
+    _hasReadingMood = true;
+    final baseIndex = _baseMoods.indexWhere(
+      (m) =>
+          m['emoji'] == mood.emoji &&
+          m['label'] == mood.label &&
+          m['detail'] == mood.detail,
+    );
+    if (baseIndex >= 0) {
+      _moodIndex = baseIndex;
+    } else {
+      _customMoodEmoji = mood.emoji;
+      _customMoodLabel = mood.label;
+      _customMoodDetail = mood.detail;
+      _moodIndex = _moods.length - 1;
+    }
+  }
+
+  Future<bool> _saveReadingMood(ReadingMood? mood) async {
+    if (_moodSaving) return false;
+    final source = widget.readingMoodSource;
+    if (source == null) {
+      _updateState(() => _applyReadingMood(mood));
+      return true;
+    }
+    _moodSaving = true;
+    ++_moodGeneration;
+    try {
+      final saved = await source.saveMyReadingMood(mood);
+      if (!mounted) return false;
+      _updateState(() => _applyReadingMood(saved));
+      return true;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          const SnackBar(
+            content: Text('No pudimos guardar el estado lector. Reinténtalo.'),
+          ),
+        );
+      }
+      return false;
+    } finally {
+      _moodSaving = false;
+    }
+  }
 
   List<Map<String, String>> get _favoriteQuotes =>
       ProfileDemoData.favoriteQuotes;
@@ -379,11 +468,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       biography: widget.biography,
       avatarUrl: widget.avatarUrl,
       createdAt: widget.createdAt,
-      moodEmoji: widget.readOnly ? null : _currentMood['emoji']!,
+      verifiedOrganizer: widget.verifiedOrganizer,
+      moodEmoji: widget.readOnly
+          ? widget.readingMood?.emoji
+          : (_hasReadingMood ? _currentMood['emoji']! : null),
       readBooksCount: widget.readOnly ? null : _readBooks.length,
       // Nunca presentamos contadores ficticios mientras se consulta Neon.
-      followerCount: widget.readOnly ? widget.visitorFollowersCount : _socialCounts?.followersCount,
-      followingCount: widget.readOnly ? widget.visitorFollowingCount : _socialCounts?.followingCount,
+      followerCount: widget.readOnly
+          ? widget.visitorFollowersCount
+          : _socialCounts?.followersCount,
+      followingCount: widget.readOnly
+          ? widget.visitorFollowingCount
+          : _socialCounts?.followingCount,
       onFollowersTap: widget.followRepository == null
           ? null
           : () => _openSocialList(0),

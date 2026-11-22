@@ -6,6 +6,7 @@ import '../controllers/auth_controller.dart';
 import 'auth_common_widgets.dart';
 import 'auth_gender_selector.dart';
 import 'password_requirements.dart';
+import 'auth_legal_documents.dart';
 
 class AuthRegisterForm extends StatelessWidget {
   const AuthRegisterForm({
@@ -166,13 +167,23 @@ class AuthRegisterForm extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         if (controller.registerConfirmPasswordController.text.isNotEmpty)
-          PasswordConfirmationStatus(
-            matches: controller.passwordsMatch,
-          ),
-        const SizedBox(height: 22),
+          PasswordConfirmationStatus(matches: controller.passwordsMatch),
+        const SizedBox(height: 14),
+        AuthLegalConsentCheckbox(
+          value: controller.termsAccepted,
+          title: 'Términos y condiciones',
+          document: LegalDocument.terms,
+          onChanged: controller.setTermsAccepted,
+        ),
+        AuthLegalConsentCheckbox(
+          value: controller.privacyAccepted,
+          title: 'Política de privacidad',
+          document: LegalDocument.privacy,
+          onChanged: controller.setPrivacyAccepted,
+        ),
+        const SizedBox(height: 16),
         AuthPrimaryButton(
-          text:
-              controller.isRegistering ? 'Creando cuenta...' : 'Crear cuenta',
+          text: controller.isRegistering ? 'Creando cuenta...' : 'Crear cuenta',
           loading: controller.isRegistering,
           onPressed: controller.isBusy ? null : onRegister,
         ),

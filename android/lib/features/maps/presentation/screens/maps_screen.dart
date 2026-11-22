@@ -8,7 +8,6 @@ import 'package:latlong2/latlong.dart' as osm;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../../clubs/models/reading_club.dart';
 import '../../data/services/geoapify_places_service.dart';
 import '../../models/map_point.dart';
 import '../../models/map_point_type.dart';
@@ -20,16 +19,16 @@ import '../widgets/maps_header.dart';
 class MapsScreen extends StatefulWidget {
   const MapsScreen({
     super.key,
-    required this.clubs,
-    required this.joinedClubIds,
     required this.currentUsername,
     required this.currentName,
+    this.highlightedPointId,
+    this.highlightedPoint,
   });
 
-  final List<ReadingClub> clubs;
-  final Set<int> joinedClubIds;
   final String currentUsername;
   final String currentName;
+  final String? highlightedPointId;
+  final MapPoint? highlightedPoint;
 
   @override
   State<MapsScreen> createState() => _MapsScreenState();
@@ -53,7 +52,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
   final List<({osm.LatLng center, DateTime timestamp, List<MapPoint> points})>
   _placesCache = [];
 
-  bool _showJoinedClubs = false;
   bool _mapReady = false;
   bool _locationLoading = false;
   bool _locationAllowed = false;
@@ -64,7 +62,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
 
   String? _placesError;
 
-  // Centro de respaldo cuando no hay GPS autorizado.
   static const osm.LatLng _initialCenter = osm.LatLng(-33.4489, -70.6693);
 
   static const double _initialZoom = 12.5;
@@ -75,16 +72,12 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
   static const double _cacheDistanceMeters = 500;
   static const int _maxCachedZones = 12;
 
-  // La API key se recibe en tiempo de compilacion.
   static const String _cartoApiKey = String.fromEnvironment(
     'CARTO_API_KEY',
     defaultValue: '',
   );
 
   static const String _androidPackage = 'com.capitulo0.android';
-
-  // Certificado de depuracion.
-  // Revisar antes de distribuir la aplicacion.
   static const String _debugSha1 =
       '55:9F:B6:DF:2C:09:46:BC:6F:17:AC:DD:C9:E7:F7:6A:AE:23:B5:41';
 
@@ -92,10 +85,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
       'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
   bool get _useCarto => !kIsWeb && _cartoApiKey.isNotEmpty;
-
-  // ============================================================
-  // CICLO DE VIDA
-  // ============================================================
 
   @override
   void initState() {
@@ -110,14 +99,39 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
     });
   }
 
+  @override
+  void didUpdateWidget(covariant MapsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.highlightedPointId != oldWidget.highlightedPointId ||
+        widget.highlightedPoint != oldWidget.highlightedPoint) {
+      // No dispara solicitudes: utiliza los puntos que Maps ya tiene.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _focusHighlightedPoint();
+      });
+    }
+  }
+
+  void _focusHighlightedPoint() {
+    final id = widget.highlightedPointId;
+    if (id == null) return;
+
+    // El punto de Home ya tiene coordenadas reales en su caché de sesión.
+    // No dependemos de que Maps vuelva a recibir el mismo resultado de Geoapify.
+    final matches = _realPoints.where((point) => point.id == id);
+    final point = matches.isNotEmpty ? matches.first : widget.highlightedPoint;
+    if (point == null) return;
+
+    if (_selectedFilter != null) {
+      setState(() => _selectedFilter = null);
+    }
+    _focusPoint(point);
+  }
+
   Future<void> _initializeMapData() async {
     // Primero se intenta obtener la posicion del lector.
-    await _loadUserLocation(centerMap: true);
+    await _loadUserLocation(centerMap: widget.highlightedPointId == null);
 
     if (!mounted) return;
-
-    // Despues se buscan los lugares alrededor del GPS.
-    // Si no existe GPS, se utiliza Santiago Centro.
     await _loadNearbyPlaces();
   }
 
@@ -180,27 +194,19 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
-  // ============================================================
-  // LUGARES Y FILTROS
-  // ============================================================
-
   List<MapPoint> get _filteredPoints {
-    if (_showJoinedClubs) {
-      // La integracion geografica de los clubes
-      // se abordara en una fase posterior.
-      return [];
-    }
-
-    if (_selectedFilter == null) {
-      return _realPoints;
-    }
-
-    return _realPoints.where((point) => point.type == _selectedFilter).toList();
+    // Si Home y Maps reciben resultados ligeramente distintos, conservamos
+    // el marcador exacto que Home abrió, sin cambiar el caché ni pedir datos.
+    final highlighted = widget.highlightedPoint;
+    final points =
+        highlighted != null &&
+            widget.highlightedPointId == highlighted.id &&
+            !_realPoints.any((point) => point.id == highlighted.id)
+        ? [..._realPoints, highlighted]
+        : _realPoints;
+    if (_selectedFilter == null) return points;
+    return points.where((point) => point.type == _selectedFilter).toList();
   }
-
-  List<ReadingClub> get _joinedClubs => widget.clubs
-      .where((club) => widget.joinedClubIds.contains(club.id))
-      .toList();
 
   osm.LatLng _toOsmPosition(MapPoint point) {
     return osm.LatLng(point.position.latitude, point.position.longitude);
@@ -209,15 +215,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
   void _selectFilter(MapPointType? type) {
     setState(() {
       _selectedFilter = type;
-      _showJoinedClubs = false;
-      _selectedPoint = null;
-    });
-  }
-
-  void _selectJoinedClubs() {
-    setState(() {
-      _selectedFilter = null;
-      _showJoinedClubs = true;
       _selectedPoint = null;
     });
   }
@@ -225,10 +222,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
   void _focusPoint(MapPoint point) {
     _moveCamera(_toOsmPosition(point), 16);
   }
-
-  // ============================================================
-  // OVERPASS: BUSQUEDA DE LUGARES REALES
-  // ============================================================
 
   Future<void> _loadNearbyPlaces({bool forceRefresh = false}) async {
     if (_placesLoading) return;
@@ -238,12 +231,10 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
 
     const distance = osm.Distance();
 
-    // Eliminar entradas de caché que ya expiraron.
     _placesCache.removeWhere(
       (entry) => now.difference(entry.timestamp) >= _cacheDuration,
     );
 
-    // Buscar resultados guardados de una zona cercana.
     if (!forceRefresh) {
       int? cachedIndex;
       var closestMeters = double.infinity;
@@ -276,6 +267,7 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
           _selectedPoint = null;
           _placesError = null;
         });
+        _focusHighlightedPoint();
 
         return;
       }
@@ -297,7 +289,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
 
       final completedAt = DateTime.now();
 
-      // Sustituir entradas cercanas para evitar duplicados.
       _placesCache.removeWhere((entry) {
         final meters = distance.as(osm.LengthUnit.Meter, center, entry.center);
 
@@ -311,7 +302,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
         points: List<MapPoint>.unmodifiable(mappedPoints),
       ));
 
-      // Eliminar las entradas menos recientes al superar el límite.
       while (_placesCache.length > _maxCachedZones) {
         _placesCache.removeAt(0);
       }
@@ -327,11 +317,11 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
         _selectedPoint = null;
         _placesError = null;
       });
+      _focusHighlightedPoint();
     } on GeoapifyException catch (error) {
       if (!mounted) return;
 
       setState(() {
-        // Mantener los marcadores anteriores si falla la búsqueda.
         _placesError = error.message;
       });
     } catch (error) {
@@ -340,7 +330,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
       if (!mounted) return;
 
       setState(() {
-        // Mantener los resultados existentes.
         _placesError = 'No fue posible cargar los lugares cercanos.';
       });
     } finally {
@@ -353,13 +342,8 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _refreshNearbyPlaces() async {
-    // Una actualizacion manual consulta nuevamente Overpass.
     await _loadNearbyPlaces(forceRefresh: true);
   }
-
-  // ============================================================
-  // GEOLOCALIZACION
-  // ============================================================
 
   Future<void> _loadUserLocation({required bool centerMap}) async {
     if (_locationLoading) return;
@@ -465,14 +449,12 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
       _userPosition = coordinates;
     });
 
-    if (centerMap || !_hasCenteredOnUser) {
+    if (centerMap ||
+        (!_hasCenteredOnUser && widget.highlightedPointId == null)) {
       _hasCenteredOnUser = true;
 
       _moveCamera(coordinates, _userZoom);
     }
-
-    // Importante:
-    // No consultar Overpass por cada cambio GPS.
   }
 
   Future<void> _recenterOnUser() async {
@@ -498,7 +480,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
     _mapController.move(position, zoom);
   }
 
-  // Acerca o aleja el mapa manteniendo el centro actual.
   void _changeZoom(double delta) {
     if (!_mapReady) return;
 
@@ -522,17 +503,14 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ============================================================
-  // MARCADORES DE LUGARES REALES
-  // ============================================================
-
   List<Marker> get _markers {
     return _filteredPoints.map((point) {
+      final isHighlighted = point.id == widget.highlightedPointId;
       return Marker(
         key: ValueKey(point.id),
         point: _toOsmPosition(point),
-        width: 48,
-        height: 48,
+        width: isHighlighted ? 64 : 48,
+        height: isHighlighted ? 64 : 48,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () {
@@ -542,19 +520,37 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
           },
           child: Center(
             child: Container(
-              width: 42,
-              height: 42,
+              width: isHighlighted ? 54 : 42,
+              height: isHighlighted ? 54 : 42,
               decoration: BoxDecoration(
                 color: AppColors.surfaceOf(context),
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.goldOf(context), width: 2),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x33000000),
-                    blurRadius: 8,
-                    offset: Offset(0, 3),
-                  ),
-                ],
+                border: Border.all(
+                  color: isHighlighted
+                      ? const Color(0xFFAF283D)
+                      : AppColors.goldOf(context),
+                  width: isHighlighted ? 3 : 2,
+                ),
+                boxShadow: isHighlighted
+                    ? const [
+                        BoxShadow(
+                          color: Color(0x99B52A43),
+                          blurRadius: 24,
+                          spreadRadius: 7,
+                        ),
+                        BoxShadow(
+                          color: Color(0x55E04E68),
+                          blurRadius: 12,
+                          spreadRadius: 3,
+                        ),
+                      ]
+                    : const [
+                        BoxShadow(
+                          color: Color(0x33000000),
+                          blurRadius: 8,
+                          offset: Offset(0, 3),
+                        ),
+                      ],
               ),
               child: Icon(
                 MapPointPresentation.iconForType(point.type),
@@ -567,10 +563,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
       );
     }).toList();
   }
-
-  // ============================================================
-  // MARCADOR PERSONALIZADO DEL USUARIO
-  // ============================================================
 
   Marker? _buildUserMarker() {
     final position = _userPosition;
@@ -623,10 +615,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ============================================================
-  // MENSAJES DE BUSQUEDA
-  // ============================================================
-
   Widget _buildPlacesStatus() {
     final String message;
     final IconData icon;
@@ -640,10 +628,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
       message = _placesError!;
       icon = Icons.warning_amber_rounded;
       showRetry = true;
-    } else if (_showJoinedClubs) {
-      message = 'Los clubes aún no están conectados al mapa.';
-      icon = Icons.groups_2_outlined;
-      showRetry = false;
     } else if (!_hasLoadedPlaces) {
       message = 'Preparando búsqueda de lugares...';
       icon = Icons.hourglass_empty;
@@ -701,10 +685,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ============================================================
-  // INTERFAZ PRINCIPAL
-  // ============================================================
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -718,15 +698,11 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
             MapsHeader(currentName: widget.currentName),
             MapsFilters(
               scrollController: _filterScrollController,
-              hasJoinedClubs: _joinedClubs.isNotEmpty,
-              showJoinedClubs: _showJoinedClubs,
               selectedFilter: _selectedFilter,
-              onJoinedClubsTap: _selectJoinedClubs,
               onFilterTap: _selectFilter,
             ),
             Expanded(
               child: Padding(
-                // Compensación local por la navegación inferior superpuesta.
                 padding: const EdgeInsets.only(bottom: 90),
                 child: Stack(
                   children: [
@@ -888,10 +864,6 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ============================================================
-  // CARTO: POSITRON Y DARK MATTER
-  // ============================================================
-
   String _cartoTileUrl(bool isDark) {
     final style = isDark ? 'dark_all' : 'light_all';
 
@@ -921,6 +893,7 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
 
             _mapController.move(pending, _userZoom);
           }
+          _focusHighlightedPoint();
         },
         onTap: (_, _) {
           if (_selectedPoint != null) {
@@ -948,10 +921,8 @@ class _MapsScreenState extends State<MapsScreen> with WidgetsBindingObserver {
           ),
         ),
 
-        // Lugares obtenidos desde Overpass.
         MarkerLayer(markers: _markers),
 
-        // Ubicacion actual del usuario.
         if (userMarker != null) MarkerLayer(markers: [userMarker]),
 
         Align(

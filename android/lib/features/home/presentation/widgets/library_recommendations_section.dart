@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
 import '../home_recommendation_controller.dart';
 import '../../data/home_recommendation_repository.dart';
 import 'recommended_books_section.dart';
@@ -61,15 +60,6 @@ class _LibraryRecommendationsSectionState
         );
       }
     });
-  }
-
-  void _showExplanation(String message) {
-    if (widget.onShowExplanation != null) {
-      widget.onShowExplanation!(message);
-    } else {
-      setState(() => _explanation = message);
-      _revealExplanation();
-    }
   }
 
   void _closeExplanation() {
@@ -139,7 +129,6 @@ class _LibraryRecommendationsSectionState
                 _explanation = null;
               }),
               onBookTap: widget.onBookTap,
-              onShowExplanation: _showExplanation,
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
@@ -168,60 +157,6 @@ class _LibraryRecommendationsSectionState
                     key: const ValueKey('recommendations-error'),
                     style: const TextStyle(fontSize: 12),
                   ),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 4,
-                  children: [
-                    Text(
-                      'Español · ${items.length} obras',
-                      semanticsLabel:
-                          items.any(
-                            (b) => b['recommendationSource'] == 'LOCAL_FREE',
-                          )
-                          ? 'Fuentes: Google Books y Biblioteca gratuita local'
-                          : 'Fuente: Google Books',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: .15,
-                        color: AppColors.textPrimaryOf(context)
-                            .withValues(alpha: .85),
-                      ),
-                    ),
-                    if (data?.aiStatus == 'ENRICHED')
-                      Text(
-                        'Selección con Gemini',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondaryOf(context),
-                        ),
-                      ),
-                    if (data?.notice.isNotEmpty == true)
-                      RecommendationInfoButton(
-                        message: data!.notice,
-                        onPressed: () => _showExplanation(data.notice),
-                      ),
-                    if (controller.error == null)
-                      IconButton(
-                        key: const ValueKey('recommendations-refresh'),
-                        tooltip: 'Actualizar recomendaciones',
-                        icon: const Icon(Icons.refresh, size: 19),
-                        onPressed: controller.loading || controller.enriching
-                            ? null
-                            : controller.load,
-                      )
-                    else
-                      TextButton(
-                        key: const ValueKey('recommendations-refresh'),
-                        onPressed: controller.loading || controller.enriching
-                            ? null
-                            : controller.load,
-                        child: const Text(
-                          'Google Books: no disponible. Reintentar',
-                        ),
-                      ),
-                  ],
-                ),
               ],
             ),
           ),

@@ -10,7 +10,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 // ignore: depend_on_referenced_packages
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart';
 import 'package:android/core/theme/app_theme.dart';
-import 'package:android/features/home/data/home_demo_data.dart';
+
+import 'fixtures/home_test_books.dart';
+
 import 'package:android/features/home/presentation/screens/main_shell_screen.dart';
 import 'package:android/features/home/presentation/screens/home_screen.dart';
 import 'package:android/features/home/presentation/widgets/continue_reading_section.dart';
@@ -112,6 +114,27 @@ Widget shell({bool guest = false}) => MaterialApp(
   ),
 );
 
+// MainShell contiene actualizaciones periódicas (p. ej., mapas):
+// pumpAndSettle nunca termina si siempre hay un nuevo frame programado.
+// Avanzamos el reloj de prueba para que las rutas, diálogos y animaciones
+// completen sus transiciones sin depender de la inactividad global del shell.
+Future<void> pumpShellUi(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 100));
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
+// Los favoritos ya no se precargan como datos simulados en MainShell.
+// Cada escenario declara explícitamente los libros que considera favoritos.
+Future<void> seedTestFavorites(WidgetTester tester, List<int> ids) async {
+  final home = tester.widget<HomeScreen>(
+    find.byType(HomeScreen, skipOffstage: false),
+  );
+  for (final id in ids) {
+    home.onToggleFavoriteBook(id);
+  }
+  await pumpShellUi(tester);
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(installLocalTestAssets);
@@ -128,7 +151,7 @@ void main() {
         MaterialApp(
           theme: AppTheme.light,
           home: HomeBookDetailScreen(
-            book: HomeDemoData.books.first,
+            book: HomeTestBooks.books.first,
             currentUsername: '@demo',
             initialReview: null,
             onReviewSaved: (_, _) {},
@@ -162,7 +185,10 @@ void main() {
     'MainShell conserva reseñas y favoritos al eliminar y evita duplicados al reincorporar',
     (tester) async {
       await tester.pumpWidget(shell());
-      await tester.pumpAndSettle();
+      // Avanzar los frames sin esperar a que termine toda la actividad del shell.
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(const Duration(milliseconds: 350));
+      await seedTestFavorites(tester, [1, 2]);
       var library = tester.widget<LibraryScreen>(
         find.byType(LibraryScreen, skipOffstage: false),
       );
@@ -172,28 +198,28 @@ void main() {
       final review = library.reviews[1];
       expect(library.favorites.contains(1), isTrue);
       final open = library.onReadBook!(context, 1);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(find.byType(SimulatedReaderScreen), findsOneWidget);
       await tester.drag(
         find.byKey(const ValueKey('reader-scroll')),
         const Offset(0, -2000),
       );
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.pageBack();
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await open;
       expect(library.statuses[1], BookStatus.leido);
       expect(library.progresses[1], 100);
       final cancelled = library.onRemoveBook!(context, 1);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.tap(find.text('Cancelar'));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(await cancelled, isFalse);
       expect(library.progresses[1], 100);
       final remove = library.onRemoveBook!(context, 1);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.tap(find.text('Eliminar'));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(await remove, isTrue);
       library = tester.widget<LibraryScreen>(
         find.byType(LibraryScreen, skipOffstage: false),
@@ -213,9 +239,9 @@ void main() {
       final home = tester.widget<HomeScreen>(
         find.byType(HomeScreen, skipOffstage: false),
       );
-      home.onAddBook!(Map<String, dynamic>.from(HomeDemoData.books.first));
-      home.onAddBook!(Map<String, dynamic>.from(HomeDemoData.books.first));
-      await tester.pumpAndSettle();
+      home.onAddBook!(Map<String, dynamic>.from(HomeTestBooks.books.first));
+      home.onAddBook!(Map<String, dynamic>.from(HomeTestBooks.books.first));
+      await pumpShellUi(tester);
       expect(library.books.where((b) => b.id == 1).length, 1);
       expect(library.statuses[1], BookStatus.porLeer);
       expect(library.progresses[1], 0);
@@ -229,13 +255,13 @@ void main() {
         await tester.pump(const Duration(milliseconds: 16));
         expect(tester.takeException(), isNull);
       }
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.tap(find.byKey(const ValueKey('book-options-5')));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.tap(find.text('Eliminar de Mi Biblioteca'));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.tap(find.text('Eliminar'));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(library.statuses.containsKey(5), isFalse);
       expect(library.progresses.containsKey(5), isFalse);
       final external = library.books.firstWhere((b) => b.id == 5);
@@ -250,9 +276,9 @@ void main() {
         'synopsis': external.synopsis,
         'availability': 'EXTERNA',
       });
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       final externalRead = library.onReadBook!(context, 5);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(
         tester
             .widget<TextFormField>(find.byKey(const ValueKey('current-page')))
@@ -261,11 +287,11 @@ void main() {
         '0',
       );
       await tester.tap(find.text('Cancelar'));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await externalRead;
       // Las acciones existentes de reseñas y favoritos siguen conectadas con Perfil.
       home.onToggleFavoriteBook(2);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(library.favorites.contains(2), isFalse);
       home.onToggleFavoriteBook(2);
       const savedReview = BookReview(
@@ -274,7 +300,7 @@ void main() {
         isPublic: false,
       );
       home.onReviewSaved(2, savedReview);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(library.favorites.contains(2), isTrue);
       expect(profile.reviews[2], same(savedReview));
       expect(library.reviews[1], same(review));
@@ -286,7 +312,9 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(shell(guest: true));
-    await tester.pumpAndSettle();
+    // Avanzar los frames sin esperar a que termine toda la actividad del shell.
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 350));
     final library = tester.widget<LibraryScreen>(
       find.byType(LibraryScreen, skipOffstage: false),
     );
@@ -294,17 +322,17 @@ void main() {
       find.byType(LibraryScreen, skipOffstage: false),
     );
     expect(await library.onReadBook!(context, 1), isNull);
-    await tester.pumpAndSettle();
+    await pumpShellUi(tester);
     expect(find.byType(SimulatedReaderScreen), findsNothing);
     Navigator.of(context).pop();
-    await tester.pumpAndSettle();
+    await pumpShellUi(tester);
     expect(await library.onRemoveBook!(context, 1), isFalse);
-    await tester.pumpAndSettle();
+    await pumpShellUi(tester);
     expect(find.text('¿Eliminar de Mi Biblioteca?'), findsNothing);
     expect(library.statuses, isEmpty);
     expect(library.progresses, isEmpty);
     Navigator.of(context).pop();
-    await tester.pumpAndSettle();
+    await pumpShellUi(tester);
     final profile = tester.widget<ProfileScreen>(
       find.byType(ProfileScreen, skipOffstage: false),
     );
@@ -315,12 +343,14 @@ void main() {
     expect(home.progresses, isEmpty);
     expect(home.continueReadingProgress, 0);
     library.onStatusChanged(1, BookStatus.porLeer);
-    await tester.pumpAndSettle();
+    await pumpShellUi(tester);
     Navigator.of(context).pop();
-    await tester.pumpAndSettle();
+    await pumpShellUi(tester);
     // Cambiar solo el modo de acceso conserva el mismo estado del shell.
     await tester.pumpWidget(shell());
-    await tester.pumpAndSettle();
+    // Avanzar los frames sin esperar a que termine toda la actividad del shell.
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 350));
     final authenticated = tester.widget<LibraryScreen>(
       find.byType(LibraryScreen, skipOffstage: false),
     );
@@ -333,7 +363,9 @@ void main() {
     'Finalizar en Home reemplaza solo por Leyendo y finalmente muestra vacío',
     (tester) async {
       await tester.pumpWidget(shell());
-      await tester.pumpAndSettle();
+      // Avanzar los frames sin esperar a que termine toda la actividad del shell.
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(const Duration(milliseconds: 350));
       HomeScreen home() => tester.widget<HomeScreen>(
         find.byType(HomeScreen, skipOffstage: false),
       );
@@ -347,7 +379,7 @@ void main() {
       const review = BookReview(rating: 5, text: 'Se conserva al finalizar');
       home().onReviewSaved(7, review);
       home().onToggleFavoriteBook(7);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       section().onFinish();
       await tester.pump();
       expect(library().statuses[7], BookStatus.leido);
@@ -365,7 +397,7 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
       expect(section().finishedReadingTitle, isNotNull);
       await tester.pump(const Duration(seconds: 1));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(section().finishedReadingTitle, isNull);
       expect(section().book?.id, 5);
       expect(library().statuses[section().book!.id], BookStatus.leyendo);
@@ -375,7 +407,7 @@ void main() {
       expect(library().progresses[5], 100);
       expect(home().continueReadingBook, isNull);
       await tester.pump(const Duration(seconds: 3));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(section().finishedReadingTitle, isNull);
       expect(find.text('Comienza una nueva lectura'), findsOneWidget);
       expect(library().statuses.containsKey(7), isTrue);
@@ -389,7 +421,10 @@ void main() {
     'estado manual sincroniza páginas y reanuda sin perder formato ni editorial',
     (tester) async {
       await tester.pumpWidget(shell());
-      await tester.pumpAndSettle();
+      // Avanzar los frames sin esperar a que termine toda la actividad del shell.
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(const Duration(milliseconds: 350));
+      await seedTestFavorites(tester, [1]);
       final library = tester.widget<LibraryScreen>(
         find.byType(LibraryScreen, skipOffstage: false),
       );
@@ -403,10 +438,10 @@ void main() {
       await tester.pump();
       expect(library.progresses[5], 100);
       profile.onStatusChanged(5, BookStatus.leyendo);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(library.progresses[5], 30);
       final registration = library.onReadBook!(context, 5);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(
         tester
             .widget<TextFormField>(find.byKey(const ValueKey('current-page')))
@@ -424,10 +459,10 @@ void main() {
       expect(find.text('Físico'), findsOneWidget);
       expect(find.text('Editorial demo'), findsOneWidget);
       await tester.tap(find.text('Cancelar'));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await registration;
       library.onStatusChanged(5, BookStatus.porLeer);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(library.progresses[5], 0);
       expect(
         tester
@@ -437,7 +472,7 @@ void main() {
         7,
       );
       final pending = library.onReadBook!(context, 5);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(
         tester
             .widget<TextFormField>(find.byKey(const ValueKey('current-page')))
@@ -453,12 +488,12 @@ void main() {
         '200',
       );
       await tester.tap(find.text('Cancelar'));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await pending;
       library.onStatusChanged(7, BookStatus.leido);
       await tester.pump();
       library.onStatusChanged(7, BookStatus.leyendo);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(library.progresses[7], 65);
       expect(profile.statuses[7], BookStatus.leyendo);
       expect(library.reviews[1], isNotNull);
@@ -472,40 +507,67 @@ void main() {
     'selector del detalle actualiza los textos Comenzar, Continuar y Abrir',
     (tester) async {
       await tester.pumpWidget(shell());
-      await tester.pumpAndSettle();
+      // Avanzar los frames sin esperar a que termine toda la actividad del shell.
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(const Duration(milliseconds: 350));
+      await seedTestFavorites(tester, [1]);
       final library = tester.widget<LibraryScreen>(
         find.byType(LibraryScreen, skipOffstage: false),
       );
       final review = library.reviews[1];
       library.onStatusChanged(1, BookStatus.porLeer);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       tester
           .widget<HomeSearchSection>(find.byType(HomeSearchSection))
-          .onBookTap(HomeDemoData.books.first);
-      await tester.pumpAndSettle();
-      expect(find.text('Comenzar a leer'), findsOneWidget);
-      expect(find.text('Continuar leyendo'), findsNothing);
+          .onBookTap(HomeTestBooks.books.first);
+      await pumpShellUi(tester);
+      expect(
+        find.descendant(
+          of: find.byType(HomeBookDetailScreen),
+          matching: find.text('Comenzar a leer'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(HomeBookDetailScreen),
+          matching: find.text('Continuar leyendo'),
+        ),
+        findsNothing,
+      );
       final selector = find.descendant(
         of: find.byType(ReadingStatusField),
         matching: find.byType(DropdownButtonFormField<BookStatus>),
       );
       await Scrollable.ensureVisible(tester.element(selector), alignment: .5);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.tap(selector);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.tap(find.text('Leyendo').last);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(library.statuses[1], BookStatus.leyendo);
-      expect(find.text('Continuar leyendo'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(HomeBookDetailScreen),
+          matching: find.text('Continuar leyendo'),
+        ),
+        findsOneWidget,
+      );
       await Scrollable.ensureVisible(tester.element(selector), alignment: .5);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.tap(selector);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.tap(find.text('Leído').last);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(library.statuses[1], BookStatus.leido);
       expect(library.progresses[1], 100);
-      expect(find.text('Continuar leyendo'), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(HomeBookDetailScreen),
+          matching: find.text('Continuar leyendo'),
+        ),
+        findsNothing,
+      );
       expect(
         find.widgetWithText(OutlinedButton, 'Abrir libro'),
         findsOneWidget,
@@ -514,7 +576,7 @@ void main() {
       expect(library.favorites.contains(1), isTrue);
       await tester.tap(find.byIcon(Icons.arrow_back_rounded).hitTestable());
       await tester.pump(const Duration(seconds: 3));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.pumpWidget(const SizedBox.shrink());
       expect(tester.takeException(), isNull);
     },
@@ -524,7 +586,10 @@ void main() {
     'Comenzar inicia Leyendo sin scroll y abrir no reinicia lecturas existentes',
     (tester) async {
       await tester.pumpWidget(shell());
-      await tester.pumpAndSettle();
+      // Avanzar los frames sin esperar a que termine toda la actividad del shell.
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(const Duration(milliseconds: 350));
+      await seedTestFavorites(tester, [1]);
       LibraryScreen library() => tester.widget<LibraryScreen>(
         find.byType(LibraryScreen, skipOffstage: false),
       );
@@ -533,11 +598,11 @@ void main() {
       );
       final review = library().reviews[1];
       library().onStatusChanged(1, BookStatus.porLeer);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       final start = library().onReadBook!(context, 1);
       expect(library().statuses[1], BookStatus.leyendo);
       expect(library().progresses[1], 0);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(
         tester
             .widget<SimulatedReaderScreen>(find.byType(SimulatedReaderScreen))
@@ -552,30 +617,30 @@ void main() {
         1,
       );
       await tester.pageBack();
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await start;
       expect(library().statuses[1], BookStatus.leyendo);
       expect(library().progresses[1], 0);
       final reading = library().onReadBook!(context, 7);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.pageBack();
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await reading;
       expect(library().statuses[7], BookStatus.leyendo);
       expect(library().progresses[7], 65);
       library().onStatusChanged(1, BookStatus.leido);
       await tester.pump();
       final completed = library().onReadBook!(context, 1);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.pageBack();
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await completed;
       expect(library().statuses[1], BookStatus.leido);
       expect(library().progresses[1], 100);
       expect(library().reviews[1], same(review));
       expect(library().favorites.contains(1), isTrue);
       await tester.pump(const Duration(seconds: 3));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.pumpWidget(const SizedBox.shrink());
       expect(tester.takeException(), isNull);
     },
@@ -585,7 +650,9 @@ void main() {
     'el invitado ve el catálogo sin porcentajes ni controles personales',
     (tester) async {
       await tester.pumpWidget(shell(guest: true));
-      await tester.pumpAndSettle();
+      // Avanzar los frames sin esperar a que termine toda la actividad del shell.
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(const Duration(milliseconds: 350));
       final home = tester.widget<HomeScreen>(find.byType(HomeScreen));
       expect(home.progresses, isEmpty);
       expect(home.statuses, isEmpty);
@@ -593,11 +660,11 @@ void main() {
       expect(home.continueReadingProgress, 0);
       tester
           .widget<HomeSearchSection>(find.byType(HomeSearchSection))
-          .onBookTap(HomeDemoData.books.first);
-      await tester.pumpAndSettle();
+          .onBookTap(HomeTestBooks.books.first);
+      await pumpShellUi(tester);
       final detail = find.byType(HomeBookDetailScreen);
       expect(
-        find.text(HomeDemoData.books.first['title'] as String),
+        find.text(HomeTestBooks.books.first['title'] as String),
         findsWidgets,
       );
       expect(
@@ -620,14 +687,14 @@ void main() {
       );
       final action = find.widgetWithText(FilledButton, 'Comenzar a leer');
       await Scrollable.ensureVisible(tester.element(action), alignment: .5);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.tap(action);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(find.byType(SimulatedReaderScreen), findsNothing);
       Navigator.of(tester.element(detail)).pop();
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       Navigator.of(tester.element(detail)).pop();
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(tester.takeException(), isNull);
     },
   );
@@ -636,7 +703,10 @@ void main() {
     'MainShell deriva porcentaje y estado de páginas y recupera el avance exacto',
     (tester) async {
       await tester.pumpWidget(shell());
-      await tester.pumpAndSettle();
+      // Avanzar los frames sin esperar a que termine toda la actividad del shell.
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump(const Duration(milliseconds: 350));
+      await seedTestFavorites(tester, [1]);
       final library = tester.widget<LibraryScreen>(
         find.byType(LibraryScreen, skipOffstage: false),
       );
@@ -644,15 +714,15 @@ void main() {
         find.byType(LibraryScreen, skipOffstage: false),
       );
       final registration = library.onReadBook!(context, 5);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await tester.enterText(find.byKey(const ValueKey('total-pages')), '3');
       await tester.enterText(find.byKey(const ValueKey('current-page')), '1');
       await tester.tap(find.text('Guardar'));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await registration;
       expect(library.progresses[5], 33);
       library.onProgressChanged(5, 50);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(library.progresses[5], 66);
       expect(library.statuses[5], BookStatus.leyendo);
       library.onProgressChanged(5, 99);
@@ -660,10 +730,10 @@ void main() {
       expect(library.progresses[5], 100);
       expect(library.statuses[5], BookStatus.leido);
       library.onStatusChanged(5, BookStatus.leyendo);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(library.progresses[5], 66);
       final resumed = library.onReadBook!(context, 5);
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       expect(
         tester
             .widget<TextFormField>(find.byKey(const ValueKey('current-page')))
@@ -681,7 +751,7 @@ void main() {
       expect(find.text('Físico'), findsOneWidget);
       expect(find.text('Editorial demo'), findsOneWidget);
       await tester.tap(find.text('Cancelar'));
-      await tester.pumpAndSettle();
+      await pumpShellUi(tester);
       await resumed;
       expect(library.reviews[1], isNotNull);
       expect(library.favorites.contains(1), isTrue);

@@ -10,13 +10,9 @@ extension _SettingsCommonWidgets on _SettingsScreenState {
   }) {
     final loading = _privacyUpdating;
 
-    final thumbColor = loading
-        ? Colors.grey.shade600
-        : _gold;
+    final thumbColor = loading ? Colors.grey.shade600 : _gold;
 
-    final activeTrackColor = loading
-        ? Colors.grey.shade300
-        : _accent;
+    final activeTrackColor = loading ? Colors.grey.shade300 : _accent;
 
     final inactiveTrackColor = loading
         ? Colors.grey.shade300

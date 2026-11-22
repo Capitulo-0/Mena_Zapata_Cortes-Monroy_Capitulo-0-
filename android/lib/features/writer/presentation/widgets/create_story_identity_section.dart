@@ -108,16 +108,11 @@ extension _CreateStoryIdentitySection on _CreateStoryScreenState {
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(
-          color: AppColors.gold.withValues(alpha: 0.48),
-        ),
+        borderSide: BorderSide(color: AppColors.gold.withValues(alpha: 0.48)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(
-          color: AppColors.gold,
-          width: 1.2,
-        ),
+        borderSide: const BorderSide(color: AppColors.gold, width: 1.2),
       ),
     );
   }

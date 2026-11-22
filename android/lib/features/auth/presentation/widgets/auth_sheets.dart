@@ -51,8 +51,9 @@ Future<String?> showCustomGenderSheet(
                         width: 38,
                         height: 4,
                         decoration: BoxDecoration(
-                          color: AppColors.textSecondary
-                              .withValues(alpha: 0.25),
+                          color: AppColors.textSecondary.withValues(
+                            alpha: 0.25,
+                          ),
                           borderRadius: BorderRadius.circular(999),
                         ),
                       ),
@@ -124,8 +125,9 @@ Future<String?> showCustomGenderSheet(
                       decoration: InputDecoration(
                         hintText: 'Ej. No binario',
                         hintStyle: GoogleFonts.inter(
-                          color: AppColors.textSecondary
-                              .withValues(alpha: 0.70),
+                          color: AppColors.textSecondary.withValues(
+                            alpha: 0.70,
+                          ),
                           fontSize: 10,
                         ),
                         counterStyle: GoogleFonts.inter(
@@ -160,8 +162,7 @@ Future<String?> showCustomGenderSheet(
                         SizedBox(
                           height: 36,
                           child: TextButton(
-                            onPressed: () =>
-                                Navigator.of(sheetContext).pop(),
+                            onPressed: () => Navigator.of(sheetContext).pop(),
                             style: TextButton.styleFrom(
                               foregroundColor: AppColors.textSecondary,
                               padding: const EdgeInsets.symmetric(
@@ -194,10 +195,10 @@ Future<String?> showCustomGenderSheet(
                               style: FilledButton.styleFrom(
                                 backgroundColor: AppColors.accent,
                                 foregroundColor: AppColors.background,
-                                disabledBackgroundColor:
-                                    AppColors.accent.withValues(alpha: 0.30),
-                                disabledForegroundColor:
-                                    AppColors.background.withValues(alpha: 0.75),
+                                disabledBackgroundColor: AppColors.accent
+                                    .withValues(alpha: 0.30),
+                                disabledForegroundColor: AppColors.background
+                                    .withValues(alpha: 0.75),
                                 elevation: 0,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 14,
@@ -271,9 +272,7 @@ Future<DateTime?> showBirthDateSheet(
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: AppColors.gold.withValues(alpha: 0.36),
-              ),
+              border: Border.all(color: AppColors.gold.withValues(alpha: 0.36)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.20),
@@ -397,12 +396,8 @@ Future<DateTime?> showBirthDateSheet(
                         child: SizedBox(
                           height: 44,
                           child: OutlinedButton.icon(
-                            onPressed: () =>
-                                Navigator.of(sheetContext).pop(),
-                            icon: const Icon(
-                              Icons.close_rounded,
-                              size: 15,
-                            ),
+                            onPressed: () => Navigator.of(sheetContext).pop(),
+                            icon: const Icon(Icons.close_rounded, size: 15),
                             label: Text(
                               'Cancelar',
                               style: GoogleFonts.inter(
@@ -414,8 +409,7 @@ Future<DateTime?> showBirthDateSheet(
                               foregroundColor: AppColors.textSecondary,
                               backgroundColor: AppColors.background,
                               side: BorderSide(
-                                color:
-                                    AppColors.gold.withValues(alpha: 0.38),
+                                color: AppColors.gold.withValues(alpha: 0.38),
                               ),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 11,
@@ -458,8 +452,7 @@ Future<DateTime?> showBirthDateSheet(
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(13),
                                 side: BorderSide(
-                                  color: AppColors.gold
-                                      .withValues(alpha: 0.48),
+                                  color: AppColors.gold.withValues(alpha: 0.48),
                                 ),
                               ),
                             ),

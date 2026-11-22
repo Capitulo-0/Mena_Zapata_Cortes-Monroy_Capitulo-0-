@@ -2,12 +2,161 @@ import '../../../core/network/api_client.dart';
 import '../models/writer_story.dart';
 import '../models/writer_publication.dart';
 import 'writer_repository.dart';
+import 'writer_assistant.dart';
+import 'literary_chat.dart';
 
 class ApiWriterRepository
-    implements WriterRepository, CommunityWriterRepository {
+    implements
+        WriterRepository,
+        CommunityWriterRepository,
+        WriterAssistantRepository,
+        LiteraryChatRepository {
   ApiWriterRepository(this.api, {required this.ownerUid});
   final ApiClient api;
   final String ownerUid;
+
+  @override
+  bool get chatAccountIsCurrent => api.auth.currentUser?.uid == ownerUid;
+
+  @override
+  Stream<bool> get chatAccountActive => api.auth
+      .authStateChanges()
+      .map((identity) => identity?.uid == ownerUid)
+      .distinct();
+
+  @override
+  Future<List<ChatChoice>> chatStories({String? storyId}) async {
+    if (storyId != null) _path(storyId);
+    final data = await api.requestJson(
+      'GET',
+      storyId == null
+          ? '/api/me/assistant/stories'
+          : '/api/me/assistant/stories/$storyId/chapters',
+      expectedUid: ownerUid,
+    );
+    if (data is! List) {
+      throw const ApiFailure(502, 'No pudimos cargar la lista.');
+    }
+    return [
+      for (final item in data)
+        (id: item['id'] as String, title: item['title'] as String),
+    ];
+  }
+
+  @override
+  Future<ChatReply> chat({
+    required String message,
+    required List<ChatTurn> history,
+    String? storyId,
+    String? chapterId,
+    required bool useLibrary,
+    required String excerpt,
+    required String genre,
+  }) async {
+    try {
+      final data = await api.request(
+        'POST',
+        '/api/me/assistant',
+        expectedUid: ownerUid,
+        responseTimeout: const Duration(seconds: 50),
+        body: {
+          'message': message,
+          'history': [
+            for (final turn in history) {'role': turn.role, 'text': turn.text},
+          ],
+          'storyId': ?storyId,
+          'chapterId': ?chapterId,
+          'shareStory': storyId != null,
+          'useLibrary': useLibrary,
+          'editorExcerpt': excerpt,
+          'genre': genre,
+        },
+      );
+      return (
+        sections: [
+          for (final part in data['sections'] as List)
+            (
+              heading: part['heading'] as String,
+              text: part['text'] as String,
+              action: part['action'] as String,
+            ),
+        ],
+        books: [
+          for (final book in data['books'] as List)
+            Map<String, dynamic>.from(book as Map),
+        ],
+      );
+    } on ApiFailure catch (error) {
+      throw _assistantError(error);
+    }
+  }
+
+  @override
+  Future<List<String>> suggest({
+    required WriterAssistantTask task,
+    required String genre,
+    required String context,
+    required String direction,
+    required String tone,
+  }) async {
+    try {
+      final data = await api.request(
+        'POST',
+        '/api/me/writer/assistant',
+        responseTimeout: const Duration(seconds: 50),
+        expectedUid: ownerUid,
+        body: {
+          'task': task.wireName,
+          'genre': genre,
+          'context': context,
+          'direction': direction,
+          'tone': tone,
+        },
+      );
+      final values = data['suggestions'];
+      if (values is! List ||
+          values.isEmpty ||
+          values.any((value) => value is! String || value.trim().isEmpty)) {
+        throw const ApiFailure(
+          502,
+          'Gemini devolvió una respuesta vacía o inválida.',
+        );
+      }
+      return List<String>.unmodifiable(values);
+    } on ApiFailure catch (e) {
+      throw _assistantError(e);
+    }
+  }
+
+  ApiFailure _assistantError(ApiFailure e) {
+    final message = switch (e.code) {
+      'WRITER_AI_NOT_CONFIGURED' => 'El asistente todavía no está configurado.',
+      'CHAT_GENERATION_LIMIT' => 'Alcanzaste el límite temporal de generación de Capítulo 0. Puedes buscar un autor o título.',
+      'CHAT_CATALOG_LIMIT' =>
+        'Alcanzaste el límite temporal de búsquedas de Capítulo 0.',
+      'CHAT_REQUEST_ACTIVE' => 'Tu solicitud anterior aún está en curso.',
+      'CHAT_BUSY' => 'El asistente está ocupado en este momento.',
+      'CHAT_CATALOG_UNAVAILABLE' => 'No se pudo completar la consulta a Google Books. Puedes volver a intentarlo.',
+      'WRITER_AI_PROVIDER_QUOTA' =>
+        'Google Gemini alcanzó su cuota. Puedes buscar un autor o título.',
+      'WRITER_AI_TIMEOUT' =>
+        'Gemini tardó demasiado. Puedes volver a intentarlo.',
+      'WRITER_AI_EMPTY' => 'Gemini devolvió una respuesta vacía.',
+      'WRITER_AI_INVALID' =>
+        'Gemini devolvió una sugerencia con formato inválido.',
+      'WRITER_AI_UNAVAILABLE' =>
+        'No pudimos conectar con Gemini. Intenta más tarde.',
+      'WRITER_AI_INPUT_TOO_LARGE' => 'Acorta el texto antes de enviarlo.',
+      _ => e.message,
+    };
+    return ApiFailure(
+      e.statusCode,
+      message,
+      code: e.code,
+      retryAfterSeconds: e.retryAfterSeconds,
+    );
+  }
+
   String _path(String id) {
     if (!RegExp(r'^[a-zA-Z0-9_-]{1,64}$').hasMatch(id)) {
       throw const ApiFailure(400, 'Identificador Writer no valido.');

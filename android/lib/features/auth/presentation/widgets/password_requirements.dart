@@ -27,9 +27,7 @@ class PasswordRequirements extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surfaceSoft.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.22),
-        ),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.22)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,18 +61,13 @@ class PasswordRequirements extends StatelessWidget {
 }
 
 class PasswordConfirmationStatus extends StatelessWidget {
-  const PasswordConfirmationStatus({
-    super.key,
-    required this.matches,
-  });
+  const PasswordConfirmationStatus({super.key, required this.matches});
 
   final bool matches;
 
   @override
   Widget build(BuildContext context) {
-    final color = matches
-        ? const Color(0xFF6F8F57)
-        : const Color(0xFFB75A52);
+    final color = matches ? const Color(0xFF6F8F57) : const Color(0xFFB75A52);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
@@ -83,9 +76,7 @@ class PasswordConfirmationStatus extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: color.withValues(alpha: 0.35),
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Row(
         children: [
@@ -122,10 +113,7 @@ class PasswordConfirmationStatus extends StatelessWidget {
 }
 
 class _Requirement extends StatelessWidget {
-  const _Requirement({
-    required this.label,
-    required this.fulfilled,
-  });
+  const _Requirement({required this.label, required this.fulfilled});
 
   final String label;
   final bool fulfilled;
@@ -166,8 +154,7 @@ class _Requirement extends StatelessWidget {
             style: GoogleFonts.inter(
               color: color,
               fontSize: 7.8,
-              fontWeight:
-                  fulfilled ? FontWeight.w700 : FontWeight.w500,
+              fontWeight: fulfilled ? FontWeight.w700 : FontWeight.w500,
             ),
             child: Text(label),
           ),

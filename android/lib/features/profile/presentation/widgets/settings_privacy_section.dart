@@ -16,42 +16,6 @@ extension _SettingsPrivacySection on _SettingsScreenState {
               enabled: !_privacyUpdating,
               onChanged: _confirmPrivacyChange,
             ),
-            _divider(),
-            _privacySwitch(
-              title: 'Compartir actividad lectora',
-              subtitle: 'Muestra géneros, reto, favoritos y reseñas en tu perfil público',
-              value: _shareReadingActivity,
-              enabled: !_privacyUpdating,
-              onChanged: (value) {
-                _updateState(() {
-                  _shareReadingActivity = value;
-                });
-              },
-            ),
-            _divider(),
-            _privacySwitch(
-              title: 'Mostrar estado lector',
-              subtitle: 'Hace visible tu emoji y estado actual en el perfil',
-              value: _showReadingStatus,
-              enabled: !_privacyUpdating,
-              onChanged: (value) {
-                _updateState(() {
-                  _showReadingStatus = value;
-                });
-              },
-            ),
-            _divider(),
-            _privacySwitch(
-              title: 'Mostrar clubes',
-              subtitle: 'Permite que otros vean los clubes de lectura a los que perteneces',
-              value: _showClubs,
-              enabled: !_privacyUpdating,
-              onChanged: (value) {
-                _updateState(() {
-                  _showClubs = value;
-                });
-              },
-            ),
           ],
         ),
         const SizedBox(height: 16),

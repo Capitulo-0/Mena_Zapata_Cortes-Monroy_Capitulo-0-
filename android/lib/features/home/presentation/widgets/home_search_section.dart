@@ -98,10 +98,14 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     });
     try {
       final users = await widget.userSearchRepository!.searchUsers(query);
-      if (!mounted || generation != _previewGeneration || searchSubmitted) return;
+      if (!mounted || generation != _previewGeneration || searchSubmitted) {
+        return;
+      }
       setState(() => _previewUsers = users);
     } catch (_) {
-      if (!mounted || generation != _previewGeneration || searchSubmitted) return;
+      if (!mounted || generation != _previewGeneration || searchSubmitted) {
+        return;
+      }
       setState(() => _previewError = 'No pudimos buscar usuarios. Reintentar');
     } finally {
       if (mounted && generation == _previewGeneration && !searchSubmitted) {
@@ -266,8 +270,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     } catch (_) {
       if (!mounted || generation != _searchGeneration) return;
       setState(() {
-        _usersError =
-            'No pudimos buscar usuarios. Revisa tu conexión e inténtalo nuevamente.';
+        _usersError = 'No pudimos buscar usuarios. Revisa tu conexión e inténtalo nuevamente.';
       });
     } finally {
       if (mounted && generation == _searchGeneration) {
@@ -396,10 +399,14 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     String url, {
     required double width,
     required double height,
-    double radius = 8, String title = '', String author = '',
+    double radius = 8,
+    String title = '',
+    String author = '',
   }) {
     return HomeNetworkCover(
-      url: url, title: title, author: author,
+      url: url,
+      title: title,
+      author: author,
       width: width,
       height: height,
       radius: radius,
@@ -1032,19 +1039,25 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('USUARIOS', style: GoogleFonts.cinzel(
-                  color: _textPrimary, fontSize: 11, fontWeight: FontWeight.w700,
-                )),
+                Text(
+                  'USUARIOS',
+                  style: GoogleFonts.cinzel(
+                    color: _textPrimary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 if (_previewUsersLoading) const LinearProgressIndicator(),
                 if (_previewError != null)
                   TextButton(
                     key: const ValueKey('retry-user-preview'),
-                    onPressed: () => unawaited(_loadUserPreview(
-                      searchQuery.trim(), _previewGeneration,
-                    )),
+                    onPressed: () => unawaited(
+                      _loadUserPreview(searchQuery.trim(), _previewGeneration),
+                    ),
                     child: Text(_previewError!),
                   ),
-                if (!_previewUsersLoading && _previewError == null &&
+                if (!_previewUsersLoading &&
+                    _previewError == null &&
                     _previewUsers.isEmpty)
                   const Text('No se encontraron usuarios.'),
                 for (final user in _previewUsers) _buildUserRow(user),
@@ -1091,8 +1104,8 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
             ),
           ],
         ),
-        child: _suggestionsPending ||
-                (_suggestions != null && !_previewBooksReady)
+        child:
+            _suggestionsPending || (_suggestions != null && !_previewBooksReady)
             ? const LinearProgressIndicator()
             : _suggestions?.error != null
             ? TextButton(
@@ -1155,7 +1168,10 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                     child: Row(
                       children: [
                         _networkCover(
-                          previewResults.first['cover'] as String, title: previewResults.first['title'] as String? ?? '', author: previewResults.first['author'] as String? ?? '',
+                          previewResults.first['cover'] as String,
+                          title: previewResults.first['title'] as String? ?? '',
+                          author:
+                              previewResults.first['author'] as String? ?? '',
                           width: 44,
                           height: 62,
                         ),
@@ -1236,9 +1252,9 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
             Text(_usersError!, style: GoogleFonts.inter(color: _textPrimary)),
             TextButton(
               key: const ValueKey('retry-users'),
-              onPressed: () => unawaited(_searchUsers(
-                searchQuery.trim(), _searchGeneration,
-              )),
+              onPressed: () => unawaited(
+                _searchUsers(searchQuery.trim(), _searchGeneration),
+              ),
               child: const Text('Reintentar usuarios'),
             ),
           ],
@@ -1524,7 +1540,13 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _networkCover(book['cover'] as String, title: book['title'] as String? ?? '', author: book['author'] as String? ?? '', width: 78, height: 108),
+            _networkCover(
+              book['cover'] as String,
+              title: book['title'] as String? ?? '',
+              author: book['author'] as String? ?? '',
+              width: 78,
+              height: 108,
+            ),
             const SizedBox(width: 11),
             Expanded(
               child: Column(
@@ -1644,10 +1666,11 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     return Column(
       children: [
         _buildSearch(),
-        if (searchSubmitted) _buildUniversalResults() else _buildSearchPreview(),
-        if (searchSubmitted &&
-            !_booksLoading &&
-            _catalog?.next != null)
+        if (searchSubmitted)
+          _buildUniversalResults()
+        else
+          _buildSearchPreview(),
+        if (searchSubmitted && !_booksLoading && _catalog?.next != null)
           TextButton(
             onPressed: _catalog!.loading ? null : _loadMoreBooks,
             child: const Text('Más resultados'),

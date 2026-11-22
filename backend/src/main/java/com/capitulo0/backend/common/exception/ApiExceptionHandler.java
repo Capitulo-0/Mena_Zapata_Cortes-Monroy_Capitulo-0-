@@ -78,12 +78,11 @@ public class ApiExceptionHandler {
     }
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiError> domain(ApiException ex) {
-        return response(
-            ex.getStatus(),
-            ex.getCode(),
-            ex.getMessage(),
-            List.of()
-        );
+        var result = response(ex.getStatus(), ex.getCode(), ex.getMessage(), List.of());
+        if (ex.getRetryAfterSeconds() == null) return result;
+        return ResponseEntity.status(result.getStatusCode())
+            .header(HttpHeaders.RETRY_AFTER, ex.getRetryAfterSeconds().toString())
+            .body(result.getBody());
     }
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> validation(

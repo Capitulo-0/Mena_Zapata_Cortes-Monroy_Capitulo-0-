@@ -13,10 +13,7 @@ extension _ProfileTabsFavoritesSection on _ProfileScreenState {
         'id': 'obras',
         'label': worksCount > 0 ? 'Mis obras ($worksCount)' : 'Mis obras',
       },
-      {
-        'id': 'insignias',
-        'label': 'Insignias ($badgesCount)',
-      },
+      {'id': 'insignias', 'label': 'Insignias ($badgesCount)'},
     ];
 
     return SingleChildScrollView(
@@ -125,8 +122,7 @@ extension _ProfileTabsFavoritesSection on _ProfileScreenState {
                     onPressed: _showExpandedFavoriteShelf,
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.accent,
-                      backgroundColor:
-                          AppColors.accent.withValues(alpha: 0.08),
+                      backgroundColor: AppColors.accent.withValues(alpha: 0.08),
                       minimumSize: const Size(0, 26),
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -147,10 +143,7 @@ extension _ProfileTabsFavoritesSection on _ProfileScreenState {
             ],
           ),
           const SizedBox(height: 10),
-          _buildShelfVisual(
-            compact: true,
-            sourceItems: _favoriteShelfItems,
-          ),
+          _buildShelfVisual(compact: true, sourceItems: _favoriteShelfItems),
         ],
       ),
     );

@@ -292,6 +292,15 @@ class GeoapifyPlacesService {
         _nonEmpty(rawProperties['formatted']) ??
         'Dirección no disponible';
 
+    // La comuna/localidad se obtiene de Geoapify, no del nombre ni de la
+    // ubicación del lector. Evitamos mostrar una comuna supuesta.
+    final commune =
+        _nonEmpty(rawProperties['municipality']) ??
+        _nonEmpty(rawProperties['city_district']) ??
+        _nonEmpty(rawProperties['suburb']) ??
+        _nonEmpty(rawProperties['district']) ??
+        _nonEmpty(rawProperties['city']);
+
     final description =
         _nonEmpty(rawProperties['description']) ??
         'Lugar registrado en OpenStreetMap. '
@@ -303,6 +312,7 @@ class GeoapifyPlacesService {
       type: type,
       position: LatLng(lat, lon),
       address: address,
+      commune: commune,
       description: description,
       schedule: _nonEmpty(rawProperties['opening_hours']),
       showAdmission: false,

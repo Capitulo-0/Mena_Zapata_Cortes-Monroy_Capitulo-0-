@@ -1,3 +1,4 @@
+
 package com.capitulo0.backend.user.service;
 
 import com.capitulo0.backend.auth.service.CurrentUserService;
@@ -8,6 +9,8 @@ import com.capitulo0.backend.library.repository.LibraryEntryRepository;
 import com.capitulo0.backend.user.dto.PublicProfileResponse;
 import com.capitulo0.backend.user.entity.User;
 import com.capitulo0.backend.user.repository.UserRepository;
+import com.capitulo0.backend.verification.entity.VerificationStatus;
+import com.capitulo0.backend.verification.repository.OrganizerVerificationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,40 +22,55 @@ public class PublicProfileService {
     private final LibraryEntryRepository library;
     private final UserFollowRepository follows;
     private final ProfileAccessPolicy accessPolicy;
+    private final OrganizerVerificationRepository verifications;
 
     public PublicProfileService(
             CurrentUserService current,
             UserRepository users,
             LibraryEntryRepository library,
             UserFollowRepository follows,
-            ProfileAccessPolicy accessPolicy
+            ProfileAccessPolicy accessPolicy,
+            OrganizerVerificationRepository verifications
     ) {
         this.current = current;
         this.users = users;
         this.library = library;
         this.follows = follows;
         this.accessPolicy = accessPolicy;
+        this.verifications = verifications;
     }
 
     @Transactional(readOnly = true)
     public PublicProfileResponse findByUsername(String username) {
-        // El endpoint exige un usuario autenticado.
         String viewerUid = current.requireIdentity().uid();
+
         User owner = users.findByUsername(username)
                 .orElseThrow(() -> ApiException.notFound("Usuario"));
 
         boolean canViewContent = accessPolicy.canViewContent(owner, viewerUid);
 
-        // No exponer estadísticas privadas a usuarios sin autorización.
         Long followersCount = null;
         Long followingCount = null;
         Long booksCount = null;
 
         if (canViewContent) {
-            followersCount = follows.countByFollowingIdAndStatus(owner.getId(), Status.ACCEPTED);
-            followingCount = follows.countByFollowerIdAndStatus(owner.getId(), Status.ACCEPTED);
+            followersCount = follows.countByFollowingIdAndStatus(
+                    owner.getId(),
+                    Status.ACCEPTED
+            );
+
+            followingCount = follows.countByFollowerIdAndStatus(
+                    owner.getId(),
+                    Status.ACCEPTED
+            );
+
             booksCount = library.countByUserId(owner.getId());
         }
+
+        boolean verifiedOrganizer = verifications.existsByUserIdAndStatus(
+                owner.getId(),
+                VerificationStatus.APPROVED
+        );
 
         return new PublicProfileResponse(
                 owner.getId(),
@@ -65,7 +83,9 @@ public class PublicProfileService {
                 canViewContent,
                 followersCount,
                 followingCount,
-                booksCount
+                booksCount,
+                verifiedOrganizer,
+                canViewContent ? com.capitulo0.backend.user.dto.ReadingMoodResponse.from(owner) : null
         );
     }
 }

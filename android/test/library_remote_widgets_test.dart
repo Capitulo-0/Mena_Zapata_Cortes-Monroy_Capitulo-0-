@@ -47,6 +47,13 @@ class _DelayedLibrary extends MemoryLibraryRepository {
   Future<List<LibraryEntry>> list() => pendingList?.future ?? super.list();
 }
 
+// MainShell puede producir frames continuos (mapas y secciones dinámicas).
+// Avanzamos transiciones y tareas diferidas sin esperar inactividad global.
+Future<void> pumpLibraryUi(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 100));
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(installLocalTestAssets);
@@ -77,72 +84,76 @@ void main() {
   Future<void> openLibrary(WidgetTester tester) async {
     if (find.byIcon(Icons.menu_book_outlined).evaluate().isEmpty) return;
     await tester.tap(find.byIcon(Icons.menu_book_outlined).first);
-    await tester.pumpAndSettle();
+    await pumpLibraryUi(tester);
   }
 
   Future<void> openOptions(WidgetTester tester) async {
     await tester.tap(find.byKey(const ValueKey('library-options')));
-    await tester.pumpAndSettle();
+    await pumpLibraryUi(tester);
     for (final title in [
+      'Importar libro .epub',
+      'Registra tu libro físico',
       'Crear lista',
       'Exportar mi biblioteca',
       'Exportar mi lista',
     ]) {
       expect(find.text(title), findsOneWidget);
     }
+    // La recarga manual se eliminó de la interfaz en la fase 1.
+    expect(find.byKey(const ValueKey('library-refresh')), findsNothing);
   }
 
-  Future<void> refreshLibrary(WidgetTester tester) async {
+  Future<void> openRegistration(WidgetTester tester) async {
     await openOptions(tester);
-    await tester.tap(find.byKey(const ValueKey('library-refresh')));
-    await tester.pumpAndSettle();
+    await tester.tap(find.text('Registra tu libro físico'));
+    // La acción abre el formulario después de cerrar el bottom sheet.
+    await pumpLibraryUi(tester);
   }
 
   testWidgets(
     'adds SQL catalog book using existing library flow and reload restores progress',
     (tester) async {
       await tester.pumpWidget(shell());
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await openLibrary(tester);
-      await tester.tap(find.byKey(const ValueKey('library-add')));
-      await tester.pumpAndSettle();
+      await openRegistration(tester);
       await tester.tap(find.text('Ver catálogo'));
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await tester.tap(find.text('SQL book 901').last);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await openLibrary(tester);
       var library = tester.widget<LibraryScreen>(find.byType(LibraryScreen));
       expect(library.statuses.keys, [901]);
       expect(library.statuses.containsKey(1), false);
       await library.onStatusChanged(901, BookStatus.leyendo);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await tester.ensureVisible(find.text('SQL book 901').first);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await tester.tap(find.text('SQL book 901').first);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await tester.ensureVisible(find.text('Registrar lectura').last);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await tester.tap(find.text('Registrar lectura').last);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await tester.ensureVisible(find.byKey(const ValueKey('current-page')));
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await tester.enterText(find.byKey(const ValueKey('current-page')), '73');
       await tester.ensureVisible(find.byType(DropdownButtonFormField<String>));
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await tester.tap(find.byType(DropdownButtonFormField<String>));
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await tester.tap(find.text('Ebook').last);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await tester.ensureVisible(find.text('Guardar').last);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await tester.tap(find.text('Guardar').last);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       expect(repository.store[901]!.currentPage, 73);
       expect(repository.store[901]!.readingFormat, 'EBOOK');
       await tester.pumpWidget(const SizedBox());
       final fresh = MemoryLibraryRepository(auth, memory);
       await tester.pumpWidget(shell(source: fresh));
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await openLibrary(tester);
       library = tester.widget<LibraryScreen>(find.byType(LibraryScreen));
       expect(library.progresses[901], 24);
@@ -155,21 +166,21 @@ void main() {
     (tester) async {
       await repository.add(901);
       await tester.pumpWidget(shell());
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await openLibrary(tester);
       final library = tester.widget<LibraryScreen>(find.byType(LibraryScreen));
       await library.onStatusChanged(901, BookStatus.leyendo);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await tester.ensureVisible(find.text('SQL book 901').first);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await tester.tap(find.text('SQL book 901').first);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       expect(find.byType(LibraryBookDetailScreen), findsOneWidget);
       repository.mutationFailure = ApiFailure.forStatus(503);
       await tester
           .widget<ReadingStatusField>(find.byType(ReadingStatusField))
           .onChanged(BookStatus.leido);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       expect(repository.store[901]!.status, BookStatus.leyendo);
       expect(
         tester
@@ -186,7 +197,7 @@ void main() {
     (tester) async {
       repository.listFailure = ApiFailure.forStatus(503);
       await tester.pumpWidget(shell());
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await openLibrary(tester);
       expect(
         tester.widget<LibraryScreen>(find.byType(LibraryScreen)).dataAvailable,
@@ -195,7 +206,7 @@ void main() {
       expect(find.byType(LibraryEmptyState), findsNothing);
       repository.listFailure = null;
       await tester.tap(find.text('Reintentar').first);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       expect(
         tester.widget<LibraryScreen>(find.byType(LibraryScreen)).dataAvailable,
         true,
@@ -211,10 +222,9 @@ void main() {
     (tester) async {
       memory.catalog.clear();
       await tester.pumpWidget(shell());
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       await openLibrary(tester);
-      await tester.tap(find.byKey(const ValueKey('library-add')));
-      await tester.pumpAndSettle();
+      await openRegistration(tester);
       expect(find.byType(Form), findsOneWidget);
       expect(find.text('Ver catálogo'), findsOneWidget);
       await tester.enterText(
@@ -222,7 +232,7 @@ void main() {
         'Manually registered book',
       );
       await tester.tap(find.text('Guardar y añadir'));
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       expect(repository.store.keys, [902]);
       expect(repository.calls.where((call) => call == 'create').length, 1);
     },
@@ -244,17 +254,17 @@ void main() {
         ),
       );
       await tester.pump(const Duration(seconds: 3));
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       LibraryScreen currentLibrary() => tester.widget<LibraryScreen>(
         find.byType(LibraryScreen, skipOffstage: false),
       );
       expect(currentLibrary().statuses.keys, [901]);
       auth.emit(const AuthIdentity(uid: 'second-user', emailVerified: true));
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       expect(currentLibrary().statuses, isEmpty);
       expect(currentLibrary().progresses, isEmpty);
       auth.emit(fixtureIdentity);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       expect(currentLibrary().statuses.keys, [901]);
       expect(currentLibrary().progresses[901], 15);
       await tester.pumpWidget(const SizedBox());
@@ -262,31 +272,34 @@ void main() {
   );
 
   testWidgets(
-    'no sync strip; header menu refresh still feeds Profile and annual challenge',
+    'no sync strip; actualización de datos alimenta Perfil y reto anual sin recarga manual',
     (tester) async {
       await tester.pumpWidget(shell());
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       expect(repository.calls.where((c) => c == 'list').length, 1);
-      expect(find.byType(LibrarySyncBar), findsNothing);
-      await tester.tap(find.byIcon(Icons.person_outline).last);
-      await tester.pumpAndSettle();
       expect(find.byType(LibrarySyncBar), findsNothing);
       await openLibrary(tester);
-      expect(find.byType(LibrarySyncBar), findsNothing);
       expect(find.text('Mi biblioteca sincronizada'), findsNothing);
-      expect(find.byTooltip('Añadir libro'), findsOneWidget);
-      expect(repository.calls.where((c) => c == 'list').length, 1);
+      expect(find.byTooltip('Añadir libro'), findsNothing);
+      await openOptions(tester);
+      // El menú de opciones sigue disponible, pero la recarga manual no.
+      expect(find.byKey(const ValueKey('library-refresh')), findsNothing);
+      Navigator.of(tester.element(find.text('Crear lista'))).pop();
+      await pumpLibraryUi(tester);
       repository.store[901] = LibraryEntry.fromJson(
         entryJson(status: 'LEIDO', page: 300),
       );
-      await refreshLibrary(tester);
-      await tester.pumpAndSettle();
+      final controller = tester
+          .widget<LibraryScreen>(find.byType(LibraryScreen))
+          .syncController!;
+      await controller.load();
+      await pumpLibraryUi(tester);
       expect(repository.calls.where((c) => c == 'list').length, 2);
       final library = tester.widget<LibraryScreen>(find.byType(LibraryScreen));
       expect(library.statuses[901], BookStatus.leido);
       expect(library.progresses[901], 100);
       await tester.tap(find.byIcon(Icons.person_outline).last);
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       expect(find.byType(LibrarySyncBar), findsNothing);
       final profile = tester.widget<ProfileScreen>(find.byType(ProfileScreen));
       expect(profile.statuses[901], BookStatus.leido);
@@ -302,39 +315,39 @@ void main() {
             )
             .first,
       );
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       expect(challenge, findsOneWidget);
       expect(repository.calls.where((c) => c == 'list').length, 2);
     },
   );
-  testWidgets('reload remains available after initial load error', (
-    tester,
-  ) async {
-    repository.listFailure = ApiFailure.forStatus(503);
-    await tester.pumpWidget(shell());
-    await tester.pumpAndSettle();
-    await openLibrary(tester);
-    expect(find.byKey(const ValueKey('library-options')), findsOneWidget);
-    expect(find.text('Reintentar'), findsOneWidget);
-    repository.listFailure = null;
-    await refreshLibrary(tester);
-    await tester.pumpAndSettle();
-    expect(
-      tester.widget<LibraryScreen>(find.byType(LibraryScreen)).dataAvailable,
-      true,
-    );
-    expect(repository.store, isEmpty);
-  });
+  testWidgets(
+    'reintento tras fallo inicial sigue disponible sin recarga manual',
+    (tester) async {
+      repository.listFailure = ApiFailure.forStatus(503);
+      await tester.pumpWidget(shell());
+      await pumpLibraryUi(tester);
+      await openLibrary(tester);
+      expect(find.byKey(const ValueKey('library-options')), findsOneWidget);
+      expect(find.text('Reintentar'), findsOneWidget);
+      repository.listFailure = null;
+      await tester.tap(find.text('Reintentar'));
+      await pumpLibraryUi(tester);
+      expect(
+        tester.widget<LibraryScreen>(find.byType(LibraryScreen)).dataAvailable,
+        true,
+      );
+      expect(repository.store, isEmpty);
+    },
+  );
   testWidgets('manual validation and catalog recovery preserve one creation', (
     tester,
   ) async {
     await tester.pumpWidget(shell());
-    await tester.pumpAndSettle();
+    await pumpLibraryUi(tester);
     await openLibrary(tester);
-    await tester.tap(find.byKey(const ValueKey('library-add')));
-    await tester.pumpAndSettle();
+    await openRegistration(tester);
     await tester.tap(find.text('Guardar y añadir'));
-    await tester.pumpAndSettle();
+    await pumpLibraryUi(tester);
     expect(find.text('Ingresa el título.'), findsOneWidget);
     expect(repository.calls.where((c) => c == 'create'), isEmpty);
     await tester.enterText(
@@ -343,24 +356,23 @@ void main() {
     );
     repository.mutationFailure = ApiFailure.forStatus(503);
     await tester.tap(find.text('Guardar y añadir'));
-    await tester.pumpAndSettle();
+    await pumpLibraryUi(tester);
     expect(repository.calls.where((c) => c == 'create').length, 1);
     expect(repository.store, isEmpty);
     expect(find.byKey(const ValueKey('add-library-error')), findsOneWidget);
     repository.mutationFailure = null;
     await tester.tap(find.text('Recargar catálogo'));
-    await tester.pumpAndSettle();
+    await pumpLibraryUi(tester);
     await tester.tap(find.text('Preserved manual fixture').last);
-    await tester.pumpAndSettle();
+    await pumpLibraryUi(tester);
     expect(repository.calls.where((c) => c == 'create').length, 1);
     expect(repository.store.keys, [902]);
     // Selecting an already added catalog book must remain idempotent.
-    await tester.tap(find.byKey(const ValueKey('library-add')));
-    await tester.pumpAndSettle();
+    await openRegistration(tester);
     await tester.tap(find.text('Ver catálogo'));
-    await tester.pumpAndSettle();
+    await pumpLibraryUi(tester);
     await tester.tap(find.text(repository.store[902]!.book.title).last);
-    await tester.pumpAndSettle();
+    await pumpLibraryUi(tester);
     expect(repository.store.keys, [902]);
     expect(
       repository.calls.where((c) => c == 'add').length,
@@ -372,115 +384,111 @@ void main() {
     const Size(360, 640),
     const Size(390, 844),
   ]) {
-    for (final scale in [1.0]) {
-      testWidgets(
-        'compact header $size text scale $scale keeps permissions refresh and retry',
-        (tester) async {
-          tester.view.physicalSize = size;
-          tester.view.devicePixelRatio = 1;
-          addTearDown(tester.view.resetPhysicalSize);
-          addTearDown(tester.view.resetDevicePixelRatio);
-          final source = _DelayedLibrary(auth, memory);
-          final controller = LibraryController(source);
-          addTearDown(controller.dispose);
-          await controller.load();
-          var opened = 0;
-          await tester.pumpWidget(
-            MaterialApp(
-              theme: AppTheme.light,
-              home: MediaQuery(
-                data: MediaQueryData(textScaler: TextScaler.linear(scale)),
-                child: Scaffold(
-                  body: AnimatedBuilder(
-                    animation: controller,
-                    builder: (_, _) => LibraryScreen(
-                      syncController: controller,
-                      onAddBook: () => opened++,
-                      epubStore: MemoryStore(),
-                      dataAvailable: controller.loaded,
-                      books: const [],
-                      statuses: const {},
-                      progresses: const {},
-                      reviews: const {},
-                      favorites: const {},
-                      currentName: 'Lector',
-                      currentUsername: '@lector',
-                      onOpenProfile: () {},
-                      onStatusChanged: (_, _) {},
-                      onProgressChanged: (_, _) {},
-                      onReviewSaved: (_, _) {},
-                      onToggleFavorite: (_) {},
-                    ),
-                  ),
+    testWidgets(
+      'compact header $size keeps menu, registration permissions and retry',
+      (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final source = _DelayedLibrary(auth, memory);
+        final controller = LibraryController(source);
+        addTearDown(controller.dispose);
+        await controller.load();
+        var opened = 0;
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: AppTheme.light,
+            home: Scaffold(
+              body: AnimatedBuilder(
+                animation: controller,
+                builder: (_, _) => LibraryScreen(
+                  syncController: controller,
+                  onAddBook: () => opened++,
+                  epubStore: MemoryStore(),
+                  dataAvailable: controller.loaded,
+                  books: const [],
+                  statuses: const {},
+                  progresses: const {},
+                  reviews: const {},
+                  favorites: const {},
+                  currentName: 'Lector',
+                  currentUsername: '@lector',
+                  onOpenProfile: () {},
+                  onStatusChanged: (_, _) {},
+                  onProgressChanged: (_, _) {},
+                  onReviewSaved: (_, _) {},
+                  onToggleFavorite: (_) {},
                 ),
               ),
             ),
-          );
-          await tester.pumpAndSettle();
-          expect(find.byType(LibrarySyncBar), findsNothing);
-          expect(find.text('Mi biblioteca sincronizada'), findsNothing);
-          expect(find.text('Actualizar'), findsNothing);
-          expect(find.text('MI BIBLIOTECA'), findsOneWidget);
-          final add = find.byKey(const ValueKey('library-add'));
-          expect(tester.getRect(add).height, greaterThanOrEqualTo(48));
-          expect(
-            tester.getRect(add).center.dy,
-            tester
-                .getRect(find.byKey(const ValueKey('library-options')))
-                .center
-                .dy,
-          );
-          expect(
-            tester.getRect(find.text('MI BIBLIOTECA')).right,
-            lessThanOrEqualTo(tester.getRect(add).left),
-          );
-          await tester.tap(add);
-          expect(opened, 1);
-          final beforeRefresh = source.calls.where((c) => c == 'list').length;
-          await refreshLibrary(tester);
-          expect(
-            source.calls.where((c) => c == 'list').length,
-            beforeRefresh + 1,
-          );
-          source.pendingList = Completer<List<LibraryEntry>>();
-          final loading = controller.load();
-          await tester.pump();
-          expect(tester.widget<IconButton>(add).onPressed, isNull);
-          expect(find.byType(LinearProgressIndicator), findsOneWidget);
-          await tester.tap(find.byKey(const ValueKey('library-options')));
-          await tester.pump();
-          await tester.pump(const Duration(milliseconds: 400));
-          final refresh = find.byKey(const ValueKey('library-refresh'));
-          expect(tester.widget<ListTile>(refresh).enabled, isFalse);
-          expect(tester.widget<ListTile>(refresh).onTap, isNull);
-          source.pendingList!.complete([]);
-          await loading;
-          source.pendingList = null;
-          await tester.pumpAndSettle();
-          expect(tester.widget<ListTile>(refresh).enabled, isTrue);
-          Navigator.of(tester.element(refresh)).pop();
-          await tester.pumpAndSettle();
-          source.listFailure = ApiFailure.forStatus(503);
-          await controller.load();
-          await tester.pumpAndSettle();
-          expect(
-            find.byKey(const ValueKey('library-sync-error')),
-            findsOneWidget,
-          );
-          expect(find.text('Mi biblioteca sincronizada'), findsNothing);
-          expect(find.text('Reintentar'), findsOneWidget);
-          source.listFailure = null;
-          await tester.tap(find.text('Reintentar'));
-          await tester.pumpAndSettle();
-          expect(
-            find.byKey(const ValueKey('library-sync-error')),
-            findsNothing,
-          );
-          expect(tester.widget<IconButton>(add).onPressed, isNotNull);
-          expect(tester.takeException(), isNull);
-        },
-      );
-    }
+          ),
+        );
+        await pumpLibraryUi(tester);
+        expect(find.byType(LibrarySyncBar), findsNothing);
+        expect(find.text('MI BIBLIOTECA'), findsOneWidget);
+        expect(find.byKey(const ValueKey('library-add')), findsNothing);
+        final menu = find.byKey(const ValueKey('library-options'));
+        expect(tester.getRect(menu).height, greaterThanOrEqualTo(48));
+        expect(
+          tester.getRect(find.text('MI BIBLIOTECA')).right,
+          lessThanOrEqualTo(tester.getRect(menu).left),
+        );
+        await tester.tap(menu);
+        await pumpLibraryUi(tester);
+        expect(find.text('Registra tu libro físico'), findsOneWidget);
+        expect(find.byKey(const ValueKey('library-refresh')), findsNothing);
+        await tester.tap(find.text('Registra tu libro físico'));
+        await pumpLibraryUi(tester);
+        expect(opened, 1);
+
+        source.pendingList = Completer<List<LibraryEntry>>();
+        final loading = controller.load();
+        await tester.pump();
+        expect(find.byType(LinearProgressIndicator), findsOneWidget);
+        await tester.tap(menu);
+        await pumpLibraryUi(tester);
+        final registration = find
+            .ancestor(
+              of: find.text('Registra tu libro físico'),
+              matching: find.byType(InkWell),
+            )
+            .first;
+        expect(tester.widget<InkWell>(registration).onTap, isNull);
+        expect(find.byKey(const ValueKey('library-refresh')), findsNothing);
+        Navigator.of(tester.element(registration)).pop();
+        await pumpLibraryUi(tester);
+        source.pendingList!.complete([]);
+        await loading;
+        source.pendingList = null;
+        await pumpLibraryUi(tester);
+
+        source.listFailure = ApiFailure.forStatus(503);
+        await controller.load();
+        await pumpLibraryUi(tester);
+        expect(
+          find.byKey(const ValueKey('library-sync-error')),
+          findsOneWidget,
+        );
+        expect(find.text('Reintentar'), findsOneWidget);
+        source.listFailure = null;
+        await tester.tap(find.text('Reintentar'));
+        await pumpLibraryUi(tester);
+        expect(find.byKey(const ValueKey('library-sync-error')), findsNothing);
+        await tester.tap(menu);
+        await pumpLibraryUi(tester);
+        final recoveredRegistration = find
+            .ancestor(
+              of: find.text('Registra tu libro físico'),
+              matching: find.byType(InkWell),
+            )
+            .first;
+        expect(tester.widget<InkWell>(recoveredRegistration).onTap, isNotNull);
+        Navigator.of(tester.element(recoveredRegistration)).pop();
+        await pumpLibraryUi(tester);
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   for (final size in [
@@ -488,9 +496,7 @@ void main() {
     const Size(360, 640),
     const Size(390, 844),
   ]) {
-    testWidgets('title and both header actions fit $size at text scale 2', (
-      tester,
-    ) async {
+    testWidgets('title and menu fit $size at text scale 2', (tester) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -513,20 +519,19 @@ void main() {
         ),
       );
       await tester.pumpWidget(header(true));
-      await tester.pumpAndSettle();
+      await pumpLibraryUi(tester);
       expect(find.text('MI BIBLIOTECA'), findsOneWidget);
-      await tester.tap(find.byTooltip('Añadir libro'));
+      expect(find.byKey(const ValueKey('library-add')), findsNothing);
       await tester.tap(find.byTooltip('Opciones de biblioteca'));
-      expect(addCalls, 1);
+      expect(
+        addCalls,
+        0,
+      ); // Parámetro conservado por compatibilidad; sin botón.
       expect(menuCalls, 1);
       await tester.pumpWidget(header(false));
-      await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<IconButton>(find.byKey(const ValueKey('library-add')))
-            .onPressed,
-        isNull,
-      );
+      await pumpLibraryUi(tester);
+      expect(find.byKey(const ValueKey('library-add')), findsNothing);
+      expect(find.byTooltip('Opciones de biblioteca'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
@@ -535,18 +540,20 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(shell(guest: true));
-    await tester.pumpAndSettle();
+    await pumpLibraryUi(tester);
     await openLibrary(tester);
     expect(repository.calls, isEmpty);
-    expect(find.text('Añadir libro'), findsNothing);
+    expect(find.byKey(const ValueKey('library-add')), findsNothing);
+    // El invitado no tiene acceso al menú de acciones privadas.
+    expect(find.byKey(const ValueKey('library-options')), findsNothing);
+    expect(find.text('Registra tu libro físico'), findsNothing);
+    expect(find.byKey(const ValueKey('library-refresh')), findsNothing);
     expect(
       tester
-          .widget<IconButton>(find.byKey(const ValueKey('library-add')))
-          .onPressed,
-      isNull,
-    );
-    expect(
-      tester.widget<LibraryScreen>(find.byType(LibraryScreen)).statuses,
+          .widget<LibraryScreen>(
+            find.byType(LibraryScreen, skipOffstage: false),
+          )
+          .statuses,
       isEmpty,
     );
   });
