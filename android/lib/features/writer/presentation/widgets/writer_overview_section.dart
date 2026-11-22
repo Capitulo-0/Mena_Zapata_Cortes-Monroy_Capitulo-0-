@@ -1,161 +1,80 @@
 part of '../screens/writer_screen.dart';
 
 extension _WriterOverviewSection on _WriterScreenState {
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'MIS HISTORIAS',
-                  style: GoogleFonts.cinzel(
-                    color: _headingColor,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.7,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: 'Tu espacio de escritura, ',
-                        style: GoogleFonts.merriweather(
-                          color: _textSecondaryColor,
-                          fontSize: 9,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                      TextSpan(
-                        text:
-                            '${widget.currentName.trim().isEmpty ? 'LECTOR/A' : widget.currentName.trim().toUpperCase()} ✦',
-                        style: GoogleFonts.cinzel(
-                          color: _textPrimaryColor,
-                          fontSize: 8.5,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          FilledButton.icon(
-            onPressed: _openCreateStory,
-            icon: const Icon(Icons.add_rounded, size: 15),
-            label: Text(
-              'Crear historia',
-              style: GoogleFonts.inter(
-                fontSize: 8.5,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.accent,
-              foregroundColor: AppColors.background,
-              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
-              minimumSize: const Size(0, 38),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(11),
-              ),
-              elevation: 2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildHeader() => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
+    child: WriterHeader(
+      onCreate: _openCreateStory,
+      displayName: _writerDisplayName,
+    ),
+  );
 
-  Widget _buildStats() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 11),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          border: Border.symmetric(
-            horizontal: BorderSide(
-              color: AppColors.gold.withValues(alpha: 0.24),
-            ),
-          ),
+  Widget _buildStats() => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+    child: Row(
+      children: [
+        _counter(
+          'Historias',
+          _stories.length,
+          AppColors.deep,
+          _StoryFilter.all,
         ),
-        child: Row(
+        const SizedBox(width: 7),
+        _counter(
+          'Publicadas',
+          _publishedCount,
+          AppColors.accent,
+          _StoryFilter.published,
+        ),
+        const SizedBox(width: 7),
+        _counter(
+          'Borradores',
+          _draftCount,
+          AppColors.gold,
+          _StoryFilter.drafts,
+        ),
+      ],
+    ),
+  );
+
+  Widget _counter(
+    String label,
+    int count,
+    Color color,
+    _StoryFilter filter,
+  ) => Expanded(
+    child: InkWell(
+      onTap: () => _updateState(() => _selectedFilter = filter),
+      borderRadius: BorderRadius.circular(11),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 58),
+        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 9),
+        decoration: BoxDecoration(
+          color: _surfaceColor,
+          borderRadius: BorderRadius.circular(11),
+          border: Border.all(color: color.withValues(alpha: .72), width: 1.05),
+        ),
+        child: Column(
           children: [
-            Expanded(
-              child: _buildStat(
-                value: '${_stories.length}',
-                label: _stories.length == 1 ? 'historia' : 'historias',
-                valueColor: _headingColor,
+            Text(
+              '$count',
+              style: GoogleFonts.inter(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
               ),
             ),
-            _buildVerticalDivider(),
-            Expanded(
-              child: _buildStat(
-                value: '$_publishedCount',
-                label: _publishedCount == 1 ? 'publicada' : 'publicadas',
-                valueColor: AppColors.accent,
-              ),
-            ),
-            _buildVerticalDivider(),
-            Expanded(
-              child: _buildStat(
-                value: '$_draftCount',
-                label: _draftCount == 1 ? 'borrador' : 'borradores',
-                valueColor: AppColors.gold,
-              ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(color: _textSecondaryColor, fontSize: 9),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildStat({
-    required String value,
-    required String label,
-    required Color valueColor,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          value,
-          style: GoogleFonts.merriweather(
-            color: valueColor,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(width: 4),
-        Flexible(
-          child: Text(
-            label,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.inter(
-              color: _textSecondaryColor,
-              fontSize: 7.5,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildVerticalDivider() {
-    return Container(
-      width: 1,
-      height: 25,
-      color: AppColors.gold.withValues(alpha: 0.25),
-    );
-  }
+    ),
+  );
 
   Widget _buildWorksSectionTitle() {
     return Padding(
@@ -208,15 +127,11 @@ extension _WriterOverviewSection on _WriterScreenState {
               ? _surfaceColor
               : AppColors.gold.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: AppColors.gold.withValues(alpha: 0.34),
-          ),
+          border: Border.all(color: AppColors.gold.withValues(alpha: 0.34)),
         ),
         child: Row(
           children: [
-            Expanded(
-              child: _buildFilterButton('Todas', _StoryFilter.all),
-            ),
+            Expanded(child: _buildFilterButton('Todas', _StoryFilter.all)),
             Expanded(
               child: _buildFilterButton('Publicadas', _StoryFilter.published),
             ),
@@ -321,5 +236,4 @@ extension _WriterOverviewSection on _WriterScreenState {
       ),
     );
   }
-
 }

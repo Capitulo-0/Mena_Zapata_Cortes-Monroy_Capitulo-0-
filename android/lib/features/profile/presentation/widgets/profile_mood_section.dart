@@ -2,6 +2,74 @@ part of '../screens/profile_screen.dart';
 
 extension _ProfileMoodSection on _ProfileScreenState {
   Widget _buildReaderMoodCard() {
+    if (widget.readOnly) {
+      final mood = widget.readingMood;
+      return _sectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'ESTADO LECTOR',
+              style: GoogleFonts.cinzel(
+                color: _headingColor,
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 14),
+              decoration: BoxDecoration(
+                color: _backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppColors.gold.withValues(alpha: 0.35),
+                ),
+              ),
+              child: mood == null
+                  ? Text(
+                      'Sin estado lector',
+                      style: GoogleFonts.merriweather(
+                        color: _textSecondaryColor,
+                        fontSize: 9,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        Text(mood.emoji, style: const TextStyle(fontSize: 21)),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                mood.label,
+                                style: GoogleFonts.merriweather(
+                                  color: _textPrimaryColor,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                mood.detail,
+                                style: GoogleFonts.inter(
+                                  color: _textSecondaryColor,
+                                  fontSize: 7.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      );
+    }
     return _sectionCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,7 +133,7 @@ extension _ProfileMoodSection on _ProfileScreenState {
             },
             child: Container(
               key: ValueKey<String>(
-                '${_currentMood['emoji']}-${_currentMood['label']}-$_moodIndex',
+                '${_hasReadingMood ? _currentMood['emoji'] : 'none'}-${_currentMood['label']}-$_moodIndex',
               ),
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
@@ -76,38 +144,59 @@ extension _ProfileMoodSection on _ProfileScreenState {
                   color: AppColors.gold.withValues(alpha: 0.35),
                 ),
               ),
-              child: Row(
-                children: [
-                  Text(
-                    _currentMood['emoji']!,
-                    style: const TextStyle(fontSize: 21),
-                  ),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              child: _hasReadingMood
+                  ? Row(
                       children: [
                         Text(
-                          _currentMood['label']!,
-                          style: GoogleFonts.merriweather(
-                            color: _textPrimaryColor,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
+                          _currentMood['emoji']!,
+                          style: const TextStyle(fontSize: 21),
+                        ),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _currentMood['label']!,
+                                style: GoogleFonts.merriweather(
+                                  color: _textPrimaryColor,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _currentMood['detail']!,
+                                style: GoogleFonts.inter(
+                                  color: _textSecondaryColor,
+                                  fontSize: 7.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          _currentMood['detail']!,
-                          style: GoogleFonts.inter(
-                            color: _textSecondaryColor,
-                            fontSize: 7.5,
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Icon(
+                          Icons.remove_circle_outline_rounded,
+                          color: _textSecondaryColor,
+                          size: 19,
+                        ),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: Text(
+                            'Sin estado lector',
+                            style: GoogleFonts.merriweather(
+                              color: _textSecondaryColor,
+                              fontSize: 10,
+                              fontStyle: FontStyle.italic,
+                            ),
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
             ),
           ),
           const SizedBox(height: 9),
@@ -129,29 +218,24 @@ extension _ProfileMoodSection on _ProfileScreenState {
           layoutBuilder: (currentChild, previousChildren) {
             return Stack(
               alignment: Alignment.center,
-              children: [
-                ...previousChildren,
-                ?currentChild,
-              ],
+              children: [...previousChildren, ?currentChild],
             );
           },
           transitionBuilder: (child, animation) {
-            final slide = Tween<Offset>(
-              begin: const Offset(0.055, 0),
-              end: Offset.zero,
-            ).animate(
-              CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              ),
-            );
+            final slide =
+                Tween<Offset>(
+                  begin: const Offset(0.055, 0),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                );
 
             return FadeTransition(
               opacity: animation,
-              child: SlideTransition(
-                position: slide,
-                child: child,
-              ),
+              child: SlideTransition(position: slide, child: child),
             );
           },
           child: Row(
@@ -210,12 +294,12 @@ extension _ProfileMoodSection on _ProfileScreenState {
           decoration: BoxDecoration(
             color: _deepSurfaceColor,
             shape: BoxShape.circle,
-            border: Border.all(
-              color: AppColors.gold.withValues(alpha: 0.55),
-            ),
+            border: Border.all(color: AppColors.gold.withValues(alpha: 0.55)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: _isDarkMode ? 0.16 : 0.07),
+                color: Colors.black.withValues(
+                  alpha: _isDarkMode ? 0.16 : 0.07,
+                ),
                 blurRadius: 7,
                 offset: const Offset(0, 3),
               ),
@@ -287,9 +371,19 @@ extension _ProfileMoodSection on _ProfileScreenState {
     _selectMood(next);
   }
 
-  void _selectMood(int index) {
-    if (index == _moodIndex) return;
-    _updateState(() => _moodIndex = index);
+  Future<void> _selectMood(int index) async {
+    if ((index == _moodIndex && _hasReadingMood) || _moodSaving) return;
+    final selected = _moods[index];
+    final saved = await _saveReadingMood(
+      ReadingMood(
+        emoji: selected['emoji']!,
+        label: selected['label']!,
+        detail: selected['detail']!,
+      ),
+    );
+    if (saved && mounted) {
+      _updateState(() => _moodIndex = index);
+    }
   }
 
   Future<void> _showCustomMoodEditor() async {
@@ -326,9 +420,7 @@ extension _ProfileMoodSection on _ProfileScreenState {
                 decoration: BoxDecoration(
                   color: _surfaceColor,
                   borderRadius: BorderRadius.circular(28),
-                  border: Border.all(
-                    color: _goldColor.withValues(alpha: 0.38),
-                  ),
+                  border: Border.all(color: _goldColor.withValues(alpha: 0.38)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(
@@ -352,8 +444,9 @@ extension _ProfileMoodSection on _ProfileScreenState {
                             width: 42,
                             height: 4,
                             decoration: BoxDecoration(
-                              color:
-                                  _textSecondaryColor.withValues(alpha: 0.28),
+                              color: _textSecondaryColor.withValues(
+                                alpha: 0.28,
+                              ),
                               borderRadius: BorderRadius.circular(99),
                             ),
                           ),
@@ -368,8 +461,7 @@ extension _ProfileMoodSection on _ProfileScreenState {
                                 color: _goldColor.withValues(alpha: 0.10),
                                 borderRadius: BorderRadius.circular(13),
                                 border: Border.all(
-                                  color:
-                                      _goldColor.withValues(alpha: 0.28),
+                                  color: _goldColor.withValues(alpha: 0.28),
                                 ),
                               ),
                               child: Icon(
@@ -381,8 +473,7 @@ extension _ProfileMoodSection on _ProfileScreenState {
                             const SizedBox(width: 11),
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     'ESTADO PERSONALIZADO',
@@ -460,8 +551,7 @@ extension _ProfileMoodSection on _ProfileScreenState {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       previewLabel,
@@ -544,8 +634,7 @@ extension _ProfileMoodSection on _ProfileScreenState {
                             onPressed: isSaving
                                 ? null
                                 : () async {
-                                    final label =
-                                        labelController.text.trim();
+                                    final label = labelController.text.trim();
                                     if (label.isEmpty) return;
 
                                     setModalState(() {
@@ -553,9 +642,7 @@ extension _ProfileMoodSection on _ProfileScreenState {
                                       savingDots = 1;
                                     });
 
-                                    for (var step = 0;
-                                        step < 4;
-                                        step++) {
+                                    for (var step = 0; step < 4; step++) {
                                       await Future<void>.delayed(
                                         const Duration(milliseconds: 250),
                                       );
@@ -567,35 +654,40 @@ extension _ProfileMoodSection on _ProfileScreenState {
                                       });
                                     }
 
-                                    if (!mounted ||
-                                        !sheetContext.mounted) {
+                                    if (!mounted || !sheetContext.mounted) {
                                       return;
                                     }
 
-                                    _updateState(() {
-                                      _customMoodEmoji =
-                                          emojiController.text.trim().isEmpty
-                                              ? '✨'
-                                              : emojiController.text.trim();
-                                      _customMoodLabel = label;
-                                      _customMoodDetail =
-                                          detailController.text.trim().isEmpty
-                                              ? 'Estado lector personalizado'
-                                              : detailController.text.trim();
-                                      _moodIndex = _moods.length - 1;
-                                    });
-
-                                    Navigator.of(sheetContext).pop();
+                                    final saved = await _saveReadingMood(
+                                      ReadingMood(
+                                        emoji:
+                                            emojiController.text.trim().isEmpty
+                                            ? '✨'
+                                            : emojiController.text.trim(),
+                                        label: label,
+                                        detail:
+                                            detailController.text.trim().isEmpty
+                                            ? 'Estado lector personalizado'
+                                            : detailController.text.trim(),
+                                      ),
+                                    );
+                                    if (!sheetContext.mounted) return;
+                                    if (saved) {
+                                      Navigator.of(sheetContext).pop();
+                                    } else {
+                                      setModalState(() => isSaving = false);
+                                    }
                                   },
                             style: FilledButton.styleFrom(
                               backgroundColor: isSaving
                                   ? _accentColor.withValues(alpha: 0.58)
                                   : _accentColor,
-                              disabledBackgroundColor:
-                                  _accentColor.withValues(alpha: 0.58),
+                              disabledBackgroundColor: _accentColor.withValues(
+                                alpha: 0.58,
+                              ),
                               foregroundColor: AppColors.background,
-                              disabledForegroundColor:
-                                  AppColors.background.withValues(alpha: 0.82),
+                              disabledForegroundColor: AppColors.background
+                                  .withValues(alpha: 0.82),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(14),
@@ -606,6 +698,43 @@ extension _ProfileMoodSection on _ProfileScreenState {
                                   ? 'Guardando${'.' * savingDots}'
                                   : 'Guardar estado',
                               style: GoogleFonts.inter(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: OutlinedButton.icon(
+                            onPressed: isSaving
+                                ? null
+                                : () async {
+                                    setModalState(() => isSaving = true);
+                                    final saved = await _saveReadingMood(null);
+                                    if (!sheetContext.mounted) return;
+                                    if (saved) {
+                                      Navigator.of(sheetContext).pop();
+                                    } else {
+                                      setModalState(() => isSaving = false);
+                                    }
+                                  },
+                            icon: const Icon(
+                              Icons.remove_circle_outline_rounded,
+                              size: 17,
+                            ),
+                            label: const Text('Quitar estado'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: _accentColor,
+                              side: BorderSide(
+                                color: _accentColor.withValues(alpha: 0.65),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              textStyle: GoogleFonts.inter(
                                 fontSize: 9.5,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -628,7 +757,6 @@ extension _ProfileMoodSection on _ProfileScreenState {
     labelController.dispose();
     detailController.dispose();
   }
-
 
   Widget _customMoodField({
     required TextEditingController controller,
@@ -676,9 +804,7 @@ extension _ProfileMoodSection on _ProfileScreenState {
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(
-            color: _goldColor.withValues(alpha: 0.48),
-          ),
+          borderSide: BorderSide(color: _goldColor.withValues(alpha: 0.48)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -692,11 +818,6 @@ extension _ProfileMoodSection on _ProfileScreenState {
 
     if (!isMultiline) return field;
 
-    return SizedBox(
-      height: 58,
-      child: field,
-    );
+    return SizedBox(height: 58, child: field);
   }
-
-
 }

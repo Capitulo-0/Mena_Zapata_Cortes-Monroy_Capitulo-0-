@@ -1,0 +1,162 @@
+[
+  {
+    "slug": "rima_1885_01",
+    "title": "Rima I",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima I, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Yo sé un himno gigante y extraño Verso final: Pudiera, al oirlo, cantártelo á solas.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima I",
+        "beginning": "I\n\nYo sé un himno gigante y extraño\nQue anuncia en la noche del alma una aurora,\nY estas páginas son",
+        "ending": "s, colores y notas.\n\nPero en vano es luchar; que no hay cifra\nCapaz de encerrarlo, y apenas ¡oh hermosa!\nSi, teniendo en mis manos las tuyas,\nPudiera, al oirlo, cantártelo á solas.",
+        "extraction": "poem:I",
+        "reviewed_headings": [
+          "I"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_02",
+    "title": "Rima II",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima II, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Saeta que voladora Verso final: Mis pasos me llevarán.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima II",
+        "beginning": "II\n\nSaeta que voladora\nCruza, arrojada al azar,\nSin adivinarse dónde\nTemblando se clavará;\n\nHoja que",
+        "ending": "rosos\nBrilla, próxima á espirar,\nIgnorándose cuál de ellos\nEl último brillará;\n\nEso soy yo, que al acaso\nCruzo el mundo, sin pensar\nDe dónde vengo, ni adónde\nMis pasos me llevarán.",
+        "extraction": "poem:II",
+        "reviewed_headings": [
+          "II"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_03",
+    "title": "Rima III",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima III, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Sacudimiento extraño Verso final: A un yugo atar las dos.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima III",
+        "beginning": "III\n\nSacudimiento extraño\nQue agita las ideas,\nComo huracán que empuja\nLas olas en tropel;\n\nMurmullo",
+        "ending": " la fiebre apaga;\nOásis que al espíritu\nDevuelve su vigor...\n¡Tal es nuestra razón!\n\nCon ambas siempre en lucha\nY de ambas vencedor,\nTan sólo el genio puede\nA un yugo atar las dos.",
+        "extraction": "poem:III",
+        "reviewed_headings": [
+          "III"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_04",
+    "title": "Rima IV",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima IV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: No digais que agotado su tesoro, Verso final: ¡Habrá poesía!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima IV",
+        "beginning": "IV\n\nNo digais que agotado su tesoro,\nDe asuntos falta, enmudeció la lira:\nPodrá no haber poetas; per",
+        "ending": "los miran;\nMientras responda el labio suspirando\nAl labio que suspira;\n\nMientras sentirse puedan en un beso\nDos almas confundidas;\nMientras exista una mujer hermosa,\n¡Habrá poesía!",
+        "extraction": "poem:IV",
+        "reviewed_headings": [
+          "IV"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_05",
+    "title": "Rima V",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima V, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Espíritu sin nombre Verso final: De que es vaso el poeta.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima V",
+        "beginning": "V\n\nEspíritu sin nombre\nIndefinible esencia,\nYo vivo con la vida\nSin formas de la idea.\n\nYo nado en e",
+        "ending": "ra,\n\nYo soy el invisible\nAnillo que sujeta\nEl mundo de la forma\nAl mundo de la idea.\n\nYo, en fin, soy ese espíritu,\nDesconocida esencia,\nPerfume misterioso\nDe que es vaso el poeta.",
+        "extraction": "poem:V",
+        "reviewed_headings": [
+          "V"
+        ]
+      }
+    ]
+  }
+]

@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -8,18 +9,12 @@ class MapsFilters extends StatelessWidget {
   const MapsFilters({
     super.key,
     required this.scrollController,
-    required this.hasJoinedClubs,
-    required this.showJoinedClubs,
     required this.selectedFilter,
-    required this.onJoinedClubsTap,
     required this.onFilterTap,
   });
 
   final ScrollController scrollController;
-  final bool hasJoinedClubs;
-  final bool showJoinedClubs;
   final MapPointType? selectedFilter;
-  final VoidCallback onJoinedClubsTap;
   final ValueChanged<MapPointType?> onFilterTap;
 
   @override
@@ -34,60 +29,53 @@ class MapsFilters extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (hasJoinedClubs) ...[
-              _FilterChip(
-                label: 'Mis clubes',
-                icon: Icons.groups_2_outlined,
-                selected: showJoinedClubs,
-                onTap: onJoinedClubsTap,
-              ),
-              const SizedBox(width: 6),
-            ],
             _FilterChip(
               label: 'Todos',
-              icon: Icons.public,
-              selected: !showJoinedClubs && selectedFilter == null,
+              emoji: '🌍',
+              selected: selectedFilter == null,
               onTap: () => onFilterTap(null),
             ),
             const SizedBox(width: 6),
             _FilterChip(
               label: 'Bibliotecas',
-              icon: Icons.local_library_outlined,
-              selected:
-                  !showJoinedClubs && selectedFilter == MapPointType.library,
+              emoji: '📚',
+              selected: selectedFilter == MapPointType.library,
               onTap: () => onFilterTap(MapPointType.library),
             ),
             const SizedBox(width: 6),
             _FilterChip(
               label: 'Cafés',
-              icon: Icons.local_cafe_outlined,
-              selected:
-                  !showJoinedClubs && selectedFilter == MapPointType.cafe,
+              emoji: '☕',
+              selected: selectedFilter == MapPointType.cafe,
               onTap: () => onFilterTap(MapPointType.cafe),
             ),
             const SizedBox(width: 6),
             _FilterChip(
-              label: 'Ferias',
-              icon: Icons.menu_book_outlined,
-              selected:
-                  !showJoinedClubs && selectedFilter == MapPointType.bookFair,
-              onTap: () => onFilterTap(MapPointType.bookFair),
+              label: 'Librerías',
+              emoji: '📖',
+              selected: selectedFilter == MapPointType.bookstore,
+              onTap: () => onFilterTap(MapPointType.bookstore),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             _FilterChip(
-              label: 'Eventos',
-              icon: Icons.auto_stories_outlined,
-              selected: !showJoinedClubs &&
-                  selectedFilter == MapPointType.literaryEvent,
-              onTap: () => onFilterTap(MapPointType.literaryEvent),
+              label: 'Museos',
+              emoji: '🏛️',
+              selected: selectedFilter == MapPointType.museum,
+              onTap: () => onFilterTap(MapPointType.museum),
             ),
             const SizedBox(width: 6),
             _FilterChip(
               label: 'Cultura',
-              icon: Icons.account_balance_outlined,
-              selected: !showJoinedClubs &&
-                  selectedFilter == MapPointType.culturalCenter,
+              emoji: '🎭',
+              selected: selectedFilter == MapPointType.culturalCenter,
               onTap: () => onFilterTap(MapPointType.culturalCenter),
+            ),
+            const SizedBox(width: 6),
+            _FilterChip(
+              label: 'Parques',
+              emoji: '🌳',
+              selected: selectedFilter == MapPointType.park,
+              onTap: () => onFilterTap(MapPointType.park),
             ),
           ],
         ),
@@ -99,52 +87,62 @@ class MapsFilters extends StatelessWidget {
 class _FilterChip extends StatelessWidget {
   const _FilterChip({
     required this.label,
-    required this.icon,
+    required this.emoji,
     required this.selected,
     required this.onTap,
   });
 
   final String label;
-  final IconData icon;
+  final String emoji;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ChoiceChip(
-      selected: selected,
-      showCheckmark: false,
-      onSelected: (_) => onTap(),
-      avatar: Icon(
-        icon,
-        size: 16,
-        color: selected
-            ? AppColors.deepOf(context)
-            : AppColors.goldOf(context),
-      ),
-      label: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: GoogleFonts.inter(
-          fontSize: 10.5,
-          fontWeight: FontWeight.w600,
-          color: selected
-              ? AppColors.deepOf(context)
-              : AppColors.textPrimaryOf(context),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-      labelPadding: const EdgeInsets.symmetric(horizontal: 2),
-      selectedColor: AppColors.goldOf(context),
-      backgroundColor: AppColors.surfaceOf(context),
-      side: BorderSide(
-        color: selected
-            ? AppColors.goldOf(context)
-            : AppColors.goldOf(context).withValues(alpha: 0.28),
-      ),
+    final borderRadius = BorderRadius.circular(18);
+    final borderColor = selected
+        ? AppColors.goldOf(context)
+        : AppColors.goldOf(context).withValues(alpha: 0.28);
+
+    return Material(
+      color: selected
+          ? AppColors.goldOf(context)
+          : AppColors.surfaceOf(context),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: borderRadius,
+        side: BorderSide(color: borderColor),
+      ),
+      child: InkWell(
+        borderRadius: borderRadius,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                emoji,
+                style: const TextStyle(fontSize: 15),
+              ),
+              const SizedBox(width: 7),
+              Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                style: GoogleFonts.inter(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  color: selected
+                      ? AppColors.deepOf(context)
+                      : AppColors.textPrimaryOf(context),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

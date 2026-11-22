@@ -1,0 +1,298 @@
+package com.capitulo0.backend;
+
+import java.net.URI;
+import java.net.http.*;
+import java.util.*;
+import com.capitulo0.backend.auth.model.AuthenticatedFirebaseUser;
+import com.capitulo0.backend.auth.service.FirebaseTokenVerifier;
+import com.capitulo0.backend.user.entity.User;
+import com.capitulo0.backend.recommendation.GeminiRecommendationClient;
+import com.capitulo0.backend.integration.googlebooks.GoogleBooksService;
+import com.capitulo0.backend.integration.googlebooks.GoogleBook;
+import com.capitulo0.backend.writer.WriterStoryRepository;
+import com.capitulo0.backend.writer.WriterService;
+import com.capitulo0.backend.writer.WriterDocument;
+import com.capitulo0.backend.user.repository.UserRepository;
+import com.capitulo0.backend.catalog.book.entity.Book;
+import com.capitulo0.backend.catalog.book.repository.BookRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.*;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("test")
+class SecurityEndpointTests {
+    @Value("${local.server.port}") int port;
+    @MockitoBean FirebaseTokenVerifier verifier;
+    @MockitoBean GeminiRecommendationClient gemini;
+    @MockitoBean GoogleBooksService googleBooks;
+    @Autowired WriterStoryRepository writerStories;
+    @Autowired WriterService writer;
+    @Autowired UserRepository users;
+    @Autowired BookRepository books;
+    private final HttpClient client = HttpClient.newHttpClient();
+    private final JsonMapper json = JsonMapper.builder().build();
+    private final Map<String, AuthenticatedFirebaseUser> tokens = new HashMap<>();
+
+    @BeforeEach void tokens() {
+        when(verifier.verify(anyString())).thenAnswer(call -> {
+            String token = call.getArgument(0);
+            if (token.equals("service-unavailable")) throw new AuthenticationServiceException("sensitive internal detail");
+            var identity = tokens.get(token);
+            if (identity == null) throw new BadCredentialsException("sensitive token detail");
+            return identity;
+        });
+    }
+    private User user() {
+        User user = User.create();
+        user.setEmail(UUID.randomUUID() + "@example.test");
+        user.setDisplayName("Domain name");
+        user.setFirebaseUid("uid-" + UUID.randomUUID());
+        return users.saveAndFlush(user);
+    }
+    private String token(User user) {
+        String token = "test-" + UUID.randomUUID();
+        tokens.put(token, new AuthenticatedFirebaseUser(user.getFirebaseUid(), "different@example.test", "Token name"));
+        return "Bearer " + token;
+    }
+    private long book() {
+        Book book = Book.create(); book.setTitle("Security test book"); book.setTotalPages(100);
+        return books.saveAndFlush(book).getId();
+    }
+    private HttpResponse<String> call(String method, String path, String authorization, String body) throws Exception {
+        var request = HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + path))
+            .header("Content-Type", "application/json")
+            .method(method, body == null ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body));
+        if (authorization != null) request.header("Authorization", authorization);
+        return client.send(request.build(), HttpResponse.BodyHandlers.ofString());
+    }
+    private JsonNode data(HttpResponse<String> response, int status) {
+        assertThat(response.statusCode()).as(response.body()).isEqualTo(status);
+        return json.readTree(response.body());
+    }
+    @Test void healthAndCatalogArePublicAndIgnoreTokens() throws Exception {
+        data(call("GET", "/api/health", null, null), 200);
+        data(call("GET", "/api/books", null, null), 200);
+        data(call("GET", "/api/books/" + book(), "Bearer invalid", null), 200);
+        verifyNoInteractions(verifier);
+    }
+    @Test void protectedRoutesRejectMissingAndMalformedCredentials() throws Exception {
+        for (String path : List.of("/api/me", "/api/me/library", "/api/users", "/api/users/1/library")) {
+            var response = call("GET", path, null, null);
+            JsonNode error = data(response, 401);
+            assertThat(error.hasNonNull("timestamp")).isTrue();
+            assertThat(error.has("details")).isTrue();
+            assertThat(response.headers().firstValue("WWW-Authenticate")).hasValue("Bearer");
+            assertThat(response.headers().firstValue("Set-Cookie")).isEmpty();
+        }
+        for (String authorization : List.of("Bearer", "Bearer ", "Basic abc", "Bearer one two", "Bearer a,b")) {
+            data(call("GET", "/api/me", authorization, null), 401);
+        }
+        verifyNoInteractions(verifier);
+    }
+    @Test void directAuthorTitleAndSeriesUseCatalogWithoutGemini() throws Exception {
+        final var path = "/api/me/assistant";
+        final var auth = token(user());
+        final var book = new GoogleBook("id", "Culpa mía", "Saga Culpables", List.of("Mercedes Ron"),
+            null, null, null, null, List.of(), "es", Map.of(), null, null);
+        var page = new GoogleBooksService.Page(List.of(book), 1, 0, 24, null);
+        when(googleBooks.search(anyString(), anyString(), anyInt(), anyInt(), nullable(String.class))).thenReturn(page);
+        for (var message : List.of("libros de mercedes ron", "¿Qué libros tiene Mercedes Ron?",
+                "Busca Culpa mía", "¿Cuáles son los libros de la saga Culpables?")) {
+            var reply = data(call("POST", path, auth, json.writeValueAsString(Map.of("message", message))), 200);
+            assertThat(reply.path("books").get(0).path("volumeId").asText()).isEqualTo("id");
+        }
+        var repeat = data(call("POST", path, auth, """
+            {"message":"Mercedes Ron","history":[{"role":"user","text":"libros de mercedes ron"}]}
+            """), 200);
+        assertThat(repeat.path("books").size()).isEqualTo(1);
+        verify(googleBooks, atLeastOnce()).search(eq("\"mercedes ron\""), eq("author"), eq(0), eq(24), eq("es"));
+        verify(googleBooks).search(eq("\"Culpa mía\""), eq("title"), eq(0), eq(24), eq("es"));
+        verify(googleBooks).search(eq("\"Culpables\""), eq("all"), eq(0), eq(24), eq("es"));
+        verifyNoInteractions(gemini);
+
+        when(gemini.configured()).thenReturn(true);
+        when(gemini.generate(anyString(), anyMap(), anyMap(), anyInt(), anyString())).thenReturn(json.readTree("""
+            {"mode":"TEXT","sections":[{"heading":"Idea","text":"Una biblioteca","action":"NONE"}]}
+            """));
+        for (int attempt = 0; attempt < 12; attempt++)
+            data(call("POST", path, auth, "{\"message\":\"Dame una idea\"}"), 200);
+        var limited = call("POST", path, auth, "{\"message\":\"Dame otra idea\"}");
+        assertThat(data(limited, 429).path("code").asText()).isEqualTo("CHAT_GENERATION_LIMIT");
+        assertThat(limited.headers().firstValue("Retry-After")).isPresent();
+        data(call("POST", path, auth, "{\"message\":\"Libros de Mercedes Ron\"}"), 200);
+        verify(gemini, times(12)).generate(anyString(), anyMap(), anyMap(), anyInt(), anyString());
+    }
+
+    @Test void followUpForOtherAuthorsExcludesThePreviousAuthorAndSelection() throws Exception {
+        var same = new GoogleBook("same", "Otra novela", null, List.of("Mercedes Ron"),
+            null, null, null, null, List.of("Romance"), "es", Map.of(), null, null);
+        var prior = new GoogleBook("prior", "Una novela", null, List.of("Otra autora"),
+            null, null, null, null, List.of("Romance"), "es", Map.of(), null, null);
+        var fresh = new GoogleBook("fresh", "La última carta", null, List.of("Autora nueva"),
+            null, null, null, null, List.of("Romance"), "es", Map.of(), null, null);
+        when(gemini.configured()).thenReturn(true);
+        when(gemini.generate(anyString(), anyMap(), anyMap(), anyInt(), anyString())).thenReturn(json.readTree("""
+            {"mode":"BOOKS","queries":["romance juvenil"],"terms":["romance"],
+             "excludedWorks":[],"excludedTopics":[],"narrative":true,"maxPages":0,"sections":[]}
+            """));
+        when(googleBooks.search("romance juvenil", "all", 0, 24, "es"))
+            .thenReturn(new GoogleBooksService.Page(List.of(same, prior, fresh), 3, 0, 24, null));
+        var reply = data(call("POST", "/api/me/assistant", token(user()), """
+            {"message":"Ahora otros autores similares","history":[
+              {"role":"user","text":"Libros de Mercedes Ron"},
+              {"role":"assistant","text":"Última selección de catálogo:\\n1. Una novela — Otra autora"}
+            ]}
+            """), 200);
+        assertThat(reply.path("books").size()).isEqualTo(1);
+        assertThat(reply.path("books").get(0).path("volumeId").asText()).isEqualTo("fresh");
+        verify(googleBooks).search("romance juvenil", "all", 0, 24, "es");
+    }
+
+    @Test void literaryChatRequiresVerifiedIdentityAndDoesNotWriteStories() throws Exception {
+        String path = "/api/me/assistant";
+        String body = "{\"message\":\"Dame una idea\"}";
+        data(call("POST", path, null, body), 401);
+        data(call("GET", path + "/stories", null, null), 401);
+        verifyNoInteractions(gemini);
+        var owner = user();
+        var authorization = token(owner);
+        var other = token(user());
+        var now = java.time.Instant.now();
+        writer.save(owner.getId(), "other", new WriterDocument("other", "Historia propia", "Sinopsis", "Misterio",
+            null, "draft", List.of(new WriterDocument.Chapter("one", "Capítulo", "secreto" + "x".repeat(3000),
+                1, false, now, now)), now, now, 0L, 0, 0.0));
+        var count = writerStories.count();
+        when(gemini.configured()).thenReturn(true);
+        when(gemini.generate(anyString(), anyMap(), anyMap(), anyInt(), anyString()))
+            .thenReturn(json.readTree("""
+                {"mode":"TEXT","query":"","maxPages":0,"sections":[
+                {"heading":"Una idea","text":"La llave","action":"NONE"}]}
+                """));
+        assertThat(data(call("POST", path, authorization, body), 200)
+            .path("sections").get(0).path("text").asText()).isEqualTo("La llave");
+        data(call("POST", path, other, """
+            {"message":"Continúa","storyId":"other","shareStory":true}
+            """), 404);
+        data(call("POST", path, authorization, """
+            {"message":"Continúa","storyId":"other","chapterId":"one","shareStory":false}
+            """), 400);
+        assertThat(data(call("GET", path + "/stories", authorization, null), 200)
+            .get(0).path("id").asText()).isEqualTo("other");
+        assertThat(data(call("GET", path + "/stories/other/chapters", authorization, null), 200)
+            .get(0).path("id").asText()).isEqualTo("one");
+        data(call("GET", path + "/stories/other/chapters", other, null), 404);
+        data(call("POST", path, authorization, """
+            {"message":"Continúa","history":[{"role":"assistant","text":"La segunda idea"}],
+             "storyId":"other","chapterId":"one","shareStory":true}
+            """), 200);
+        verify(gemini).generate(anyString(), argThat(fields ->
+            "x".repeat(3000).equals(fields.get("fragmento final del capítulo"))
+            && fields.get("historial").contains("La segunda idea")), anyMap(), anyInt(), anyString());
+        assertThat(writerStories.count()).isEqualTo(count);
+    }
+    @Test void writerAssistantUsesBearerFilterAndLeavesStoriesUntouched() throws Exception {
+        var path = "/api/me/writer/assistant";
+        var body = "{\"task\":\"IDEAS\",\"direction\":\"Una biblioteca\"}";
+        var authorization = token(user());
+        var count = writerStories.count();
+        data(call("POST", path, null, body), 401);
+        data(call("POST", path, "Bearer invalid", body), 401);
+        verifyNoInteractions(gemini);
+        when(gemini.configured()).thenReturn(true);
+        when(gemini.generate(anyString(), anyMap(), anyMap(), anyInt(), anyString()))
+            .thenReturn(json.readTree("{\"suggestions\":[\"Una pista discreta\"]}"));
+        assertThat(data(call("POST", path, authorization, body), 200)
+            .path("suggestions").get(0).asText()).isEqualTo("Una pista discreta");
+        assertThat(writerStories.count()).isEqualTo(count);
+    }
+    @Test void invalidOrExpiredTokensHaveSanitized401() throws Exception {
+        for (String token : List.of("invalid", "expired")) {
+            var response = call("GET", "/api/me", "Bearer " + token, null);
+            data(response, 401);
+            assertThat(response.body()).doesNotContain("sensitive", "stackTrace", "private_key");
+        }
+    }
+    @Test void unavailableIdentityServiceReturns503WithoutDetails() throws Exception {
+        var response = call("GET", "/api/me", "Bearer service-unavailable", null);
+        data(response, 503);
+        assertThat(response.body()).doesNotContain("sensitive internal detail");
+    }
+    @Test void meUsesVerifiedUidNotClientSuppliedIdsOrEmail() throws Exception {
+        User first = user(), second = user();
+        first.setUsername("edu");
+        first.setBiography("Me encanta leer manga y novelas.");
+        first.setAvatarUrl("https://example.test/avatar.png");
+        users.saveAndFlush(first);
+        String authorization = token(first);
+        var response = call("GET", "/api/me?firebaseUid=" + second.getFirebaseUid() + "&userId=" + second.getId(),
+            authorization, null);
+        JsonNode result = data(response, 200);
+        assertThat(result.get("id").asLong()).isEqualTo(first.getId());
+        assertThat(result.get("email").asString()).isEqualTo(first.getEmail());
+        assertThat(result.get("displayName").asString()).isEqualTo("Domain name");
+        assertThat(result.get("username").asString()).isEqualTo("edu");
+        assertThat(result.get("biography").asString())
+            .isEqualTo("Me encanta leer manga y novelas.");
+        assertThat(result.get("avatarUrl").asString())
+            .isEqualTo("https://example.test/avatar.png");
+        assertThat(result.has("firebaseUid")).isFalse();
+        assertThat(result.has("firebase_uid")).isFalse();
+        assertThat(response.headers().firstValue("Set-Cookie")).isEmpty();
+        verify(verifier, times(1)).verify(authorization.substring(7));
+        data(call("GET", "/api/me", null, null), 401); // no security context leaked to another request
+    }
+    @Test void unlinkedUidDoesNotAutoLinkByMatchingEmail() throws Exception {
+        User legacy = User.create(); legacy.setEmail(UUID.randomUUID() + "@example.test");
+        users.saveAndFlush(legacy);
+        String raw = "unlinked-" + UUID.randomUUID();
+        tokens.put(raw, new AuthenticatedFirebaseUser("new-uid", legacy.getEmail(), "Not linked"));
+        data(call("GET", "/api/me", "Bearer " + raw, null), 404);
+        assertThat(users.findById(legacy.getId()).orElseThrow().getFirebaseUid()).isNull();
+        assertThat(users.existsByFirebaseUid("new-uid")).isFalse();
+    }
+    @Test void legacyUserManagementIsDisabledEvenForValidIdentity() throws Exception {
+        String authorization = token(user());
+        data(call("GET", "/api/users", authorization, null), 403);
+        data(call("POST", "/api/users", authorization,
+            "{\"email\":\"spoof@example.test\",\"firebase_uid\":\"spoof\"}"), 403);
+        assertThat(users.existsByEmailIgnoreCase("spoof@example.test")).isFalse();
+        data(call("POST", "/api/users", null, "{}"), 401);
+    }
+    @Test void ownLibraryWorksAndLegacyPathCannotBeUsedToAccessAnotherUser() throws Exception {
+        User first = user(), second = user();
+        String authFirst = token(first), authSecond = token(second);
+        long book = book();
+        JsonNode entry = data(call("POST", "/api/me/library?userId=" + second.getId(), authFirst,
+            "{\"bookId\":" + book + ",\"firebaseUid\":\"" + second.getFirebaseUid() + "\",\"userId\":" + second.getId() + "}"), 201);
+        assertThat(entry.get("userId").asLong()).isEqualTo(first.getId());
+        assertThat(data(call("GET", "/api/me/library", authSecond, null), 200).size()).isZero();
+        String otherPath = "/api/users/" + first.getId() + "/library";
+        for (String method : List.of("GET", "POST", "PATCH", "DELETE")) {
+            String path = method.equals("PATCH") || method.equals("DELETE") ? otherPath + "/" + book : otherPath;
+            String body = method.equals("POST") ? "{\"bookId\":" + book + "}" : method.equals("PATCH") ? "{\"currentPage\":50}" : null;
+            data(call(method, path, authSecond, body), 403);
+        }
+        data(call("PATCH", otherPath + "/" + book, authFirst,
+            "{\"status\":\"LEYENDO\",\"currentPage\":25}"), 200);
+        assertThat(data(call("GET", "/api/me/library", authFirst, null), 200).get(0).get("currentPage").asInt()).isEqualTo(25);
+        data(call("PATCH", "/api/me/library/" + book, authFirst, "{\"status\":\"LEIDO\"}"), 200);
+        assertThat(call("DELETE", "/api/me/library/" + book, authFirst, null).statusCode()).isEqualTo(204);
+        assertThat(data(call("GET", otherPath, authFirst, null), 200).size()).isZero();
+    }
+    @Test void bookCreationRequiresToken() throws Exception {
+        data(call("POST", "/api/books", null, "{\"title\":\"Book\"}"), 401);
+        data(call("POST", "/api/books", token(user()), "{\"title\":\"Book\"}"), 201);
+    }
+}

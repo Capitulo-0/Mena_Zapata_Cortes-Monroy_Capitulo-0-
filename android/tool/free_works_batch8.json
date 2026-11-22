@@ -1,0 +1,162 @@
+[
+  {
+    "slug": "rima_1885_26",
+    "title": "Rima XXVI",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXVI, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Voy contra mi interés al confesarlo; Verso final: Y con oro, cualquiera hace poesía.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXVI",
+        "beginning": "XXVI\n\nVoy contra mi interés al confesarlo;\nPero yo, amada mía,\nPienso, cual tú, que una oda sólo es ",
+        "ending": "invierno se embozan con la lira!\n¡Ladridos de los perros á la luna!\nTú sabes y yo sé que en esta vida,\nCon genio, es muy contado quien la escribe\nY con oro, cualquiera hace poesía.",
+        "extraction": "poem:XXVI",
+        "reviewed_headings": [
+          "XXVI"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_27",
+    "title": "Rima XXVII",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXVII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Despierta, tiemblo al mirarte; Verso final: —¡Duerme!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXVII",
+        "beginning": "XXVII\n\nDespierta, tiemblo al mirarte;\nDormida me atrevo á verte;\nPor eso, alma de mi alma,\nYo velo m",
+        "ending": "rque no suene\nSu latido, y de la noche\nTurbe la calma solemne.\n\nDe tu balcón las persianas\nCerré ya, porque no entre\nEl resplandor enojoso\nDe la aurora, y te despierte...\n—¡Duerme!",
+        "extraction": "poem:XXVII",
+        "reviewed_headings": [
+          "XXVII"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_28",
+    "title": "Rima XXVIII",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXVIII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Cuando entre la sombra oscura Verso final: Me das tu aliento á beber?",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXVIII",
+        "beginning": "XXVIII\n\nCuando entre la sombra oscura\nPerdida una voz murmura\nTurbando su triste calma,\nSi en el fon",
+        "ending": "\nY en la alta noche sombría;\nSi en todo cuanto rodea\nAl alma que te desea\nTe creo sentir y ver;\nDíme: ¿es que toco y respiro\nSoñando, ó que en un suspiro\nMe das tu aliento á beber?",
+        "extraction": "poem:XXVIII",
+        "reviewed_headings": [
+          "XXVIII"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_29",
+    "title": "Rima XXIX",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXIX, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Sobre la falda tenía Verso final: —¡Ya lo comprendo!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXIX",
+        "beginning": "XXIX\n\nSobre la falda tenía\nEl libro abierto;\nEn mi mejilla tocaban\nSus rizos negros;\nNo veíamos las ",
+        "ending": " de Dante era el libro,\nEra su Infierno.\nCuando á él bajamos los ojos,\nYo dije trémulo:\n¿Comprendes ya que un poema\nCabe en un verso?\nY ella respondió encendida:\n—¡Ya lo comprendo!",
+        "extraction": "poem:XXIX",
+        "reviewed_headings": [
+          "XXIX"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_30",
+    "title": "Rima XXX",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXX, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Asomaba á sus ojos una lágrima Verso final: Y ella dirá: ¿por qué no lloré yo?",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXX",
+        "beginning": "XXX\n\nAsomaba á sus ojos una lágrima\ny á mi labio una frase de perdón;\nHabló el orgullo y se enjugó s",
+        "ending": "la frase en mis labios espiró.\n\nYo voy por un camino, ella por otro;\nPero al pensar en nuestro mutuo amor,\nYo digo aún: ¿por qué callé aquel día?\nY ella dirá: ¿por qué no lloré yo?",
+        "extraction": "poem:XXX",
+        "reviewed_headings": [
+          "XXX"
+        ]
+      }
+    ]
+  }
+]

@@ -30,23 +30,13 @@ extension _ProfileReviewsReadingSection on _ProfileScreenState {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(7),
-                    child: Image.network(
-                      book.cover,
-                      width: 52,
-                      height: 74,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        width: 52,
-                        height: 74,
-                        color: _deepSurfaceColor,
-                        child: const Icon(
-                          Icons.menu_book,
-                          color: AppColors.gold,
-                        ),
-                      ),
-                    ),
+                  LiteraryCover(
+                    reference: book.cover,
+                    title: book.title,
+                    author: book.author,
+                    identity: 'profile:${book.id}',
+                    width: 52,
+                    height: 74,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -212,10 +202,7 @@ extension _ProfileReviewsReadingSection on _ProfileScreenState {
     );
   }
 
-  Widget _buildShelfVisual({
-    required bool compact,
-    List<Object>? sourceItems,
-  }) {
+  Widget _buildShelfVisual({required bool compact, List<Object>? sourceItems}) {
     final books = sourceItems ?? _readBooks.cast<Object>();
     final rowCount = compact ? 2 : 4;
     final perRow = compact ? 5 : 6;
@@ -434,11 +421,7 @@ extension _ProfileReviewsReadingSection on _ProfileScreenState {
     }
   }
 
-  Widget _shelfSpine(
-    Object item, {
-    required int index,
-    required bool compact,
-  }) {
+  Widget _shelfSpine(Object item, {required int index, required bool compact}) {
     const colors = [
       Color(0xFF2E6293),
       Color(0xFFE8D7B8),
@@ -470,8 +453,7 @@ extension _ProfileReviewsReadingSection on _ProfileScreenState {
 
     final color = colors[index % colors.length];
     final width = compact ? 17.0 + (index % 3) : 21.0 + (index % 3) * 1.5;
-    final height =
-        compact ? 53.0 + (index % 4) * 6 : 76.0 + (index % 4) * 8;
+    final height = compact ? 53.0 + (index % 4) * 6 : 76.0 + (index % 4) * 8;
     final lightText = color.computeLuminance() < 0.48;
 
     return Tooltip(

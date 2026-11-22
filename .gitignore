@@ -58,3 +58,15 @@ google-services.json
 *.swp
 *~
 
+
+# Firebase Admin / ADC local credentials (never commit private keys)
+*firebase-adminsdk*.json
+*service-account*.json
+*service_account*.json
+application_default_credentials.json
+credentials.json
+credentials/
+.credentials/
+secrets/
+*serviceAccount*.json
+*-credentials.json

@@ -1,13 +1,23 @@
+import '../../../../core/widgets/literary_cover.dart';
+
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../library/presentation/screens/library_screen.dart';
 import '../../../library/presentation/widgets/book_interaction_store.dart';
+import '../../../library/presentation/widgets/reading_status_field.dart';
 
 class HomeBookDetailScreen extends StatefulWidget {
   const HomeBookDetailScreen({
     super.key,
+    this.onRead,
+    this.readStatus,
+    this.readProgress,
+    this.onStatusChanged,
+    this.initialProgress = 0,
     required this.book,
     required this.currentUsername,
     required this.initialReview,
@@ -20,6 +30,12 @@ class HomeBookDetailScreen extends StatefulWidget {
     required this.onGuestRestrictedAction,
   });
 
+  final Future<int?> Function()? onRead;
+  final BookStatus? Function()? readStatus;
+  final int Function()? readProgress;
+  final FutureOr<void> Function(BookStatus)? onStatusChanged;
+  final int initialProgress;
+
   final Map<String, dynamic> book;
   final String currentUsername;
   final BookReview? initialReview;
@@ -27,7 +43,7 @@ class HomeBookDetailScreen extends StatefulWidget {
   final bool initiallyFavorite;
   final VoidCallback onToggleFavorite;
   final VoidCallback onOpenOwnProfile;
-  final VoidCallback onAddToLibrary;
+  final FutureOr<void> Function() onAddToLibrary;
   final bool isGuest;
   final VoidCallback onGuestRestrictedAction;
 
@@ -42,6 +58,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
 
   bool _compactHeader = false;
   bool _favorite = false;
+  int? _readingProgress;
 
   bool _hasReview = false;
   bool _reviewEditorOpen = false;
@@ -56,8 +73,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   final List<Map<String, dynamic>> _comments = [
     {
       'user': '@lectora_clasica',
-      'text':
-          'La evolución entre Elizabeth y Darcy me sigue pareciendo brillante en cada relectura.',
+      'text': 'La evolución entre Elizabeth y Darcy me sigue pareciendo brillante en cada relectura.',
       'likes': 11,
       'liked': false,
       'replying': false,
@@ -67,8 +83,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     },
     {
       'user': '@clubdelasletras',
-      'text':
-          'Una lectura muy entretenida para conversar sobre orgullo, prejuicios y primeras impresiones.',
+      'text': 'Una lectura muy entretenida para conversar sobre orgullo, prejuicios y primeras impresiones.',
       'likes': 3,
       'liked': false,
       'replying': false,
@@ -95,6 +110,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   String get _isbn => widget.book['isbn']?.toString() ?? '';
   int get _year => widget.book['year'] as int? ?? 0;
   double get _bookRating => widget.book['rating'] as double? ?? 0;
+  bool get _isInLibrary => widget.readStatus?.call() != null;
+  bool get _isRead => widget.readStatus?.call() == BookStatus.leido;
   bool get _isFree => widget.book['availability']?.toString() == 'GRATIS';
 
   @override
@@ -106,13 +123,15 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       (_) => TextEditingController(),
     );
 
-    final bookId = widget.book['id'] as int;
+    final bookId = widget.book['id'] as int?;
     for (var index = 0; index < _comments.length; index++) {
-      _comments[index]['replies'] =
-          BookInteractionStore.repliesFor(bookId, index);
+      _comments[index]['replies'] = bookId == null
+          ? <Map<String, dynamic>>[]
+          : BookInteractionStore.repliesFor(bookId, index);
     }
 
     _favorite = widget.initiallyFavorite;
+    _readingProgress = widget.initialProgress;
 
     final initialReview = widget.initialReview;
     if (initialReview != null) {
@@ -151,7 +170,18 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     }
   }
 
-  bool _guardGuestAction() {
+  bool _adding = false;
+  bool _guardGuestAction({bool requireSaved = true}) {
+    if (!widget.isGuest && requireSaved && widget.book['id'] == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Añade el libro a tu biblioteca para registrar esta acción.',
+          ),
+        ),
+      );
+      return true;
+    }
     if (!widget.isGuest) return false;
 
     widget.onGuestRestrictedAction();
@@ -167,12 +197,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
           CustomScrollView(
             controller: _scrollController,
             slivers: [
-              SliverToBoxAdapter(
-                child: _buildHero(),
-              ),
-              SliverToBoxAdapter(
-                child: _buildContent(),
-              ),
+              SliverToBoxAdapter(child: _buildHero()),
+              SliverToBoxAdapter(child: _buildContent()),
             ],
           ),
           AnimatedSwitcher(
@@ -186,23 +212,26 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     );
   }
 
+  Future<void> _openReading() async {
+    if (_guardGuestAction(requireSaved: false)) return;
+    final progress = await widget.onRead?.call();
+    if (mounted && progress != null) {
+      setState(() => _readingProgress = progress);
+    }
+  }
+
   Widget _buildHero() {
     return SizedBox(
       height: 285,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            _cover,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => Container(
-              color: _deep,
-              child: const Icon(
-                Icons.menu_book_rounded,
-                color: AppColors.gold,
-                size: 52,
-              ),
-            ),
+          LiteraryCover(
+            reference: _cover,
+            title: widget.book['title'] as String? ?? '',
+            author: widget.book['author'] as String? ?? '',
+            identity: 'detail:$_cover',
+            radius: 0,
           ),
           Container(
             decoration: BoxDecoration(
@@ -229,10 +258,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                     children: [
                       TextButton.icon(
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(
-                          Icons.arrow_back_rounded,
-                          size: 17,
-                        ),
+                        icon: const Icon(Icons.arrow_back_rounded, size: 17),
                         label: const Text('Volver atrás'),
                         style: TextButton.styleFrom(
                           foregroundColor: _accent,
@@ -336,7 +362,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             right: 16,
             top: 64,
             child: Text(
-              'PUBLICADO · $_year',
+              _year > 0 ? 'PUBLICADO · $_year' : 'FECHA NO DISPONIBLE',
               style: GoogleFonts.inter(
                 color: const Color(0xFFF3E6D1),
                 fontSize: 6.5,
@@ -371,15 +397,9 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                   height: 30,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: _gold.withValues(alpha: 0.55),
-                    ),
+                    border: Border.all(color: _gold.withValues(alpha: 0.55)),
                   ),
-                  child: Icon(
-                    Icons.arrow_back_rounded,
-                    color: _gold,
-                    size: 16,
-                  ),
+                  child: Icon(Icons.arrow_back_rounded, color: _gold, size: 16),
                 ),
               ),
               const SizedBox(width: 9),
@@ -403,10 +423,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                       _authorHandle.isEmpty ? _author : _authorHandle,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.inter(
-                        color: _gold,
-                        fontSize: 6.5,
-                      ),
+                      style: GoogleFonts.inter(color: _gold, fontSize: 6.5),
                     ),
                   ],
                 ),
@@ -440,15 +457,10 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             width: double.infinity,
             padding: const EdgeInsets.only(left: 12),
             decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(
-                  color: _gold,
-                  width: 2,
-                ),
-              ),
+              border: Border(left: BorderSide(color: _gold, width: 2)),
             ),
             child: Text(
-              _synopsis,
+              _synopsis.trim().isEmpty ? 'Sin sinopsis disponible' : _synopsis,
               style: GoogleFonts.merriweather(
                 color: _textPrimary,
                 fontSize: 10.5,
@@ -457,22 +469,17 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          Divider(
-            color: _gold.withValues(alpha: 0.26),
-            height: 1,
-          ),
+          Divider(color: _gold.withValues(alpha: 0.26), height: 1),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.star_rounded,
-                color: _gold,
-                size: 13,
-              ),
+              Icon(Icons.star_rounded, color: _gold, size: 13),
               const SizedBox(width: 3),
               Text(
-                _bookRating.toStringAsFixed(1),
+                widget.book['googleVolumeId'] != null
+                    ? 'Sin valorar'
+                    : _bookRating.toStringAsFixed(1),
                 style: GoogleFonts.inter(
                   color: _textPrimary,
                   fontSize: 8,
@@ -482,26 +489,19 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
               const SizedBox(width: 10),
               Text(
                 '·',
-                style: GoogleFonts.inter(
-                  color: _textSecondary,
-                  fontSize: 8,
-                ),
+                style: GoogleFonts.inter(color: _textSecondary, fontSize: 8),
               ),
               const SizedBox(width: 10),
               Text(
-                '136 reseñas',
-                style: GoogleFonts.inter(
-                  color: _textSecondary,
-                  fontSize: 8,
-                ),
+                widget.book['googleVolumeId'] != null
+                    ? 'Sin reseñas sincronizadas'
+                    : '136 reseñas · Demo',
+                style: GoogleFonts.inter(color: _textSecondary, fontSize: 8),
               ),
             ],
           ),
           const SizedBox(height: 15),
-          Divider(
-            color: _gold.withValues(alpha: 0.26),
-            height: 1,
-          ),
+          Divider(color: _gold.withValues(alpha: 0.26), height: 1),
           const SizedBox(height: 18),
           _sectionTitle('INFORMACIÓN DEL LIBRO'),
           const SizedBox(height: 11),
@@ -511,9 +511,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             decoration: BoxDecoration(
               color: _surface,
               borderRadius: BorderRadius.circular(13),
-              border: Border.all(
-                color: _gold.withValues(alpha: 0.28),
-              ),
+              border: Border.all(color: _gold.withValues(alpha: 0.28)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -525,20 +523,119 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             child: Column(
               children: [
                 _infoRow('Autor', _author),
-                _infoRow('Publicación', '$_year'),
+                _infoRow('Publicación', _year > 0 ? '$_year' : 'No disponible'),
                 _infoRow('ISBN', _isbn),
+                if (widget.book['googleBooks'] is Map) ...[
+                  _infoRow(
+                    'Subtítulo',
+                    (widget.book['googleBooks']['subtitle'] ?? 'No disponible')
+                        .toString(),
+                  ),
+                  _infoRow(
+                    'Editorial',
+                    (widget.book['googleBooks']['publisher'] ?? 'No disponible')
+                        .toString(),
+                  ),
+                  _infoRow(
+                    'Fecha',
+                    (widget.book['googleBooks']['publishedDate'] ??
+                            'No disponible')
+                        .toString(),
+                  ),
+                  _infoRow(
+                    'Páginas',
+                    (widget.book['googleBooks']['pageCount'] ?? 'No disponible')
+                        .toString(),
+                  ),
+                  _infoRow(
+                    'Categorías',
+                    (widget.book['googleBooks']['categories'] as List? ?? [])
+                        .join(', '),
+                  ),
+                  _infoRow(
+                    'Idioma',
+                    (widget.book['googleBooks']['language'] ?? 'No disponible')
+                        .toString(),
+                  ),
+                  _infoRow(
+                    'Identificadores',
+                    (widget.book['googleBooks']['identifiers'] as Map? ?? {})
+                        .entries
+                        .map((e) => '${e.key}: ${e.value}')
+                        .join(' · '),
+                  ),
+                  _infoRow('Fuente', 'Google Books'),
+                  _infoRow(
+                    'Enlace oficial',
+                    (widget.book['googleBooks']['infoUrl'] ?? 'No disponible')
+                        .toString(),
+                  ),
+                ],
                 _infoRow(
                   'Disponibilidad',
-                  _isFree ? 'GRATIS' : 'CATÁLOGO',
-                  valueColor: _isFree
-                      ? const Color(0xFF2F7C39)
-                      : _textPrimary,
+                  _isFree ? 'Gratis' : 'Lectura no disponible en la app',
+                  valueColor: _isFree ? const Color(0xFF2F7C39) : _textPrimary,
                 ),
               ],
             ),
           ),
           const SizedBox(height: 18),
-          _sectionTitle('COMENTARIOS DE LA COMUNIDAD'),
+          Text(
+            _isFree ? 'Disponible para leer en Capítulo 0' : 'No disponible para lectura en Capítulo 0. Puedes registrar tu progreso si lees en físico, ebook u otra plataforma.',
+          ),
+          Text(
+            widget.book['googleVolumeId'] != null
+                ? 'Google Books · Lectura no disponible en la app'
+                : widget.book['isBackendBook'] == true
+                ? 'Seguimiento privado guardado en tu cuenta'
+                : 'Disponibilidad simulada · Demo',
+            style: const TextStyle(fontSize: 11),
+          ),
+          if (!widget.isGuest && _readingProgress != null) ...[
+            Text('Progreso: $_readingProgress%'),
+            LinearProgressIndicator(value: _readingProgress! / 100),
+          ],
+          if (_isInLibrary && widget.onStatusChanged != null)
+            ReadingStatusField(
+              status: widget.readStatus!()!,
+              onChanged: (status) async {
+                if (_guardGuestAction()) return;
+                await widget.onStatusChanged!(status);
+                if (!mounted) return;
+                setState(
+                  () => _readingProgress =
+                      widget.readProgress?.call() ?? _readingProgress,
+                );
+              },
+            ),
+          if (_isRead) ...[
+            Text(
+              'Leído',
+              style: TextStyle(
+                color: _textPrimary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            OutlinedButton(
+              onPressed: widget.onRead == null ? null : _openReading,
+              child: Text(_isFree ? 'Abrir libro' : 'Registrar lectura'),
+            ),
+          ] else
+            FilledButton(
+              onPressed: widget.onRead == null ? null : _openReading,
+              child: Text(
+                _isFree
+                    ? (widget.readStatus?.call() ?? BookStatus.porLeer)
+                          .readingActionLabel
+                    : 'Registrar lectura',
+              ),
+            ),
+          const SizedBox(height: 15),
+          _sectionTitle(
+            widget.book['googleVolumeId'] != null
+                ? 'COMENTARIOS DE LA COMUNIDAD · DEMO'
+                : 'COMENTARIOS DE LA COMUNIDAD',
+          ),
           const SizedBox(height: 10),
           ..._comments.asMap().entries.map(
             (entry) => Padding(
@@ -551,7 +648,17 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             width: double.infinity,
             height: 42,
             child: FilledButton(
-              onPressed: widget.onAddToLibrary,
+              onPressed: _isInLibrary || _adding
+                  ? null
+                  : () async {
+                      if (_guardGuestAction(requireSaved: false)) return;
+                      setState(() => _adding = true);
+                      try {
+                        await widget.onAddToLibrary();
+                      } finally {
+                        if (mounted) setState(() => _adding = false);
+                      }
+                    },
               style: FilledButton.styleFrom(
                 backgroundColor: _accent,
                 foregroundColor: AppColors.background,
@@ -560,7 +667,9 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                 ),
               ),
               child: Text(
-                'Añadir a mi biblioteca',
+                _isInLibrary
+                    ? 'Ya está en tu biblioteca'
+                    : 'Añadir a mi biblioteca',
                 style: GoogleFonts.inter(
                   fontSize: 9,
                   fontWeight: FontWeight.w700,
@@ -569,9 +678,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          Divider(
-            color: _gold.withValues(alpha: 0.28),
-          ),
+          Divider(color: _gold.withValues(alpha: 0.28)),
           const SizedBox(height: 10),
           _sectionTitle('TU RESEÑA'),
           const SizedBox(height: 11),
@@ -634,37 +741,23 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
         ),
         const SizedBox(width: 9),
         Expanded(
-          child: Container(
-            height: 1,
-            color: _gold.withValues(alpha: 0.30),
-          ),
+          child: Container(height: 1, color: _gold.withValues(alpha: 0.30)),
         ),
         const SizedBox(width: 8),
-        Text(
-          '◆',
-          style: TextStyle(
-            color: _gold,
-            fontSize: 7,
-          ),
-        ),
+        Text('◆', style: TextStyle(color: _gold, fontSize: 7)),
       ],
     );
   }
 
   Widget _heroTag(String text, {bool dark = false}) {
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 7,
-        vertical: 4,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
       decoration: BoxDecoration(
         color: dark
             ? Colors.black.withValues(alpha: 0.42)
             : const Color(0xFF8E5F22).withValues(alpha: 0.88),
         borderRadius: BorderRadius.circular(99),
-        border: Border.all(
-          color: _gold.withValues(alpha: 0.65),
-        ),
+        border: Border.all(color: _gold.withValues(alpha: 0.65)),
       ),
       child: Text(
         text,
@@ -691,16 +784,11 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       },
       borderRadius: BorderRadius.circular(99),
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 9,
-          vertical: 6,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.28),
           borderRadius: BorderRadius.circular(99),
-          border: Border.all(
-            color: _gold.withValues(alpha: 0.75),
-          ),
+          border: Border.all(color: _gold.withValues(alpha: 0.75)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -740,24 +828,14 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
         decoration: BoxDecoration(
           color: _surface.withValues(alpha: 0.92),
           borderRadius: BorderRadius.circular(9),
-          border: Border.all(
-            color: _gold.withValues(alpha: 0.42),
-          ),
+          border: Border.all(color: _gold.withValues(alpha: 0.42)),
         ),
-        child: Icon(
-          Icons.more_vert_rounded,
-          color: _textPrimary,
-          size: 18,
-        ),
+        child: Icon(Icons.more_vert_rounded, color: _textPrimary, size: 18),
       ),
     );
   }
 
-  Widget _infoRow(
-    String label,
-    String value, {
-    Color? valueColor,
-  }) {
+  Widget _infoRow(String label, String value, {Color? valueColor}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 5),
       child: Row(
@@ -767,15 +845,12 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             width: 78,
             child: Text(
               '$label:',
-              style: GoogleFonts.inter(
-                color: _textSecondary,
-                fontSize: 7.5,
-              ),
+              style: GoogleFonts.inter(color: _textSecondary, fontSize: 7.5),
             ),
           ),
           Expanded(
             child: Text(
-              value,
+              value.trim().isEmpty ? 'No disponible' : value,
               style: GoogleFonts.inter(
                 color: valueColor ?? _textPrimary,
                 fontSize: 7.5,
@@ -805,9 +880,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       decoration: BoxDecoration(
         color: _surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: _gold.withValues(alpha: 0.22),
-        ),
+        border: Border.all(color: _gold.withValues(alpha: 0.22)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -836,9 +909,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                   decoration: BoxDecoration(
                     color: _background,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _gold.withValues(alpha: 0.28),
-                    ),
+                    border: Border.all(color: _gold.withValues(alpha: 0.28)),
                   ),
                   child: Icon(
                     Icons.more_vert_rounded,
@@ -891,8 +962,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                         '${comment['likes']} Me gusta',
                         style: GoogleFonts.inter(
                           fontSize: 6.3,
-                          fontWeight:
-                              liked ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: liked ? FontWeight.w700 : FontWeight.w500,
                           color: liked ? _accent : _textSecondary,
                         ),
                       ),
@@ -975,8 +1045,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                               fontSize: 7,
                             ),
                             decoration: InputDecoration(
-                              hintText:
-                                  'Responder a ${comment['user']}...',
+                              hintText: 'Responder a ${comment['user']}...',
                               hintStyle: GoogleFonts.inter(
                                 color: _textSecondary,
                                 fontSize: 6.7,
@@ -1038,8 +1107,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                                         color: replyPublic
                                             ? _deep
                                             : Colors.transparent,
-                                        borderRadius:
-                                            BorderRadius.circular(6),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
                                         '🌐 Pública',
@@ -1071,8 +1139,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                                         color: !replyPublic
                                             ? _deep
                                             : Colors.transparent,
-                                        borderRadius:
-                                            BorderRadius.circular(6),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
                                         '🔒 Privada',
@@ -1120,14 +1187,12 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                                 },
                                 style: FilledButton.styleFrom(
                                   backgroundColor: _accent,
-                                  foregroundColor:
-                                      AppColors.background,
+                                  foregroundColor: AppColors.background,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 12,
                                   ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(9),
+                                    borderRadius: BorderRadius.circular(9),
                                   ),
                                 ),
                                 child: Text(
@@ -1154,8 +1219,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                     padding: const EdgeInsets.only(top: 8, left: 12),
                     child: Column(
                       children: replies.map((reply) {
-                        final isPublic =
-                            reply['isPublic'] as bool? ?? true;
+                        final isPublic = reply['isPublic'] as bool? ?? true;
                         final replyText = reply['text'] as String? ?? '';
 
                         return Container(
@@ -1245,9 +1309,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                   decoration: BoxDecoration(
                     color: _surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: _gold.withValues(alpha: 0.22),
-                    ),
+                    border: Border.all(color: _gold.withValues(alpha: 0.22)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.14),
@@ -1293,24 +1355,13 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
           ],
         );
       },
-      transitionBuilder: (
-        dialogContext,
-        animation,
-        secondaryAnimation,
-        child,
-      ) {
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
         return FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOut,
-          ),
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: ScaleTransition(
             alignment: Alignment.topRight,
             scale: Tween<double>(begin: 0.96, end: 1).animate(
-              CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              ),
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
             ),
             child: child,
           ),
@@ -1350,9 +1401,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                     decoration: BoxDecoration(
                       color: _surface,
                       borderRadius: BorderRadius.circular(17),
-                      border: Border.all(
-                        color: _gold.withValues(alpha: 0.28),
-                      ),
+                      border: Border.all(color: _gold.withValues(alpha: 0.28)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.18),
@@ -1393,8 +1442,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                               ),
                             ),
                             InkWell(
-                              onTap: () =>
-                                  Navigator.of(dialogContext).pop(),
+                              onTap: () => Navigator.of(dialogContext).pop(),
                               customBorder: const CircleBorder(),
                               child: Container(
                                 width: 28,
@@ -1549,17 +1597,16 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                                     Navigator.of(dialogContext).pop();
                                     _showModerationSuccess(
                                       title: 'Comentario reportado',
-                                      message:
-                                          'Gracias. El reporte fue registrado para revisión de moderación.',
+                                      message: 'Gracias. El reporte fue registrado para revisión de moderación.',
                                     );
                                   },
                             style: FilledButton.styleFrom(
                               backgroundColor: _accent,
-                              disabledBackgroundColor:
-                                  _accent.withValues(alpha: 0.32),
+                              disabledBackgroundColor: _accent.withValues(
+                                alpha: 0.32,
+                              ),
                               foregroundColor: AppColors.background,
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 11),
+                              padding: const EdgeInsets.symmetric(vertical: 11),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(9),
                               ),
@@ -1617,9 +1664,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                   decoration: BoxDecoration(
                     color: _surface,
                     borderRadius: BorderRadius.circular(13),
-                    border: Border.all(
-                      color: _gold.withValues(alpha: 0.22),
-                    ),
+                    border: Border.all(color: _gold.withValues(alpha: 0.22)),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.12),
@@ -1665,24 +1710,13 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
           ],
         );
       },
-      transitionBuilder: (
-        dialogContext,
-        animation,
-        secondaryAnimation,
-        child,
-      ) {
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
         return FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOut,
-          ),
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: ScaleTransition(
             alignment: Alignment.topRight,
             scale: Tween<double>(begin: 0.96, end: 1).animate(
-              CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              ),
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
             ),
             child: child,
           ),
@@ -1719,9 +1753,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                 decoration: BoxDecoration(
                   color: _surface,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: _gold.withValues(alpha: 0.30),
-                  ),
+                  border: Border.all(color: _gold.withValues(alpha: 0.30)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.18),
@@ -1791,8 +1823,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                             ),
                           ),
                           InkWell(
-                            onTap: () =>
-                                Navigator.of(dialogContext).pop(),
+                            onTap: () => Navigator.of(dialogContext).pop(),
                             customBorder: const CircleBorder(),
                             child: Container(
                               width: 28,
@@ -1826,8 +1857,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                             },
                             borderRadius: BorderRadius.circular(10),
                             child: AnimatedContainer(
-                              duration:
-                                  const Duration(milliseconds: 170),
+                              duration: const Duration(milliseconds: 170),
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 11,
@@ -1848,14 +1878,10 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                                 children: [
                                   Icon(
                                     selected
-                                        ? Icons
-                                            .radio_button_checked_rounded
-                                        : Icons
-                                            .radio_button_unchecked_rounded,
+                                        ? Icons.radio_button_checked_rounded
+                                        : Icons.radio_button_unchecked_rounded,
                                     size: 15,
-                                    color: selected
-                                        ? _accent
-                                        : _textSecondary,
+                                    color: selected ? _accent : _textSecondary,
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
@@ -1897,8 +1923,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                           color: _textPrimary,
                         ),
                         decoration: InputDecoration(
-                          hintText:
-                              'Cuéntanos brevemente qué ocurrió...',
+                          hintText: 'Cuéntanos brevemente qué ocurrió...',
                           counterText: '',
                           filled: true,
                           fillColor: _background,
@@ -1906,8 +1931,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                             fontSize: 7.2,
                             color: _textSecondary,
                           ),
-                          contentPadding:
-                              const EdgeInsets.symmetric(
+                          contentPadding: const EdgeInsets.symmetric(
                             horizontal: 11,
                             vertical: 10,
                           ),
@@ -1945,8 +1969,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                                   if (!mounted) return;
                                   _showModerationSuccess(
                                     title: 'Publicación reportada',
-                                    message:
-                                        'Gracias. El reporte fue enviado para revisión.',
+                                    message: 'Gracias. El reporte fue enviado para revisión.',
                                   );
                                 },
                           style: FilledButton.styleFrom(
@@ -1957,23 +1980,20 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                             foregroundColor: AppColors.background,
                             disabledForegroundColor: isSending
                                 ? Colors.white
-                                : AppColors.background
-                                    .withValues(alpha: 0.72),
+                                : AppColors.background.withValues(alpha: 0.72),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                           child: isSending
                               ? Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     const SizedBox(
                                       width: 14,
                                       height: 14,
-                                      child:
-                                          CircularProgressIndicator(
+                                      child: CircularProgressIndicator(
                                         strokeWidth: 1.8,
                                         color: Colors.white,
                                       ),
@@ -2029,9 +2049,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                 decoration: BoxDecoration(
                   color: _surface,
                   borderRadius: BorderRadius.circular(17),
-                  border: Border.all(
-                    color: _gold.withValues(alpha: 0.28),
-                  ),
+                  border: Border.all(color: _gold.withValues(alpha: 0.28)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.18),
@@ -2073,8 +2091,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                           ),
                         ),
                         InkWell(
-                          onTap: () =>
-                              Navigator.of(dialogContext).pop(),
+                          onTap: () => Navigator.of(dialogContext).pop(),
                           borderRadius: BorderRadius.circular(999),
                           child: Container(
                             width: 28,
@@ -2097,33 +2114,17 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                     const SizedBox(height: 14),
                     Row(
                       children: [
-                        Expanded(
-                          child: _shareOption(
-                            label: 'W · WhatsApp',
-                          ),
-                        ),
+                        Expanded(child: _shareOption(label: 'W · WhatsApp')),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: _shareOption(
-                            label: 'I · Instagram',
-                          ),
-                        ),
+                        Expanded(child: _shareOption(label: 'I · Instagram')),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(
-                          child: _shareOption(
-                            label: 'X · X',
-                          ),
-                        ),
+                        Expanded(child: _shareOption(label: 'X · X')),
                         const SizedBox(width: 8),
-                        Expanded(
-                          child: _shareOption(
-                            label: '↗ · Enlace',
-                          ),
-                        ),
+                        Expanded(child: _shareOption(label: '↗ · Enlace')),
                       ],
                     ),
                   ],
@@ -2133,23 +2134,12 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
           ),
         );
       },
-      transitionBuilder: (
-        dialogContext,
-        animation,
-        secondaryAnimation,
-        child,
-      ) {
+      transitionBuilder: (dialogContext, animation, secondaryAnimation, child) {
         return FadeTransition(
-          opacity: CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOut,
-          ),
+          opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: ScaleTransition(
             scale: Tween<double>(begin: 0.96, end: 1).animate(
-              CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              ),
+              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
             ),
             child: child,
           ),
@@ -2158,24 +2148,17 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     );
   }
 
-  Widget _shareOption({
-    required String label,
-  }) {
+  Widget _shareOption({required String label}) {
     return InkWell(
       onTap: null,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 8,
-          vertical: 11,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 11),
         decoration: BoxDecoration(
           color: _background,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: _gold.withValues(alpha: 0.34),
-          ),
+          border: Border.all(color: _gold.withValues(alpha: 0.34)),
         ),
         child: Text(
           label,
@@ -2190,7 +2173,6 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     );
   }
 
-
   Future<void> _showModerationSuccess({
     required String title,
     required String message,
@@ -2203,14 +2185,9 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(
-              color: _gold.withValues(alpha: 0.24),
-            ),
+            side: BorderSide(color: _gold.withValues(alpha: 0.24)),
           ),
-          icon: const Icon(
-            Icons.check_circle_rounded,
-            color: AppColors.accent,
-          ),
+          icon: const Icon(Icons.check_circle_rounded, color: AppColors.accent),
           title: Text(
             title,
             textAlign: TextAlign.center,
@@ -2253,8 +2230,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       child: _reviewEditorOpen
           ? _buildReviewEditor()
           : _hasReview
-              ? _buildPublishedReview()
-              : _buildReviewCallToAction(),
+          ? _buildPublishedReview()
+          : _buildReviewCallToAction(),
     );
   }
 
@@ -2266,20 +2243,13 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
         onPressed: _openReviewEditor,
         style: OutlinedButton.styleFrom(
           foregroundColor: _textPrimary,
-          side: BorderSide(
-            color: _gold.withValues(alpha: 0.40),
-          ),
+          side: BorderSide(color: _gold.withValues(alpha: 0.40)),
           backgroundColor: _surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(9),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
         ),
         child: Text(
           '★ Calificar y reseñar',
-          style: GoogleFonts.inter(
-            fontSize: 8,
-            fontWeight: FontWeight.w600,
-          ),
+          style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -2295,9 +2265,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       decoration: BoxDecoration(
         color: _surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _gold.withValues(alpha: 0.24),
-        ),
+        border: Border.all(color: _gold.withValues(alpha: 0.24)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2326,25 +2294,15 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                   },
                   customBorder: const CircleBorder(),
                   child: TweenAnimationBuilder<double>(
-                    key: ValueKey(
-                      'review-star-$value-$_draftRating',
-                    ),
-                    tween: Tween<double>(
-                      begin: 0.72,
-                      end: 1,
-                    ),
+                    key: ValueKey('review-star-$value-$_draftRating'),
+                    tween: Tween<double>(begin: 0.72, end: 1),
                     duration: const Duration(milliseconds: 190),
                     curve: Curves.easeOutBack,
                     builder: (context, scale, child) {
-                      return Transform.scale(
-                        scale: scale,
-                        child: child,
-                      );
+                      return Transform.scale(scale: scale, child: child);
                     },
                     child: Icon(
-                      selected
-                          ? Icons.star_rounded
-                          : Icons.star_border_rounded,
+                      selected ? Icons.star_rounded : Icons.star_border_rounded,
                       color: _gold,
                       size: 23,
                     ),
@@ -2376,17 +2334,10 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                 color: _textSecondary,
                 fontSize: 8,
               ),
-              contentPadding: const EdgeInsets.fromLTRB(
-                11,
-                10,
-                11,
-                10,
-              ),
+              contentPadding: const EdgeInsets.fromLTRB(11, 10, 11, 10),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(9),
-                borderSide: BorderSide(
-                  color: _gold.withValues(alpha: 0.34),
-                ),
+                borderSide: BorderSide(color: _gold.withValues(alpha: 0.34)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(9),
@@ -2410,9 +2361,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             decoration: BoxDecoration(
               color: _background,
               borderRadius: BorderRadius.circular(9),
-              border: Border.all(
-                color: _gold.withValues(alpha: 0.28),
-              ),
+              border: Border.all(color: _gold.withValues(alpha: 0.28)),
             ),
             child: Row(
               children: [
@@ -2449,10 +2398,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                   ? 'Visible para todos los lectores.'
                   : 'Anonimo para todos los lectores.',
               key: ValueKey(_draftReviewIsPublic),
-              style: GoogleFonts.inter(
-                color: _textSecondary,
-                fontSize: 6.7,
-              ),
+              style: GoogleFonts.inter(color: _textSecondary, fontSize: 6.7),
             ),
           ),
           const SizedBox(height: 8),
@@ -2460,10 +2406,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             alignment: Alignment.centerRight,
             child: Text(
               '${_reviewController.text.length} / 500',
-              style: GoogleFonts.inter(
-                color: _textSecondary,
-                fontSize: 6.2,
-              ),
+              style: GoogleFonts.inter(color: _textSecondary, fontSize: 6.2),
             ),
           ),
           const SizedBox(height: 8),
@@ -2476,9 +2419,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                     onPressed: _cancelReviewEditing,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: _textPrimary,
-                      side: BorderSide(
-                        color: _gold.withValues(alpha: 0.34),
-                      ),
+                      side: BorderSide(color: _gold.withValues(alpha: 0.34)),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(9),
                       ),
@@ -2502,17 +2443,14 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                     onPressed: canPublish ? _publishReview : null,
                     style: FilledButton.styleFrom(
                       backgroundColor: _accent,
-                      disabledBackgroundColor:
-                          _accent.withValues(alpha: 0.32),
+                      disabledBackgroundColor: _accent.withValues(alpha: 0.32),
                       foregroundColor: AppColors.background,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(9),
                       ),
                     ),
                     child: Text(
-                      _hasReview
-                          ? 'Guardar cambios'
-                          : 'Publicar reseña',
+                      _hasReview ? 'Guardar cambios' : 'Publicar reseña',
                       style: GoogleFonts.inter(
                         fontSize: 7.3,
                         fontWeight: FontWeight.w700,
@@ -2547,13 +2485,9 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
         child: Text(
           label,
           style: GoogleFonts.inter(
-            color: selected
-                ? AppColors.background
-                : _textPrimary,
+            color: selected ? AppColors.background : _textPrimary,
             fontSize: 6.8,
-            fontWeight: selected
-                ? FontWeight.w700
-                : FontWeight.w500,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
       ),
@@ -2561,9 +2495,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   }
 
   Widget _buildPublishedReview() {
-    final displayedUser = _reviewIsPublic
-        ? widget.currentUsername
-        : '@anonimo';
+    final displayedUser = _reviewIsPublic ? widget.currentUsername : '@anonimo';
 
     return Container(
       width: double.infinity,
@@ -2571,9 +2503,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       decoration: BoxDecoration(
         color: _surface,
         borderRadius: BorderRadius.circular(11),
-        border: Border.all(
-          color: _gold.withValues(alpha: 0.23),
-        ),
+        border: Border.all(color: _gold.withValues(alpha: 0.23)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2583,14 +2513,10 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             children: [
               Expanded(
                 child: InkWell(
-                  onTap: _reviewIsPublic
-                      ? widget.onOpenOwnProfile
-                      : null,
+                  onTap: _reviewIsPublic ? widget.onOpenOwnProfile : null,
                   borderRadius: BorderRadius.circular(5),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 2,
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 2),
                     child: Text(
                       displayedUser,
                       style: GoogleFonts.inter(
@@ -2607,16 +2533,11 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 7,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
                 decoration: BoxDecoration(
                   color: _background,
                   borderRadius: BorderRadius.circular(99),
-                  border: Border.all(
-                    color: _gold.withValues(alpha: 0.28),
-                  ),
+                  border: Border.all(color: _gold.withValues(alpha: 0.28)),
                 ),
                 child: Text(
                   _reviewIsPublic ? '🌐 Pública' : '🔒 Privada',
@@ -2702,10 +2623,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       isPublic: _draftReviewIsPublic,
     );
 
-    widget.onReviewSaved(
-      widget.book['id'] as int,
-      review,
-    );
+    widget.onReviewSaved(widget.book['id'] as int, review);
 
     setState(() {
       _rating = review.rating;
@@ -2715,7 +2633,4 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       _reviewEditorOpen = false;
     });
   }
-
-
-
 }

@@ -15,6 +15,23 @@ dependencies:
   google_fonts: ^9.0.0
   google_maps_flutter: ^2.19.0
   shared_preferences: ^2.5.6
+  firebase_core: ^5.1.0
+  firebase_auth: 7.0.1
+  google_sign_in: ^7.2.0
+  http: ^1.6.0
+  file_picker: 11.0.2
+  flutter_map: 8.3.2
+  latlong2: 0.10.1
+  url_launcher: ^6.3.3
+  geolocator: 13.0.4
+  flutter_epub_viewer: 2.2.1
+  archive: 4.7.1
+  crypto: 3.0.7
+  xml: 7.0.1
+  path_provider: 2.1.6
+  web: 1.1.2
+  speech_to_text: 7.5.0
+  image: 4.9.0
 
 dev_dependencies:
   flutter_test:
@@ -27,3 +44,4 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/free_works/

@@ -3,7 +3,7 @@ part of '../screens/profile_screen.dart';
 extension _ProfileTabsFavoritesSection on _ProfileScreenState {
   Widget _buildTabs() {
     final worksCount = widget.publishedStories.length;
-    const badgesCount = 5;
+    const badgesCount = 0;
 
     final tabs = [
       {'id': 'favoritos', 'label': 'Favoritos'},
@@ -13,10 +13,7 @@ extension _ProfileTabsFavoritesSection on _ProfileScreenState {
         'id': 'obras',
         'label': worksCount > 0 ? 'Mis obras ($worksCount)' : 'Mis obras',
       },
-      {
-        'id': 'insignias',
-        'label': badgesCount > 0 ? 'Insignias ($badgesCount)' : 'Insignias',
-      },
+      {'id': 'insignias', 'label': 'Insignias ($badgesCount)'},
     ];
 
     return SingleChildScrollView(
@@ -125,8 +122,7 @@ extension _ProfileTabsFavoritesSection on _ProfileScreenState {
                     onPressed: _showExpandedFavoriteShelf,
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.accent,
-                      backgroundColor:
-                          AppColors.accent.withValues(alpha: 0.08),
+                      backgroundColor: AppColors.accent.withValues(alpha: 0.08),
                       minimumSize: const Size(0, 26),
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -147,16 +143,14 @@ extension _ProfileTabsFavoritesSection on _ProfileScreenState {
             ],
           ),
           const SizedBox(height: 10),
-          _buildShelfVisual(
-            compact: true,
-            sourceItems: _favoriteShelfItems,
-          ),
+          _buildShelfVisual(compact: true, sourceItems: _favoriteShelfItems),
         ],
       ),
     );
   }
 
   void _openFavoriteCommunityStory(WriterStory story) {
+    if (widget.readOnly) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => PublishedStoryScreen(

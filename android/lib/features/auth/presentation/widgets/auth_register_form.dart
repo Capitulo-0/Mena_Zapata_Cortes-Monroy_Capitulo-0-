@@ -6,11 +6,13 @@ import '../controllers/auth_controller.dart';
 import 'auth_common_widgets.dart';
 import 'auth_gender_selector.dart';
 import 'password_requirements.dart';
+import 'auth_legal_documents.dart';
 
 class AuthRegisterForm extends StatelessWidget {
   const AuthRegisterForm({
     super.key,
     required this.controller,
+    required this.onGoogle,
     required this.onBirthDateRequested,
     required this.onCustomGenderRequested,
     required this.onRegister,
@@ -18,6 +20,7 @@ class AuthRegisterForm extends StatelessWidget {
   });
 
   final AuthController controller;
+  final Future<void> Function() onGoogle;
   final Future<void> Function() onBirthDateRequested;
   final Future<void> Function({String? initialValue}) onCustomGenderRequested;
   final Future<void> Function() onRegister;
@@ -55,6 +58,20 @@ class AuthRegisterForm extends StatelessWidget {
           decoration: authInputDecoration(
             hintText: 'Ej: Juan Perez',
             prefixIcon: Icons.person_outline,
+          ),
+        ),
+        const SizedBox(height: 16),
+        const AuthFieldLabel('Nombre de usuario'),
+        const SizedBox(height: 7),
+        TextField(
+          controller: controller.registerUsernameController,
+          keyboardType: TextInputType.text,
+          autocorrect: false,
+          textCapitalization: TextCapitalization.none,
+          maxLength: 30,
+          decoration: authInputDecoration(
+            hintText: 'Ej: edu_lector',
+            prefixIcon: Icons.alternate_email_rounded,
           ),
         ),
         const SizedBox(height: 16),
@@ -150,20 +167,30 @@ class AuthRegisterForm extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         if (controller.registerConfirmPasswordController.text.isNotEmpty)
-          PasswordConfirmationStatus(
-            matches: controller.passwordsMatch,
-          ),
-        const SizedBox(height: 22),
+          PasswordConfirmationStatus(matches: controller.passwordsMatch),
+        const SizedBox(height: 14),
+        AuthLegalConsentCheckbox(
+          value: controller.termsAccepted,
+          title: 'Términos y condiciones',
+          document: LegalDocument.terms,
+          onChanged: controller.setTermsAccepted,
+        ),
+        AuthLegalConsentCheckbox(
+          value: controller.privacyAccepted,
+          title: 'Política de privacidad',
+          document: LegalDocument.privacy,
+          onChanged: controller.setPrivacyAccepted,
+        ),
+        const SizedBox(height: 16),
         AuthPrimaryButton(
-          text:
-              controller.isRegistering ? 'Creando cuenta...' : 'Crear cuenta',
+          text: controller.isRegistering ? 'Creando cuenta...' : 'Crear cuenta',
           loading: controller.isRegistering,
-          onPressed: controller.isRegistering ? null : onRegister,
+          onPressed: controller.isBusy ? null : onRegister,
         ),
         const SizedBox(height: 18),
         const AuthDivider('o continúa con'),
         const SizedBox(height: 16),
-        const AuthGoogleButton(),
+        AuthGoogleButton(onPressed: controller.isBusy ? null : onGoogle),
         const SizedBox(height: 16),
         AuthBottomSwitch(
           text: '¿Ya tienes cuenta?',

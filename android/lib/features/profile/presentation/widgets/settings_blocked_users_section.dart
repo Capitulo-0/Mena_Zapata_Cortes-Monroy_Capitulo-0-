@@ -77,8 +77,7 @@ extension _SettingsBlockedUsersSection on _SettingsScreenState {
                           ),
                           OutlinedButton(
                             onPressed: () async {
-                              final confirmed =
-                                  await _confirmUnblockUser(user);
+                              final confirmed = await _confirmUnblockUser(user);
 
                               if (confirmed != true || !mounted) {
                                 return;
@@ -142,9 +141,7 @@ extension _SettingsBlockedUsersSection on _SettingsScreenState {
                 decoration: BoxDecoration(
                   color: _background,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: _gold.withValues(alpha: 0.48),
-                  ),
+                  border: Border.all(color: _gold.withValues(alpha: 0.48)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.20),
@@ -201,18 +198,18 @@ extension _SettingsBlockedUsersSection on _SettingsScreenState {
                             child: OutlinedButton(
                               onPressed: isUnblocking
                                   ? null
-                                  : () => Navigator.of(
-                                        dialogContext,
-                                      ).pop(false),
+                                  : () =>
+                                        Navigator.of(dialogContext).pop(false),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: _textPrimary,
-                                disabledForegroundColor:
-                                    _textSecondary.withValues(alpha: 0.55),
+                                disabledForegroundColor: _textSecondary
+                                    .withValues(alpha: 0.55),
                                 side: BorderSide(
                                   color: _gold.withValues(alpha: 0.38),
                                 ),
-                                backgroundColor:
-                                    _surface.withValues(alpha: 0.48),
+                                backgroundColor: _surface.withValues(
+                                  alpha: 0.48,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -240,9 +237,7 @@ extension _SettingsBlockedUsersSection on _SettingsScreenState {
                                         unblockingDots = 1;
                                       });
 
-                                      for (var step = 0;
-                                          step < 4;
-                                          step++) {
+                                      for (var step = 0; step < 4; step++) {
                                         await Future<void>.delayed(
                                           const Duration(milliseconds: 250),
                                         );
@@ -262,11 +257,12 @@ extension _SettingsBlockedUsersSection on _SettingsScreenState {
                                 backgroundColor: isUnblocking
                                     ? _accent.withValues(alpha: 0.58)
                                     : _accent,
-                                disabledBackgroundColor:
-                                    _accent.withValues(alpha: 0.58),
+                                disabledBackgroundColor: _accent.withValues(
+                                  alpha: 0.58,
+                                ),
                                 foregroundColor: AppColors.background,
-                                disabledForegroundColor:
-                                    AppColors.background.withValues(alpha: 0.82),
+                                disabledForegroundColor: AppColors.background
+                                    .withValues(alpha: 0.82),
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),

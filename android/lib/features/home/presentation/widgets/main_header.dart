@@ -10,12 +10,18 @@ class MainHeader extends StatelessWidget {
     required this.isGuest,
     required this.onScannerTap,
     required this.onGeminiTap,
+
+    this.onNotificationsTap,
+    this.unreadNotificationsCount = 0,
   });
 
   final bool compact;
   final bool isGuest;
   final VoidCallback onScannerTap;
   final VoidCallback onGeminiTap;
+
+  final VoidCallback? onNotificationsTap;
+  final int unreadNotificationsCount;
 
   @override
   Widget build(BuildContext context) {
@@ -91,11 +97,55 @@ class MainHeader extends StatelessWidget {
               _HeaderButton(
                 compact: compact,
                 icon: Icons.auto_awesome_rounded,
-                tooltip: 'Asistente Gemini',
+                tooltip: 'Asistente Capítulo 0',
                 gold: gold,
                 background: deepAlt,
                 onTap: onGeminiTap,
               ),
+              if (!isGuest && onNotificationsTap != null) ...[
+                const SizedBox(width: 6),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _HeaderButton(
+                      compact: compact,
+                      icon: Icons.notifications_none_rounded,
+                      tooltip: 'Notificaciones',
+                      gold: gold,
+                      background: deepAlt,
+                      onTap: onNotificationsTap!,
+                    ),
+                    if (unreadNotificationsCount > 0)
+                      Positioned(
+                        top: -3,
+                        right: -3,
+                        child: Container(
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.accentOf(context),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: deep, width: 1.5),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            unreadNotificationsCount > 99
+                                ? '99+'
+                                : '$unreadNotificationsCount',
+                            style: GoogleFonts.inter(
+                              fontSize: 8,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.backgroundOf(context),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -137,16 +187,10 @@ class _HeaderButton extends StatelessWidget {
           height: size,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(compact ? 9 : 10),
-            border: Border.all(
-              color: gold.withValues(alpha: 0.28),
-            ),
+            border: Border.all(color: gold.withValues(alpha: 0.28)),
             color: background,
           ),
-          child: Icon(
-            icon,
-            size: compact ? 16 : 18,
-            color: gold,
-          ),
+          child: Icon(icon, size: compact ? 16 : 18, color: gold),
         ),
       ),
     );

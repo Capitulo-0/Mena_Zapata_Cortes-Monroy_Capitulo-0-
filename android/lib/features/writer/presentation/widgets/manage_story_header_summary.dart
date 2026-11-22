@@ -7,10 +7,7 @@ extension _ManageStoryHeaderSummary on _ManageStoryScreenState {
       icon: const Icon(Icons.arrow_back_rounded, size: 15),
       label: Text(
         'Mis historias',
-        style: GoogleFonts.inter(
-          fontSize: 8.5,
-          fontWeight: FontWeight.w700,
-        ),
+        style: GoogleFonts.inter(fontSize: 8.5, fontWeight: FontWeight.w700),
       ),
       style: TextButton.styleFrom(
         foregroundColor: AppColors.accent,
@@ -143,9 +140,7 @@ extension _ManageStoryHeaderSummary on _ManageStoryScreenState {
       decoration: BoxDecoration(
         color: _surfaceColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.28),
-        ),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.28)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: _isDarkMode ? 0.12 : 0.04),
@@ -258,59 +253,11 @@ extension _ManageStoryHeaderSummary on _ManageStoryScreenState {
     );
   }
 
-  Widget _buildCover() {
-    return Container(
-      width: 76,
-      height: 106,
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(9),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: _coverColors(_story.coverPath),
-        ),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.32),
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.auto_stories_rounded,
-            color: Colors.white,
-            size: 23,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _story.title.isEmpty ? 'MI HISTORIA' : _story.title.toUpperCase(),
-            textAlign: TextAlign.center,
-            maxLines: 4,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.cinzel(
-              fontSize: 6.4,
-              height: 1.3,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Color> _coverColors(String? cover) {
-    switch (cover) {
-      case 'preset:gold':
-        return const [Color(0xFF9A6D2F), Color(0xFF3B2414)];
-      case 'preset:forest':
-        return const [Color(0xFF405A49), Color(0xFF18241E)];
-      case 'preset:night':
-        return const [Color(0xFF34354A), Color(0xFF171821)];
-      case 'preset:classic':
-      default:
-        return const [Color(0xFF7D2430), Color(0xFF35130F)];
-    }
-  }
+  Widget _buildCover() => WriterCover(
+    storyId: _story.id,
+    coverPath: _story.coverPath,
+    title: _story.title,
+    width: 76,
+    height: 106,
+  );
 }

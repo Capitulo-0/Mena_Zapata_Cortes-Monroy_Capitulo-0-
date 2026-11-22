@@ -12,7 +12,6 @@ extension _SettingsEditProfileSheet on _SettingsScreenState {
 
     String tempReadingFormat = _readingFormat;
     bool isSaving = false;
-    int savingDots = 1;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -69,36 +68,29 @@ extension _SettingsEditProfileSheet on _SettingsScreenState {
                                 height: 82,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: _gold,
-                                    width: 2,
-                                  ),
+                                  border: Border.all(color: _gold, width: 2),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.10),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.10,
+                                      ),
                                       blurRadius: 14,
                                       offset: const Offset(0, 5),
                                     ),
                                   ],
                                 ),
                                 child: ClipOval(
-                                  child: Image.network(
-                                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face',
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) {
-                                      return Container(
-                                        color: _deep,
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          _firstLetter(nameController.text),
-                                          style: GoogleFonts.cinzel(
-                                            color: _gold,
-                                            fontSize: 28,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      );
-                                    },
+                                  child: Container(
+                                    color: _deep,
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      _firstLetter(nameController.text),
+                                      style: GoogleFonts.cinzel(
+                                        color: _gold,
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -142,8 +134,9 @@ extension _SettingsEditProfileSheet on _SettingsScreenState {
                             label: const Text('Cambiar imagen'),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: _gold,
-                              disabledForegroundColor:
-                                  _gold.withValues(alpha: 0.45),
+                              disabledForegroundColor: _gold.withValues(
+                                alpha: 0.45,
+                              ),
                               side: BorderSide(
                                 color: _gold.withValues(alpha: 0.72),
                               ),
@@ -211,8 +204,7 @@ extension _SettingsEditProfileSheet on _SettingsScreenState {
                         onTap: isSaving
                             ? null
                             : () async {
-                                final selected =
-                                    await _showReadingFormatPicker(
+                                final selected = await _showReadingFormatPicker(
                                   bottomSheetContext,
                                   tempReadingFormat,
                                 );
@@ -252,8 +244,8 @@ extension _SettingsEditProfileSheet on _SettingsScreenState {
                                   tempReadingFormat == 'Físico'
                                       ? Icons.menu_book_rounded
                                       : tempReadingFormat == 'Digital'
-                                          ? Icons.tablet_mac_rounded
-                                          : Icons.auto_stories_rounded,
+                                      ? Icons.tablet_mac_rounded
+                                      : Icons.auto_stories_rounded,
                                   color: _gold,
                                   size: 17,
                                 ),
@@ -298,20 +290,18 @@ extension _SettingsEditProfileSheet on _SettingsScreenState {
                                   : () {
                                       Navigator.of(bottomSheetContext).pop();
                                     },
-                              icon: const Icon(
-                                Icons.close_rounded,
-                                size: 15,
-                              ),
+                              icon: const Icon(Icons.close_rounded, size: 15),
                               label: const Text('Cancelar'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: _textPrimary,
-                                disabledForegroundColor:
-                                    _textSecondary.withValues(alpha: 0.45),
+                                disabledForegroundColor: _textSecondary
+                                    .withValues(alpha: 0.45),
                                 side: BorderSide(
                                   color: _gold.withValues(alpha: 0.42),
                                 ),
-                                backgroundColor:
-                                    _surface.withValues(alpha: 0.55),
+                                backgroundColor: _surface.withValues(
+                                  alpha: 0.55,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(13),
                                 ),
@@ -335,7 +325,9 @@ extension _SettingsEditProfileSheet on _SettingsScreenState {
                                     ? const []
                                     : [
                                         BoxShadow(
-                                          color: _accent.withValues(alpha: 0.18),
+                                          color: _accent.withValues(
+                                            alpha: 0.18,
+                                          ),
                                           blurRadius: 12,
                                           offset: const Offset(0, 5),
                                         ),
@@ -345,8 +337,8 @@ extension _SettingsEditProfileSheet on _SettingsScreenState {
                                 onPressed: isSaving
                                     ? null
                                     : () async {
-                                        final cleanName =
-                                            nameController.text.trim();
+                                        final cleanName = nameController.text
+                                            .trim();
 
                                         var cleanUsername = usernameController
                                             .text
@@ -362,51 +354,117 @@ extension _SettingsEditProfileSheet on _SettingsScreenState {
                                           return;
                                         }
 
-                                        if (!cleanUsername.startsWith('@')) {
-                                          cleanUsername = '@$cleanUsername';
+                                        cleanUsername = cleanUsername
+                                            .replaceFirst(RegExp(r'^@'), '')
+                                            .toLowerCase();
+
+                                        if (!RegExp(r'^[a-z0-9_]{3,30}$')
+                                            .hasMatch(cleanUsername)) {
+                                          _showMessage(
+                                            'El usuario debe tener entre 3 y 30 caracteres: '
+                                            'solo letras, números y guiones bajos.',
+                                          );
+                                          return;
                                         }
 
                                         final parsedGoal = int.tryParse(
-                                              goalController.text.trim(),
-                                            ) ??
-                                            _annualGoal;
+                                          goalController.text.trim(),
+                                        );
+
+                                        if (parsedGoal == null ||
+                                            parsedGoal < 1) {
+                                          _showMessage(
+                                            'La meta anual debe ser un número mayor que cero.',
+                                          );
+                                          return;
+                                        }
+
+                                        if (cleanName.length > 120) {
+                                          _showMessage(
+                                            'El nombre no puede superar los 120 caracteres.',
+                                          );
+                                          return;
+                                        }
+
+                                        final cleanBiography =
+                                            biographyController.text.trim();
+                                        if (cleanBiography.length > 500) {
+                                          _showMessage(
+                                            'La biografía no puede superar los 500 caracteres.',
+                                          );
+                                          return;
+                                        }
+
+                                        final repository =
+                                            widget.accountRepository;
+                                        if (repository == null) {
+                                          _showMessage(
+                                            'Debes iniciar sesión para actualizar tu perfil.',
+                                          );
+                                          return;
+                                        }
 
                                         setModalState(() {
                                           isSaving = true;
-                                          savingDots = 1;
                                         });
 
-                                        // Simulación visual de guardado en backend:
-                                        // Guardando. -> Guardando.. -> Guardando...
-                                        for (var step = 0; step < 4; step++) {
-                                          await Future<void>.delayed(
-                                            const Duration(milliseconds: 250),
-                                          );
+                                        try {
+                                          final updated = await repository
+                                              .updateProfile(
+                                                displayName: cleanName,
+                                                username: cleanUsername,
+                                                biography: cleanBiography,
+                                                annualReadingGoal: parsedGoal,
+                                              );
 
-                                          if (!bottomSheetContext.mounted) {
+                                          if (!mounted ||
+                                              !bottomSheetContext.mounted) {
+                                            return;
+                                          }
+
+                                          _updateState(() {
+                                            widget.onProfileUpdated?.call(
+                                              updated,
+                                            );
+                                            _name =
+                                                updated.displayName ??
+                                                cleanName;
+                                            _username =
+                                                '@${updated.username ?? cleanUsername}';
+                                            _biography =
+                                                updated.biography ?? '';
+                                            _readingFormat = tempReadingFormat;
+                                            _annualGoal =
+                                                updated.annualReadingGoal ??
+                                                parsedGoal;
+                                          });
+                                        } on ApiFailure catch (error) {
+                                          if (!mounted ||
+                                              !bottomSheetContext.mounted) {
                                             return;
                                           }
 
                                           setModalState(() {
-                                            savingDots =
-                                                (savingDots % 3) + 1;
+                                            isSaving = false;
                                           });
-                                        }
 
-                                        if (!mounted ||
-                                            !bottomSheetContext.mounted) {
+                                          _showMessage(error.message);
+                                          return;
+                                        } catch (_) {
+                                          if (!mounted ||
+                                              !bottomSheetContext.mounted) {
+                                            return;
+                                          }
+
+                                          setModalState(() {
+                                            isSaving = false;
+                                          });
+
+                                          _showMessage(
+                                            'Ocurrió un error inesperado al actualizar el perfil.',
+                                          );
                                           return;
                                         }
-
-                                        _updateState(() {
-                                          _name = cleanName;
-                                          _username = cleanUsername;
-                                          _biography =
-                                              biographyController.text.trim();
-                                          _readingFormat = tempReadingFormat;
-                                          _annualGoal =
-                                              parsedGoal.clamp(1, 365);
-                                        });
 
                                         widget.onProfileSaved(
                                           _name,
@@ -416,30 +474,27 @@ extension _SettingsEditProfileSheet on _SettingsScreenState {
                                           _annualGoal,
                                         );
 
-                                        Navigator.of(
-                                          bottomSheetContext,
-                                        ).pop();
+                                        Navigator.of(bottomSheetContext).pop();
 
                                         WidgetsBinding.instance
                                             .addPostFrameCallback((_) {
-                                          if (!mounted) return;
+                                              if (!mounted) return;
 
-                                          _showSettingsSuccessMessage(
-                                            'Perfil actualizado correctamente',
-                                          );
-                                        });
+                                              _showSettingsSuccessMessage(
+                                                'Perfil actualizado correctamente',
+                                              );
+                                            });
                                       },
                                 style: FilledButton.styleFrom(
                                   backgroundColor: isSaving
                                       ? _accent.withValues(alpha: 0.58)
                                       : _accent,
-                                  disabledBackgroundColor:
-                                      _accent.withValues(alpha: 0.58),
+                                  disabledBackgroundColor: _accent.withValues(
+                                    alpha: 0.58,
+                                  ),
                                   foregroundColor: AppColors.background,
-                                  disabledForegroundColor:
-                                      AppColors.background.withValues(
-                                        alpha: 0.82,
-                                      ),
+                                  disabledForegroundColor: AppColors.background
+                                      .withValues(alpha: 0.82),
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(13),
@@ -453,9 +508,7 @@ extension _SettingsEditProfileSheet on _SettingsScreenState {
                                   duration: const Duration(milliseconds: 120),
                                   opacity: 1,
                                   child: Text(
-                                    isSaving
-                                        ? 'Guardando${'.' * savingDots}'
-                                        : 'Guardar',
+                                    isSaving ? 'Guardando...' : 'Guardar',
                                   ),
                                 ),
                               ),
@@ -519,9 +572,7 @@ extension _SettingsEditProfileSheet on _SettingsScreenState {
             decoration: BoxDecoration(
               color: _background,
               borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: _gold.withValues(alpha: 0.30),
-              ),
+              border: Border.all(color: _gold.withValues(alpha: 0.30)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.18),

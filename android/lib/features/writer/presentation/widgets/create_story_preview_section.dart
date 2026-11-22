@@ -8,9 +8,7 @@ extension _CreateStoryPreviewSection on _CreateStoryScreenState {
       decoration: BoxDecoration(
         color: _surfaceColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.28),
-        ),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.28)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.035),
@@ -25,7 +23,7 @@ extension _CreateStoryPreviewSection on _CreateStoryScreenState {
           SizedBox(
             width: 62,
             height: 86,
-            child: _hasCover
+            child: (_hasCover || _localCoverPreview != null)
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: _buildPresetCover(),

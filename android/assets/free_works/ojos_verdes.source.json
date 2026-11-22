@@ -1,0 +1,60 @@
+{
+  "slug": "ojos_verdes",
+  "title": "Los ojos verdes",
+  "author": "Gustavo Adolfo Bécquer",
+  "death_year": 1870,
+  "genre": "Cuentos",
+  "edition": "Obras de Gustavo A. Bécquer, tomo 1, 1885. Transcripción del escaneo de Wikisource.",
+  "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._1.djvu",
+  "rights_evidence": [
+    "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+    "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+    "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+  ],
+  "reviewed_complete": true,
+  "internal_sections": [
+    "I",
+    "II",
+    "III"
+  ],
+  "sections": [
+    {
+      "section": "Leyenda completa; secciones I, II, III",
+      "page": "Los ojos verdes",
+      "revision": 1010752,
+      "source_pages": [
+        "Página:Obras de Bécquer - Vol. 1.djvu/105",
+        "Página:Obras de Bécquer - Vol. 1.djvu/106",
+        "Página:Obras de Bécquer - Vol. 1.djvu/107",
+        "Página:Obras de Bécquer - Vol. 1.djvu/108",
+        "Página:Obras de Bécquer - Vol. 1.djvu/109",
+        "Página:Obras de Bécquer - Vol. 1.djvu/110",
+        "Página:Obras de Bécquer - Vol. 1.djvu/111",
+        "Página:Obras de Bécquer - Vol. 1.djvu/112",
+        "Página:Obras de Bécquer - Vol. 1.djvu/113",
+        "Página:Obras de Bécquer - Vol. 1.djvu/114",
+        "Página:Obras de Bécquer - Vol. 1.djvu/115",
+        "Página:Obras de Bécquer - Vol. 1.djvu/116",
+        "Página:Obras de Bécquer - Vol. 1.djvu/117"
+      ],
+      "characters": 14967,
+      "beginning": "LOS OJOS VERDES\n\nHace mucho tiempo que tenía ganas de escribir cualquier cosa con este título.\nHoy, ",
+      "ending": "mor sordo y lúgubre.\n\nLas aguas saltaron en chispas de luz, y se cerraron sobre su cuerpo, y sus círculos de plata fueron ensanchándose, ensanchándose hasta espirar en las orillas.",
+      "text_sha256": "74fd62317f12559e1321c5691bdc50d8db335f3775c589dae08d09013bf94982",
+      "source_snapshot_sha256": "2ef70065a40c986a47ce34ab0f11e49193a59faff8ae08f33cba93aa1880a1e0",
+      "retrieved_at": "2026-11-16T20:22:59.112332+00:00",
+      "permanent_url": "https://es.wikisource.org/w/index.php?oldid=1010752",
+      "history_url": "https://es.wikisource.org/w/index.php?title=Los+ojos+verdes&action=history"
+    }
+  ],
+  "id": "wikisource-es-ojos_verdes",
+  "language": "es",
+  "source": "https://es.wikisource.org/wiki/Los_ojos_verdes",
+  "bytes": 16193,
+  "utf16_units": 15724,
+  "sha256": "bcc70d2aca87496e41c7ddaab2bbe3552a5bcd653fb53b5111e0c4a6f6b28e03",
+  "literary_body_sha256": "74fd62317f12559e1321c5691bdc50d8db335f3775c589dae08d09013bf94982",
+  "license": "CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público",
+  "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "complete": true
+}

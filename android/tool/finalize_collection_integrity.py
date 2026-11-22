@@ -1,0 +1,7 @@
+﻿from pathlib import Path
+p=Path('tool/generate_free_catalog.py');s=p.read_text(encoding='utf-8').replace('Edición del escaneo; se conserva la transcripción','Texto de la edición indicada; se conserva la transcripción');p.write_text(s,encoding='utf-8')
+p=Path('tool/verify_collection.py');s=p.read_text(encoding='utf-8');s=s.replace("count=0", "count=0\nids=set()\nhashes=set()")
+s=s.replace("m=json.loads(path.read_text(encoding='utf-8')); raw=", "m=json.loads(path.read_text(encoding='utf-8')); assert m['id'] not in ids; ids.add(m['id']); assert m['sha256'] not in hashes; hashes.add(m['sha256']); raw=")
+s=s.replace("assert len(raw)<=8388608 and m['utf16_units']<=2097152", "assert len(raw)<=8388608 and m['utf16_units']<=2097152")
+s=s.replace("assert extracted==part", "assert extracted==part\n   if m.get('complete'):\n    assert m['reviewed_complete']\n    headings=next((x.get('reviewed_headings') for x in m.get('sections',[]) if x['page']==s['page']),None)\n    for config_file in Path('tool').glob('free_works_batch*.json'):\n     for work in json.loads(config_file.read_text(encoding='utf-8')):\n      if work['slug']==m['slug']:\n       configured=next(x for x in work['sections'] if x['page']==s['page'])\n       headings=configured.get('reviewed_headings', work.get('internal_sections',[]))\n    cursor=0\n    for heading in headings or []:\n     found=part.index(heading,cursor); cursor=found+len(heading)")
+p.write_text(s,encoding='utf-8')

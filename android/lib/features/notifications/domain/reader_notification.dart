@@ -1,0 +1,140 @@
+enum ReaderNotificationType {
+  followRequest('FOLLOW_REQUEST'),
+  newFollower('NEW_FOLLOWER'),
+  followAccepted('FOLLOW_ACCEPTED'),
+  organizerApproved('ORGANIZER_APPROVED'),
+  organizerRejected('ORGANIZER_REJECTED');
+
+  const ReaderNotificationType(this.apiValue);
+
+  final String apiValue;
+
+  static ReaderNotificationType fromApi(String value) {
+    for (final type in values) {
+      if (type.apiValue == value) {
+        return type;
+      }
+    }
+
+    throw FormatException('Tipo de notificación desconocido: $value');
+  }
+}
+
+class ReaderNotification {
+  const ReaderNotification({
+    required this.id,
+    required this.type,
+    required this.actorId,
+    required this.actorUsername,
+    required this.actorDisplayName,
+    required this.actorAvatarUrl,
+    required this.followId,
+    required this.createdAt,
+    required this.occurredAt,
+    required this.readAt,
+  });
+
+  final int id;
+  final ReaderNotificationType type;
+  final int actorId;
+  final String? actorUsername;
+  final String? actorDisplayName;
+  final String? actorAvatarUrl;
+  final int? followId;
+  final DateTime createdAt;
+  final DateTime occurredAt;
+  final DateTime? readAt;
+
+  bool get isRead => readAt != null;
+
+  bool get isUnresolvedRequest => type == ReaderNotificationType.followRequest;
+
+  bool get isOrganizerNotification =>
+      type == ReaderNotificationType.organizerApproved ||
+      type == ReaderNotificationType.organizerRejected;
+
+  String get actorHandle {
+    final username = actorUsername?.trim();
+
+    if (username == null || username.isEmpty) {
+      return 'Usuario';
+    }
+
+    return username.startsWith('@') ? username : '@$username';
+  }
+
+  factory ReaderNotification.fromJson(Map<String, dynamic> json) {
+    int requiredInt(String key) {
+      final value = json[key];
+
+      if (value is int) {
+        return value;
+      }
+
+      throw FormatException('Campo inválido: $key');
+    }
+
+    int? optionalInt(String key) {
+      final value = json[key];
+
+      if (value == null) {
+        return null;
+      }
+
+      if (value is int) {
+        return value;
+      }
+
+      throw FormatException('Campo inválido: $key');
+    }
+
+    String? optionalString(String key) {
+      final value = json[key];
+
+      if (value == null || value is String) {
+        return value as String?;
+      }
+
+      throw FormatException('Campo inválido: $key');
+    }
+
+    DateTime? date(String key, {required bool nullable}) {
+      final value = json[key];
+
+      if (value == null && nullable) {
+        return null;
+      }
+
+      if (value is! String) {
+        throw FormatException('Fecha inválida: $key');
+      }
+
+      final parsed = DateTime.tryParse(value);
+
+      if (parsed == null) {
+        throw FormatException('Fecha inválida: $key');
+      }
+
+      return parsed.toUtc();
+    }
+
+    final rawType = json['type'];
+
+    if (rawType is! String) {
+      throw const FormatException('Tipo de notificación inválido');
+    }
+
+    return ReaderNotification(
+      id: requiredInt('id'),
+      type: ReaderNotificationType.fromApi(rawType),
+      actorId: requiredInt('actorId'),
+      actorUsername: optionalString('actorUsername'),
+      actorDisplayName: optionalString('actorDisplayName'),
+      actorAvatarUrl: optionalString('actorAvatarUrl'),
+      followId: optionalInt('followId'),
+      createdAt: date('createdAt', nullable: false)!,
+      occurredAt: date('occurredAt', nullable: false)!,
+      readAt: date('readAt', nullable: true),
+    );
+  }
+}

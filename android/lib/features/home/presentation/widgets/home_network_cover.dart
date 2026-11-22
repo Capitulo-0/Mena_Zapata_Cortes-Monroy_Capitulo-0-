@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/literary_cover.dart';
 
 class HomeNetworkCover extends StatelessWidget {
   const HomeNetworkCover({
@@ -9,35 +9,19 @@ class HomeNetworkCover extends StatelessWidget {
     required this.width,
     required this.height,
     this.radius = 8,
+    this.title = '',
+    this.author = '',
   });
-
-  final String url;
-  final double width;
-  final double height;
-  final double radius;
-
+  final String url, title, author;
+  final double width, height, radius;
   @override
-  Widget build(BuildContext context) {
-    final deep = AppColors.deepOf(context);
-    final gold = AppColors.goldOf(context);
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: Image.network(
-          url,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              color: deep,
-              alignment: Alignment.center,
-              child: Icon(Icons.menu_book_rounded, color: gold),
-            );
-          },
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => LiteraryCover(
+    reference: url,
+    title: title,
+    author: author,
+    identity: 'book:$title:$author',
+    width: width,
+    height: height,
+    radius: radius,
+  );
 }

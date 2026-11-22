@@ -1,0 +1,162 @@
+[
+  {
+    "slug": "rima_1885_21",
+    "title": "Rima XXI",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXI, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: ¿Qué es poesía? dices mientras clavas Verso final: Poesía... eres tú.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXI",
+        "beginning": "XXI\n\n¿Qué es poesía? dices mientras clavas\nEn mi pupila tu pupila azul;\n¿Qué es poesía? ¿Y tú me lo ",
+        "ending": "XXI\n\n¿Qué es poesía? dices mientras clavas\nEn mi pupila tu pupila azul;\n¿Qué es poesía? ¿Y tú me lo proguntas?\nPoesía... eres tú.",
+        "extraction": "poem:XXI",
+        "reviewed_headings": [
+          "XXI"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_22",
+    "title": "Rima XXII",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: ¿Cómo vive esa rosa que has prendido Verso final: Sobre el volcán la flor.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXII",
+        "beginning": "XXII\n\n¿Cómo vive esa rosa que has prendido\nJunto á tu corazón?\nNunca hasta ahora contemplé en la tie",
+        "ending": "XXII\n\n¿Cómo vive esa rosa que has prendido\nJunto á tu corazón?\nNunca hasta ahora contemplé en la tierra\nSobre el volcán la flor.",
+        "extraction": "poem:XXII",
+        "reviewed_headings": [
+          "XXII"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_23",
+    "title": "Rima XXIII",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXIII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Por una mirada, un mundo; Verso final: Qué te diera por un beso!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXIII",
+        "beginning": "XXIII\n\nPor una mirada, un mundo;\nPor una sonrisa, un cielo;\nPor un beso... ¡yo no sé\nQué te diera po",
+        "ending": "XXIII\n\nPor una mirada, un mundo;\nPor una sonrisa, un cielo;\nPor un beso... ¡yo no sé\nQué te diera por un beso!",
+        "extraction": "poem:XXIII",
+        "reviewed_headings": [
+          "XXIII"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_24",
+    "title": "Rima XXIV",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXIV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Dos rojas lenguas de fuego Verso final: Eso son nuestras dos almas.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXIV",
+        "beginning": "XXIV\n\nDos rojas lenguas de fuego\nQue, á un mismo tronco enlazadas,\nSe aproximan, y al besarse\nForman",
+        "ending": "n,\nY al juntarse allí en el cielo\nForman una nube blanca;\n\nDos ideas que al par brotan,\nDos besos que á un tiempo estallan,\nDos ecos que se confunden...\nEso son nuestras dos almas.",
+        "extraction": "poem:XXIV",
+        "reviewed_headings": [
+          "XXIV"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_25",
+    "title": "Rima XXV",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima XXV, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Cuando en la noche te envuelven Verso final: La tierra, el cielo!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima XXV",
+        "beginning": "XXV\n\nCuando en la noche te envuelven\nLas alas de tul del sueño,\nY tus tendidas pestañas\nSemejan arco",
+        "ending": " ver entre sus pestañas\nBrillar con húmedo fuego\nLa ardiente chispa que brota\nDel volcán de los deseos,\nDiera, alma mía,\nPor cuanto espero,\nLa fe, el espíritu,\nLa tierra, el cielo!",
+        "extraction": "poem:XXV",
+        "reviewed_headings": [
+          "XXV"
+        ]
+      }
+    ]
+  }
+]

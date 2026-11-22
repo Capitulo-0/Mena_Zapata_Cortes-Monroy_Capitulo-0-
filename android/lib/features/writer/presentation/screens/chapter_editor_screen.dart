@@ -1,12 +1,20 @@
+import '../widgets/writer_cover.dart';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../../../core/session/local_account_scope.dart';
+import '../../services/writer_draft_store.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../widgets/chapter_preview_screen.dart';
 import '../../models/writer_chapter.dart';
 import '../../models/writer_story.dart';
-import '../../services/writer_local_service.dart';
-
+import '../../services/writer_repository.dart';
+import '../../services/literary_chat.dart';
+import '../widgets/literary_chat_screen.dart';
 
 part '../widgets/chapter_editor_header_section.dart';
 part '../widgets/chapter_editor_story_info.dart';
@@ -17,28 +25,165 @@ part '../widgets/chapter_editor_preview_actions.dart';
 class ChapterEditorScreen extends StatefulWidget {
   const ChapterEditorScreen({
     super.key,
+    this.repository,
     required this.story,
     this.chapter,
+    this.draftStore,
   });
 
   final WriterStory story;
   final WriterChapter? chapter;
+  final WriterDraftStore? draftStore;
+
+  final WriterRepository? repository;
 
   @override
   State<ChapterEditorScreen> createState() => _ChapterEditorScreenState();
 }
 
 class _ChapterEditorScreenState extends State<ChapterEditorScreen> {
-  final WriterLocalService _writerService = WriterLocalService();
+  late final WriterRepository _writerService =
+      widget.repository ?? const UnavailableWriterRepository();
 
   late final TextEditingController _titleController;
   late final TextEditingController _contentController;
 
-  late final String _chapterId;
-  late final int _chapterOrder;
+  late String _chapterId;
+  late int _chapterOrder;
   late final DateTime _createdAt;
 
+  late int _baseRevision = widget.story.revision;
   bool _isSaving = false;
+  bool _restoring = true,
+      _choosingDraft = false,
+      _restored = false,
+      _draftConflict = false;
+  String? _localError;
+  WriterDraftStore? _draftStore;
+  bool get _hasChanges =>
+      _restored ||
+      _titleController.text != (widget.chapter?.title ?? '') ||
+      _contentController.text != (widget.chapter?.content ?? '');
+
+  Future<void> _recoverDraft() async {
+    final uid = LocalAccountScope.read(context);
+    _draftStore =
+        widget.draftStore ??
+        (uid == null
+            ? null
+            : WriterDraftStore(
+                ownerUid: uid,
+                storyId: widget.story.id,
+                chapterId: widget.chapter?.id,
+              ));
+    try {
+      final draft = await _draftStore?.load();
+      if (!mounted || draft == null) return;
+      setState(() => _choosingDraft = true);
+      final restore = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialog) => PopScope(
+          canPop: false,
+          child: AlertDialog(
+            title: const Text('Edición local pendiente'),
+            content: const Text(
+              'Hay texto que no se confirmó en el servidor. Puedes recuperarlo para revisarlo. No se enviará automáticamente.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialog, false),
+                child: const Text('Usar versión guardada'),
+              ),
+              FilledButton(
+                key: const ValueKey('writer-restore-draft'),
+                onPressed: () => Navigator.pop(dialog, true),
+                child: const Text('Recuperar texto'),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (!mounted) return;
+      if (restore == true) {
+        _titleController.text = draft['title'] as String;
+        _contentController.text = draft['content'] as String;
+        _chapterId = draft['chapterId'] as String;
+        _chapterOrder = draft['order'] as int;
+        _restored = true;
+        _baseRevision = draft['revision'] as int;
+        _draftConflict = _baseRevision != widget.story.revision;
+      } else if (restore == false) {
+        await _draftStore?.clear();
+      }
+    } catch (_) {
+      _localError = 'No se pudo recuperar la copia local. Los datos guardados en el servidor siguen disponibles.';
+    } finally {
+      if (mounted) setState(() => _restoring = false);
+    }
+  }
+
+  Future<void> _persistDraft() async {
+    if (_restoring || _draftStore == null) return;
+    try {
+      if (!_hasChanges) {
+        await _draftStore!.clear();
+        return;
+      }
+      await _draftStore!.save({
+        'title': _titleController.text,
+        'content': _contentController.text,
+        'revision': _baseRevision,
+        'chapterId': _chapterId,
+        'order': _chapterOrder,
+      });
+      if (mounted) setState(() => _localError = null);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _localError = 'No se pudo guardar la copia local. Guarda en tu cuenta antes de salir.',
+        );
+      }
+    }
+  }
+
+  Widget _recoveryNotice() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      if (widget.story.isPublished)
+        const Text(
+          'Historia publicada: los cambios completos se publican al guardar. Retírala primero para trabajar con capítulos incompletos.',
+        ),
+      if (_restored)
+        Text(
+          _draftConflict
+              ? 'Copia local de una revisión anterior. El guardado está bloqueado para proteger la versión del servidor. Copia tu texto y vuelve a abrir el capítulo para combinarlo.'
+              : 'Texto recuperado de este dispositivo, pendiente de guardar en tu cuenta.',
+          key: const ValueKey('writer-draft-notice'),
+        ),
+      if (_draftConflict)
+        TextButton(
+          onPressed: () async {
+            await Clipboard.setData(
+              ClipboardData(
+                text: '${_titleController.text}\n\n${_contentController.text}',
+              ),
+            );
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Texto copiado. La copia local se conserva hasta que elijas usar la versión guardada.',
+                  ),
+                ),
+              );
+            }
+          },
+          child: const Text('Copiar texto recuperado'),
+        ),
+      if (_localError != null) Text(_localError!),
+    ],
+  );
 
   bool get _isEditing => widget.chapter != null;
 
@@ -66,13 +211,10 @@ class _ChapterEditorScreenState extends State<ChapterEditorScreen> {
     final now = DateTime.now();
 
     _chapterId = widget.chapter?.id ?? now.microsecondsSinceEpoch.toString();
-    _chapterOrder =
-        widget.chapter?.order ?? widget.story.chapters.length + 1;
+    _chapterOrder = widget.chapter?.order ?? widget.story.chapters.length + 1;
     _createdAt = widget.chapter?.createdAt ?? now;
 
-    _titleController = TextEditingController(
-      text: widget.chapter?.title ?? '',
-    );
+    _titleController = TextEditingController(text: widget.chapter?.title ?? '');
 
     _contentController = TextEditingController(
       text: widget.chapter?.content ?? '',
@@ -80,6 +222,7 @@ class _ChapterEditorScreenState extends State<ChapterEditorScreen> {
 
     _titleController.addListener(_refresh);
     _contentController.addListener(_refresh);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _recoverDraft());
   }
 
   @override
@@ -96,6 +239,7 @@ class _ChapterEditorScreenState extends State<ChapterEditorScreen> {
   void _refresh() {
     if (!mounted) return;
     setState(() {});
+    _persistDraft();
   }
 
   int get _wordCount {
@@ -103,10 +247,7 @@ class _ChapterEditorScreenState extends State<ChapterEditorScreen> {
 
     if (text.isEmpty) return 0;
 
-    return text
-        .split(RegExp(r'\s+'))
-        .where((word) => word.isNotEmpty)
-        .length;
+    return text.split(RegExp(r'\s+')).where((word) => word.isNotEmpty).length;
   }
 
   int get _characterCount => _contentController.text.length;
@@ -121,15 +262,14 @@ class _ChapterEditorScreenState extends State<ChapterEditorScreen> {
         _contentController.text.trim().isNotEmpty;
   }
 
-  Future<void> _saveChapter({required bool publish}) async {
+  Future<void> _saveChapter() async {
+    if (_restoring || _draftConflict) return;
     if (_isSaving) return;
 
-    if (publish && !_canPublish) {
+    if (widget.story.isPublished && !_canPublish) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Completa el título y el contenido antes de publicar.',
-          ),
+          content: Text('Completa el título y el contenido antes de publicar.'),
         ),
       );
       return;
@@ -139,55 +279,59 @@ class _ChapterEditorScreenState extends State<ChapterEditorScreen> {
       _isSaving = true;
     });
 
-    final latestStory =
-        await _writerService.getStoryById(widget.story.id) ?? widget.story;
+    try {
+      final latestStory = widget.story;
+      final now = DateTime.now();
 
-    final now = DateTime.now();
+      final chapter = WriterChapter(
+        id: _chapterId,
+        title: _titleController.text.trim(),
+        content: _contentController.text,
+        order: _chapterOrder,
+        isPublished: widget.story.isPublished,
+        createdAt: _createdAt,
+        updatedAt: now,
+      );
 
-    final chapter = WriterChapter(
-      id: _chapterId,
-      title: _titleController.text.trim(),
-      content: _contentController.text,
-      order: _chapterOrder,
-      isPublished: publish,
-      createdAt: _createdAt,
-      updatedAt: now,
-    );
+      final updatedChapters = [...latestStory.chapters];
 
-    final updatedChapters = [...latestStory.chapters];
+      final existingIndex = updatedChapters.indexWhere(
+        (existingChapter) => existingChapter.id == _chapterId,
+      );
 
-    final existingIndex = updatedChapters.indexWhere(
-      (existingChapter) => existingChapter.id == _chapterId,
-    );
+      if (existingIndex == -1) {
+        updatedChapters.add(chapter);
+      } else {
+        updatedChapters[existingIndex] = chapter;
+      }
 
-    if (existingIndex == -1) {
-      updatedChapters.add(chapter);
-    } else {
-      updatedChapters[existingIndex] = chapter;
+      updatedChapters.sort((a, b) => a.order.compareTo(b.order));
+
+      final updatedStory = latestStory.copyWith(
+        chapters: updatedChapters,
+        updatedAt: now,
+      );
+
+      final saved = await _writerService.save(updatedStory);
+      try {
+        await _draftStore?.clear();
+      } catch (_) {
+        /* Recovery copy can safely remain. */
+      }
+      if (mounted) Navigator.of(context).pop(saved);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(writerError(error))));
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
-
-    updatedChapters.sort((a, b) => a.order.compareTo(b.order));
-
-    final updatedStory = latestStory.copyWith(
-      chapters: updatedChapters,
-      updatedAt: now,
-    );
-
-    await _writerService.updateStory(updatedStory);
-
-    if (!mounted) return;
-
-    setState(() {
-      _isSaving = false;
-    });
-
-    Navigator.of(context).pop(updatedStory);
   }
 
   Future<bool> _confirmExit() async {
-    final hasChanges =
-        _titleController.text.trim().isNotEmpty ||
-        _contentController.text.trim().isNotEmpty;
+    if (_isSaving) return false;
+    final hasChanges = _hasChanges;
 
     if (!hasChanges) return true;
 
@@ -205,9 +349,7 @@ class _ChapterEditorScreenState extends State<ChapterEditorScreen> {
             decoration: BoxDecoration(
               color: _surfaceColor,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppColors.gold.withValues(alpha: 0.34),
-              ),
+              border: Border.all(color: AppColors.gold.withValues(alpha: 0.34)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.14),
@@ -247,7 +389,7 @@ class _ChapterEditorScreenState extends State<ChapterEditorScreen> {
                 ),
                 const SizedBox(height: 7),
                 Text(
-                  'Si sales ahora, los cambios que aún no hayas guardado en este capítulo se perderán.',
+                  'Los cambios aún no están guardados en tu cuenta. La recuperación local queda solo en este dispositivo cuando está disponible.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.inter(
                     fontSize: 9,
@@ -328,6 +470,74 @@ class _ChapterEditorScreenState extends State<ChapterEditorScreen> {
     Navigator.of(context).pop();
   }
 
+  ({String before, String inserted})? _assistantInsertion;
+
+  bool get _canUndoAssistantInsertion {
+    final insertion = _assistantInsertion;
+    return insertion != null &&
+        _contentController.text.startsWith(
+          insertion.before + insertion.inserted,
+        );
+  }
+
+  void _undoAssistantInsertion() {
+    final insertion = _assistantInsertion;
+    if (insertion == null || !_canUndoAssistantInsertion) return;
+    final start = insertion.before.length;
+    final text = _contentController.text.replaceRange(
+      start,
+      start + insertion.inserted.length,
+      '',
+    );
+    _assistantInsertion = null;
+    _contentController.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: start),
+    );
+  }
+
+  Future<void> _openAssistant(LiteraryChatRepository repository) async {
+    final before = _contentController.text;
+    final selection = _contentController.selection;
+    final excerpt = selection.isValid && !selection.isCollapsed
+        ? selection.textInside(before)
+        : before;
+    final suggestion = await LiteraryChatScreen.open(
+      context,
+      LiteraryChatScreen(
+        repository: repository,
+        editor: ChatEditor.chapter,
+        genre: widget.story.genre,
+        excerpt: excerpt.length <= 4000 ? excerpt : '',
+      ),
+    );
+    if (!mounted ||
+        suggestion == null ||
+        _isSaving ||
+        _contentController.text != before ||
+        suggestion.action != 'INSERT' ||
+        !repository.chatAccountIsCurrent) {
+      return;
+    }
+    final inserted = before.isEmpty
+        ? suggestion.text
+        : '\n\n${suggestion.text}';
+    final text = before + inserted;
+    if (text.length > 200000) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El capítulo supera el límite de longitud.'),
+        ),
+      );
+      return;
+    }
+    _assistantInsertion = (before: before, inserted: inserted);
+    _contentController.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -339,36 +549,56 @@ class _ChapterEditorScreenState extends State<ChapterEditorScreen> {
       child: Scaffold(
         backgroundColor: _backgroundColor,
         body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(18, 10, 18, 120),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildBackButton(),
-                const SizedBox(height: 10),
-                _buildSectionTitle('NUEVO CAPÍTULO'),
-                const SizedBox(height: 10),
-                _buildHeader(),
-                const SizedBox(height: 14),
-                _buildStoryInformation(),
-                const SizedBox(height: 22),
-                _buildTitleSection(),
-                const SizedBox(height: 18),
-                _buildContentSection(),
-                const SizedBox(height: 8),
-                _buildCompactStats(),
-                const SizedBox(height: 10),
-                _buildPendingStatus(),
-                const SizedBox(height: 10),
-                _buildPreviewButton(),
-                const SizedBox(height: 14),
-                _buildActions(),
-              ],
+          child: AbsorbPointer(
+            absorbing: _isSaving || _restoring,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 120),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildBackButton(),
+                  const SizedBox(height: 10),
+                  _buildSectionTitle('NUEVO CAPÍTULO'),
+                  const SizedBox(height: 10),
+                  _buildHeader(),
+                  const SizedBox(height: 14),
+                  _buildStoryInformation(),
+                  const SizedBox(height: 22),
+                  _recoveryNotice(),
+                  if (_restoring && !_choosingDraft)
+                    const LinearProgressIndicator(),
+                  _buildTitleSection(),
+                  const SizedBox(height: 18),
+                  if (widget.repository case LiteraryChatRepository assistant)
+                    Wrap(
+                      children: [
+                        TextButton.icon(
+                          onPressed: () => _openAssistant(assistant),
+                          icon: const Icon(Icons.auto_awesome, size: 17),
+                          label: const Text('Asistente IA'),
+                        ),
+                        if (_canUndoAssistantInsertion)
+                          TextButton(
+                            onPressed: _undoAssistantInsertion,
+                            child: const Text('Deshacer inserción IA'),
+                          ),
+                      ],
+                    ),
+                  _buildContentSection(),
+                  const SizedBox(height: 8),
+                  _buildCompactStats(),
+                  const SizedBox(height: 10),
+                  _buildPendingStatus(),
+                  const SizedBox(height: 10),
+                  _buildPreviewButton(),
+                  const SizedBox(height: 14),
+                  _buildActions(),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
-
 }

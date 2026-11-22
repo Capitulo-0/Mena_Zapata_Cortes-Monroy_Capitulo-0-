@@ -23,7 +23,8 @@ class ReadingClubsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final visible = clubs.take(2).toList();
+    // Mostrar hasta tres clubes recientes.
+    final visible = clubs.take(3).toList();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
@@ -31,9 +32,7 @@ class ReadingClubsSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Expanded(
-                child: HomeSectionTitle('Clubes de Lectura Activos'),
-              ),
+              const Expanded(child: HomeSectionTitle('Clubes de la comunidad')),
               TextButton(
                 onPressed: onShowAll,
                 style: TextButton.styleFrom(
@@ -46,7 +45,7 @@ class ReadingClubsSection extends StatelessWidget {
                   'Ver todos',
                   style: GoogleFonts.inter(
                     color: AppColors.accentOf(context),
-                    fontSize: 8,
+                    fontSize: 10,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -61,8 +60,7 @@ class ReadingClubsSection extends StatelessWidget {
               onShowDetails: () => onShowDetails(visible[index]),
               onToggle: () => onToggleClub(visible[index].id),
             ),
-            if (index < visible.length - 1)
-              const SizedBox(height: 8),
+            if (index < visible.length - 1) const SizedBox(height: 8),
           ],
         ],
       ),
@@ -101,9 +99,7 @@ class _ClubCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: surface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(
-          color: gold.withValues(alpha: 0.45),
-        ),
+        border: Border.all(color: gold.withValues(alpha: 0.45)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,21 +112,21 @@ class _ClubCard extends StatelessWidget {
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 3),
-          Text(
-            'Leyendo: ${club.book}',
-            style: GoogleFonts.inter(
-              color: textSecondary,
-              fontSize: 8,
+
+          // Los clubes reales no requieren un libro asociado.
+          // Evitamos mostrar "Leyendo:" sin contenido.
+          if (club.book.trim().isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              'Leyendo: ${club.book}',
+              style: GoogleFonts.inter(color: textSecondary, fontSize: 8),
             ),
-          ),
+          ],
+
           const SizedBox(height: 4),
           Text(
             '📅 Debate: ${club.date} · ${club.members} lectores',
-            style: GoogleFonts.inter(
-              color: accent,
-              fontSize: 7,
-            ),
+            style: GoogleFonts.inter(color: accent, fontSize: 7),
           ),
           const SizedBox(height: 9),
           Row(

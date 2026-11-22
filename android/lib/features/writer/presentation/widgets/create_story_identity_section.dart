@@ -8,6 +8,8 @@ extension _CreateStoryIdentitySection on _CreateStoryScreenState {
         Text('TÍTULO', style: _fieldLabelStyle()),
         const SizedBox(height: 7),
         TextField(
+          enabled: !_isSaving,
+          key: const ValueKey('writer-story-title'),
           controller: _titleController,
           maxLength: 80,
           textCapitalization: TextCapitalization.sentences,
@@ -65,6 +67,8 @@ extension _CreateStoryIdentitySection on _CreateStoryScreenState {
         Text('SINOPSIS', style: _fieldLabelStyle()),
         const SizedBox(height: 7),
         TextField(
+          enabled: !_isSaving,
+          key: const ValueKey('writer-story-synopsis'),
           controller: _synopsisController,
           maxLength: 600,
           minLines: 6,
@@ -104,16 +108,11 @@ extension _CreateStoryIdentitySection on _CreateStoryScreenState {
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: BorderSide(
-          color: AppColors.gold.withValues(alpha: 0.48),
-        ),
+        borderSide: BorderSide(color: AppColors.gold.withValues(alpha: 0.48)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(10),
-        borderSide: const BorderSide(
-          color: AppColors.gold,
-          width: 1.2,
-        ),
+        borderSide: const BorderSide(color: AppColors.gold, width: 1.2),
       ),
     );
   }

@@ -32,10 +32,7 @@ extension _ManageStoryChaptersSection on _ManageStoryScreenState {
                 ),
               ),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
@@ -53,9 +50,7 @@ extension _ManageStoryChaptersSection on _ManageStoryScreenState {
       decoration: BoxDecoration(
         color: _surfaceColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.26),
-        ),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.26)),
       ),
       child: Column(
         children: [
@@ -232,6 +227,7 @@ extension _ManageStoryChaptersSection on _ManageStoryScreenState {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         OutlinedButton(
+                          key: ValueKey('writer-edit-chapter-${chapter.id}'),
                           onPressed: () => _openEditChapter(chapter),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: _headingColor,
@@ -259,68 +255,22 @@ extension _ManageStoryChaptersSection on _ManageStoryScreenState {
                                 ),
                               ),
                               const SizedBox(width: 4),
-                              const Icon(
-                                Icons.chevron_right_rounded,
-                                size: 11,
-                              ),
+                              const Icon(Icons.chevron_right_rounded, size: 11),
                             ],
                           ),
                         ),
-                        if (!published) ...[
-                          const SizedBox(width: 6),
-                          FilledButton.icon(
-                            onPressed: () =>
-                                _toggleChapterPublication(chapter),
-                            icon: const Icon(
-                              Icons.arrow_upward_rounded,
-                              size: 10,
-                            ),
-                            label: Text(
-                              'Publicar',
-                              style: GoogleFonts.inter(
-                                fontSize: 6.5,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: AppColors.accent,
-                              foregroundColor: AppColors.background,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
-                                vertical: 6,
-                              ),
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(7),
-                              ),
-                            ),
-                          ),
-                        ],
                         const SizedBox(width: 3),
                         PopupMenuButton<String>(
                           tooltip: 'Opciones del capítulo',
                           color: _surfaceColor,
                           onSelected: (value) {
                             switch (value) {
-                              case 'publish':
-                                _toggleChapterPublication(chapter);
-                                break;
                               case 'delete':
                                 _deleteChapter(chapter);
                                 break;
                             }
                           },
                           itemBuilder: (_) => [
-                            PopupMenuItem<String>(
-                              value: 'publish',
-                              child: Text(
-                                chapter.isPublished
-                                    ? 'Volver a borrador'
-                                    : 'Publicar capítulo',
-                              ),
-                            ),
-                            const PopupMenuDivider(),
                             const PopupMenuItem<String>(
                               value: 'delete',
                               child: Text('Eliminar capítulo'),

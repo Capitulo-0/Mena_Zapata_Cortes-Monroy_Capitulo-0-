@@ -1,0 +1,55 @@
+{
+  "slug": "cueva_mora",
+  "title": "La cueva de la mora",
+  "author": "Gustavo Adolfo Bécquer",
+  "death_year": 1870,
+  "genre": "Cuentos",
+  "edition": "Obras de Gustavo A. Bécquer, tomo 2, 1885. Transcripción del escaneo de Wikisource.",
+  "edition_evidence": "https://es.wikisource.org/wiki/Índice:Obras_de_Bécquer_-_Vol._2.djvu",
+  "rights_evidence": [
+    "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+    "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+    "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+  ],
+  "reviewed_complete": true,
+  "sections": [
+    {
+      "export_spec": null,
+      "extraction": "scan",
+      "section": "Relato completo",
+      "page": "La cueva de la mora",
+      "revision": 1010347,
+      "source_pages": [
+        "Página:Obras de Bécquer - Vol. 2.djvu/91",
+        "Página:Obras de Bécquer - Vol. 2.djvu/92",
+        "Página:Obras de Bécquer - Vol. 2.djvu/93",
+        "Página:Obras de Bécquer - Vol. 2.djvu/94",
+        "Página:Obras de Bécquer - Vol. 2.djvu/95",
+        "Página:Obras de Bécquer - Vol. 2.djvu/96",
+        "Página:Obras de Bécquer - Vol. 2.djvu/97",
+        "Página:Obras de Bécquer - Vol. 2.djvu/98",
+        "Página:Obras de Bécquer - Vol. 2.djvu/99",
+        "Página:Obras de Bécquer - Vol. 2.djvu/100"
+      ],
+      "characters": 11500,
+      "beginning": "LA CUEVA DE LA MORA\n\nI\n\nFente al establecimiento de baños de Fitero, y sobre unas rocas cortadas á p",
+      "ending": "o de sangre á la orilla del río, y siguiéndolo, entró en la cueva, donde encontró los cadáveres del caballero y su amada, que aún vienen por las noches á vagar por estos contornos.",
+      "text_sha256": "5827ad050c163217ec10c78762ea66eaefbb0e883019b26818f4e5c2d97dee4d",
+      "source_snapshot_sha256": "10f9a1ba8623e68bd0336e271b2459d72d2ab1ac47d7259700660bede9bbbbb0",
+      "retrieved_at": "2026-11-16T20:26:41.267088+00:00",
+      "permanent_url": "https://es.wikisource.org/w/index.php?oldid=1010347",
+      "history_url": "https://es.wikisource.org/w/index.php?title=La+cueva+de+la+mora&action=history"
+    }
+  ],
+  "notes": "",
+  "id": "wikisource-es-cueva_mora",
+  "language": "es",
+  "source": "https://es.wikisource.org/wiki/La_cueva_de_la_mora",
+  "bytes": 12553,
+  "utf16_units": 12242,
+  "sha256": "8ecb548fa25f300a2f3cbf7599a53a8daa81c7c85c82775e2d4f56f6e5494af1",
+  "literary_body_sha256": "5827ad050c163217ec10c78762ea66eaefbb0e883019b26818f4e5c2d97dee4d",
+  "license": "CC BY-SA 4.0 (transcripción/conversión cuando corresponda); original dominio público",
+  "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "complete": true
+}

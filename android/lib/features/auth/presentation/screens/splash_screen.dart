@@ -3,10 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({
-    super.key,
-    required this.onFinished,
-  });
+  const SplashScreen({super.key, required this.onFinished});
 
   final VoidCallback onFinished;
 

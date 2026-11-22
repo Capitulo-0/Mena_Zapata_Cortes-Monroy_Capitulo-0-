@@ -70,9 +70,7 @@ extension _PublishedStoryOverview on _PublishedStoryScreenState {
       padding: const EdgeInsets.symmetric(vertical: 11),
       decoration: BoxDecoration(
         border: Border.symmetric(
-          horizontal: BorderSide(
-            color: AppColors.gold.withValues(alpha: 0.18),
-          ),
+          horizontal: BorderSide(color: AppColors.gold.withValues(alpha: 0.18)),
         ),
       ),
       child: Row(
@@ -80,23 +78,9 @@ extension _PublishedStoryOverview on _PublishedStoryScreenState {
         children: [
           _metric(
             context,
-            icon: Icons.star_rounded,
-            text: widget.story.rating > 0
-                ? widget.story.rating.toStringAsFixed(1)
-                : '—',
-          ),
-          _dot(),
-          _metric(
-            context,
             icon: Icons.menu_book_outlined,
             text:
                 '${widget.story.publishedChapterCount} ${widget.story.publishedChapterCount == 1 ? 'capítulo' : 'capítulos'}',
-          ),
-          _dot(),
-          _metric(
-            context,
-            icon: Icons.people_outline_rounded,
-            text: '${widget.story.followers} seguidores',
           ),
         ],
       ),
@@ -127,20 +111,6 @@ extension _PublishedStoryOverview on _PublishedStoryScreenState {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _dot() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 7),
-      child: Text(
-        '·',
-        style: GoogleFonts.inter(
-          color: AppColors.gold,
-          fontSize: 8,
-          fontWeight: FontWeight.w700,
-        ),
       ),
     );
   }

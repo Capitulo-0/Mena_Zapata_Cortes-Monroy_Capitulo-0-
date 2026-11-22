@@ -155,27 +155,31 @@ class AuthGenderSelector extends StatelessWidget {
                                   color: selected
                                       ? AppColors.accent.withValues(alpha: 0.08)
                                       : alternate
-                                          ? AppColors.surfaceSoft
-                                              .withValues(alpha: 0.34)
-                                          : AppColors.surface,
+                                      ? AppColors.surfaceSoft.withValues(
+                                          alpha: 0.34,
+                                        )
+                                      : AppColors.surface,
                                   child: Row(
                                     children: [
                                       AnimatedContainer(
-                                        duration:
-                                            const Duration(milliseconds: 160),
+                                        duration: const Duration(
+                                          milliseconds: 160,
+                                        ),
                                         width: 26,
                                         height: 26,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           color: selected
-                                              ? AppColors.gold
-                                                  .withValues(alpha: 0.16)
+                                              ? AppColors.gold.withValues(
+                                                  alpha: 0.16,
+                                                )
                                               : AppColors.background,
                                           border: Border.all(
                                             color: selected
                                                 ? AppColors.gold
-                                                : AppColors.gold
-                                                    .withValues(alpha: 0.22),
+                                                : AppColors.gold.withValues(
+                                                    alpha: 0.22,
+                                                  ),
                                           ),
                                         ),
                                         child: Icon(
@@ -221,8 +225,7 @@ class AuthGenderSelector extends StatelessWidget {
                                 Divider(
                                   height: 1,
                                   thickness: 1,
-                                  color:
-                                      AppColors.gold.withValues(alpha: 0.12),
+                                  color: AppColors.gold.withValues(alpha: 0.12),
                                 ),
                             ],
                           );
@@ -246,8 +249,9 @@ class AuthGenderSelector extends StatelessWidget {
                               ),
                               color: selectedGender == 'Prefiero decirlo yo'
                                   ? AppColors.accent.withValues(alpha: 0.08)
-                                  : AppColors.surfaceSoft
-                                      .withValues(alpha: 0.18),
+                                  : AppColors.surfaceSoft.withValues(
+                                      alpha: 0.18,
+                                    ),
                               child: Row(
                                 children: [
                                   Container(
@@ -255,11 +259,10 @@ class AuthGenderSelector extends StatelessWidget {
                                     height: 26,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      color: AppColors.gold
-                                          .withValues(alpha: 0.16),
-                                      border: Border.all(
-                                        color: AppColors.gold,
+                                      color: AppColors.gold.withValues(
+                                        alpha: 0.16,
                                       ),
+                                      border: Border.all(color: AppColors.gold),
                                     ),
                                     child: const Icon(
                                       Icons.check_rounded,

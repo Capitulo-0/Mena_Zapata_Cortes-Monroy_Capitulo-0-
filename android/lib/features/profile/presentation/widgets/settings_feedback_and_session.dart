@@ -121,9 +121,7 @@ extension _SettingsFeedbackAndSession on _SettingsScreenState {
     );
   }
 
-  Future<void> _confirmSessionAction({
-    required bool deleteAccount,
-  }) async {
+  Future<void> _confirmSessionAction({required bool deleteAccount}) async {
     var processing = false;
     var dots = 1;
 
@@ -133,31 +131,22 @@ extension _SettingsFeedbackAndSession on _SettingsScreenState {
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            final title = deleteAccount
-                ? 'Eliminar cuenta'
-                : 'Cerrar sesión';
+            final title = deleteAccount ? 'Eliminar cuenta' : 'Cerrar sesión';
 
             final description = deleteAccount
                 ? 'Esta acción eliminará tu cuenta de Capítulo 0. '
-                    'En esta demo volverás a la pantalla de autenticación.'
+                      'En esta demo volverás a la pantalla de autenticación.'
                 : 'Tu sesión actual se cerrará y volverás a la '
-                    'pantalla de autenticación.';
+                      'pantalla de autenticación.';
 
             return PopScope(
               canPop: !processing,
               child: Dialog(
                 backgroundColor: Colors.transparent,
-                insetPadding: const EdgeInsets.symmetric(
-                  horizontal: 28,
-                ),
+                insetPadding: const EdgeInsets.symmetric(horizontal: 28),
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 390),
-                  padding: const EdgeInsets.fromLTRB(
-                    18,
-                    18,
-                    18,
-                    16,
-                  ),
+                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
                   decoration: BoxDecoration(
                     color: _background,
                     borderRadius: BorderRadius.circular(20),
@@ -229,26 +218,20 @@ extension _SettingsFeedbackAndSession on _SettingsScreenState {
                                 onPressed: processing
                                     ? null
                                     : () {
-                                        Navigator.of(
-                                          dialogContext,
-                                        ).pop();
+                                        Navigator.of(dialogContext).pop();
                                       },
                                 style: OutlinedButton.styleFrom(
                                   foregroundColor: _textPrimary,
-                                  disabledForegroundColor:
-                                      _textSecondary.withValues(
-                                    alpha: 0.40,
-                                  ),
+                                  disabledForegroundColor: _textSecondary
+                                      .withValues(alpha: 0.40),
                                   side: BorderSide(
-                                    color: _gold.withValues(
-                                      alpha: 0.38,
-                                    ),
+                                    color: _gold.withValues(alpha: 0.38),
                                   ),
-                                  backgroundColor:
-                                      _surface.withValues(alpha: 0.48),
+                                  backgroundColor: _surface.withValues(
+                                    alpha: 0.48,
+                                  ),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
                                 child: Text(
@@ -270,9 +253,7 @@ extension _SettingsFeedbackAndSession on _SettingsScreenState {
                                     ? null
                                     : () async {
                                         if (deleteAccount) {
-                                          Navigator.of(
-                                            dialogContext,
-                                          ).pop();
+                                          Navigator.of(dialogContext).pop();
 
                                           if (mounted) {
                                             widget.onDeleteAccount();
@@ -285,15 +266,9 @@ extension _SettingsFeedbackAndSession on _SettingsScreenState {
                                           dots = 1;
                                         });
 
-                                        for (
-                                          var step = 0;
-                                          step < 4;
-                                          step++
-                                        ) {
+                                        for (var step = 0; step < 4; step++) {
                                           await Future<void>.delayed(
-                                            const Duration(
-                                              milliseconds: 250,
-                                            ),
+                                            const Duration(milliseconds: 250),
                                           );
 
                                           if (!dialogContext.mounted) {
@@ -309,9 +284,7 @@ extension _SettingsFeedbackAndSession on _SettingsScreenState {
                                           return;
                                         }
 
-                                        Navigator.of(
-                                          dialogContext,
-                                        ).pop();
+                                        Navigator.of(dialogContext).pop();
 
                                         if (!mounted) return;
 
@@ -321,29 +294,25 @@ extension _SettingsFeedbackAndSession on _SettingsScreenState {
                                   backgroundColor: processing
                                       ? _accent.withValues(alpha: 0.62)
                                       : _accent,
-                                  disabledBackgroundColor:
-                                      _accent.withValues(alpha: 0.62),
-                                  foregroundColor:
-                                      AppColors.background,
-                                  disabledForegroundColor:
-                                      AppColors.background.withValues(
-                                    alpha: 0.90,
+                                  disabledBackgroundColor: _accent.withValues(
+                                    alpha: 0.62,
                                   ),
+                                  foregroundColor: AppColors.background,
+                                  disabledForegroundColor: AppColors.background
+                                      .withValues(alpha: 0.90),
                                   elevation: 0,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(12),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
                                 child: AnimatedSwitcher(
-                                  duration:
-                                      const Duration(milliseconds: 120),
+                                  duration: const Duration(milliseconds: 120),
                                   child: Text(
                                     processing
                                         ? 'Cerrando${'.' * dots}'
                                         : deleteAccount
-                                            ? 'Eliminar cuenta'
-                                            : 'Cerrar sesión',
+                                        ? 'Eliminar cuenta'
+                                        : 'Cerrar sesión',
                                     key: ValueKey(
                                       '$processing-$dots-$deleteAccount',
                                     ),

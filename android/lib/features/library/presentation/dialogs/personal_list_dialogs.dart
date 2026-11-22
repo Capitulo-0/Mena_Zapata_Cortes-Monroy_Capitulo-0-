@@ -1,3 +1,4 @@
+import '../../../../core/widgets/literary_cover.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -1210,7 +1211,7 @@ class PersonalListDialogs {
         ),
         child: Row(
           children: [
-            _cover(context, book.cover, 46, 64),
+            LiteraryCover(reference: book.cover, title: book.title, author: book.author, identity: 'list:${book.id}', width: 46, height: 64),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -1319,7 +1320,7 @@ class PersonalListDialogs {
         ),
         child: Row(
           children: [
-            _cover(context, book.cover, 40, 56),
+            LiteraryCover(reference: book.cover, title: book.title, author: book.author, identity: 'list:${book.id}', width: 40, height: 56),
             const SizedBox(width: 9),
             Expanded(
               child: Column(
@@ -1354,32 +1355,5 @@ class PersonalListDialogs {
     );
   }
 
-  static Widget _cover(
-    BuildContext context,
-    String url,
-    double width,
-    double height,
-  ) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: Image.network(
-          url,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) {
-            return Container(
-              color: AppColors.deepOf(context),
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.menu_book_rounded,
-                color: AppColors.gold,
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
+
 }

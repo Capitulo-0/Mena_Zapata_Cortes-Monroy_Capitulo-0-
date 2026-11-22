@@ -2,6 +2,44 @@ part of '../screens/profile_screen.dart';
 
 extension _ProfileReadingSummarySection on _ProfileScreenState {
   Widget _buildFavoriteQuote() {
+    if (widget.readOnly) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+        decoration: BoxDecoration(
+          color: _surfaceColor,
+          borderRadius: BorderRadius.circular(16),
+          border: const Border(
+            left: BorderSide(color: AppColors.gold, width: 4),
+            top: BorderSide(color: AppColors.gold, width: 0.6),
+            right: BorderSide(color: AppColors.gold, width: 0.6),
+            bottom: BorderSide(color: AppColors.gold, width: 0.6),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'CITA FAVORITA ANCLADA',
+              style: GoogleFonts.cinzel(
+                color: _headingColor,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 9),
+            Text(
+              'Este lector aún no tiene una cita favorita disponible.',
+              style: GoogleFonts.merriweather(
+                color: _textSecondaryColor,
+                fontSize: 9,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     final quote = _favoriteQuotes[_quoteIndex];
     final work = quote['work'] ?? '';
 
@@ -213,7 +251,9 @@ extension _ProfileReadingSummarySection on _ProfileScreenState {
                 ),
               ),
               Text(
-                '$_booksReadThisYear / ${widget.annualGoal} libros',
+                widget.readOnly && widget.annualGoal == 0
+                    ? 'Meta no disponible'
+                    : '$_booksReadThisYear / ${widget.annualGoal} libros',
                 style: GoogleFonts.inter(
                   color: AppColors.accent,
                   fontSize: 8.5,
@@ -236,30 +276,30 @@ extension _ProfileReadingSummarySection on _ProfileScreenState {
                   ),
                 ),
               ),
-              OutlinedButton.icon(
-                onPressed: _showMarkBookAsRead,
-                icon: const Icon(Icons.add_rounded, size: 14),
-                label: const Text('Registrar libro'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.accent,
-                  side: BorderSide(
-                    color: AppColors.accent.withValues(alpha: 0.5),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 6,
-                  ),
-                  textStyle: GoogleFonts.inter(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
+              if (!widget.readOnly)
+                OutlinedButton.icon(
+                  onPressed: _showMarkBookAsRead,
+                  icon: const Icon(Icons.add_rounded, size: 14),
+                  label: const Text('Registrar libro'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.accent,
+                    side: BorderSide(
+                      color: AppColors.accent.withValues(alpha: 0.5),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 6,
+                    ),
+                    textStyle: GoogleFonts.inter(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
       ),
     );
   }
-
 }

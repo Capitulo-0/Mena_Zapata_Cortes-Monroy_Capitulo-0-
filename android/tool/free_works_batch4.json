@@ -1,0 +1,162 @@
+[
+  {
+    "slug": "rima_1885_06",
+    "title": "Rima VI",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima VI, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Como la brisa que la sangre orea Verso final: Cogiendo flores y cantando pasa.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima VI",
+        "beginning": "VI\n\nComo la brisa que la sangre orea\nSobre el oscuro campo de batalla,\nCargada de perfumes y armonía",
+        "ending": "rmonías\nEn el silencio de la noche vaga;\n\nSímbolo del dolor y la ternura,\nDel bardo inglés en el horrible drama,\nLa dulce Ofelia, la razón perdida,\nCogiendo flores y cantando pasa.",
+        "extraction": "poem:VI",
+        "reviewed_headings": [
+          "VI"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_07",
+    "title": "Rima VII",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima VII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Del salón en el ángulo oscuro, Verso final: Que le diga: «¡Levántate y anda!»",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima VII",
+        "beginning": "VII\n\nDel salón en el ángulo oscuro,\nDe su dueño tal vez olvidada,\nSilenciosa y cubierta de polvo\nVeí",
+        "ending": "perando la mano de nieve\nQue sabe arrancarla!\n\n¡Ay! pensé; ¡cuántas veces el genio\nAsí duerme en el fondo del alma,\nY una voz, como Lázaro, espera\nQue le diga: «¡Levántate y anda!»",
+        "extraction": "poem:VII",
+        "reviewed_headings": [
+          "VII"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_08",
+    "title": "Rima VIII",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima VIII, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Cuando miro el azul horizonte Verso final: Divino aquí dentro!...",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima VIII",
+        "beginning": "VIII\n\nCuando miro el azul horizonte\nPerderse á lo lejos,\n\nAl través de una gasa de polvo\nDorado é in",
+        "ending": "ellas\nEn lumbre encendido\nFundirme en un beso.\n\nEn el mar de la duda en que bogo\nNi aún sé lo que creo;\n¡Sin embargo, estas ansias me dicen\nQue yo llevo algo\nDivino aquí dentro!...",
+        "extraction": "poem:VIII",
+        "reviewed_headings": [
+          "VIII"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_09",
+    "title": "Rima IX",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima IX, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Besa el aura que gime blandamente Verso final: Al río que le besa, vuelve un beso.",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima IX",
+        "beginning": "IX\n\nBesa el aura que gime blandamente\nLas leves ondas que jugando riza;\nEl sol besa á la nube en Occ",
+        "ending": "e púrpura y oro la matiza;\nLa llama en derredor del tronco ardiente\nPor besar á otra llama se desliza,\nY hasta el sáuce, inclinándose á su peso,\nAl río que le besa, vuelve un beso.",
+        "extraction": "poem:IX",
+        "reviewed_headings": [
+          "IX"
+        ]
+      }
+    ]
+  },
+  {
+    "slug": "rima_1885_10",
+    "title": "Rima X",
+    "author": "Gustavo Adolfo Bécquer",
+    "death_year": 1870,
+    "genre": "Poesía",
+    "work_type": "poema autónomo",
+    "edition": "Rima X, poema autónomo completo. Obras de Gustavo A. Bécquer, tomo III, Madrid, Librería de Fernando Fe, 1885. También reunido en Rimas de esta biblioteca.",
+    "edition_evidence": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "rights_evidence": [
+      "https://www.bcn.cl/leychile/navegar?idNorma=28933",
+      "https://es.wikisource.org/wiki/Wikisource:Derechos_de_autor",
+      "https://es.wikisource.org/wiki/Autor:Gustavo_Adolfo_Bécquer"
+    ],
+    "source": "https://es.wikisource.org/wiki/Rimas_(Bécquer,_1885)",
+    "reviewed_complete": true,
+    "parent_work_id": "wikisource-es-rimas_1885",
+    "parent_body_sha256": "c9b30d7b68bc1ab4d7b19526cc50d7bf45e808177a12ef3f37e65fdf3f3ca0b4",
+    "notes": "Poema autónomo íntegro, no novela, fragmento ni nueva colección. Se solapa deliberadamente con el volumen Rimas ya incluido. Verso inicial: Los invisibles átomos del aire Verso final: —¡Es el amor que pasa!",
+    "sections": [
+      {
+        "page": "scan:rimas1885:141-218",
+        "label": "Poema autónomo completo: Rima X",
+        "beginning": "X\n\nLos invisibles átomos del aire\nEn derredor palpitan y se inflaman;\nEl cielo se deshace en rayos d",
+        "ending": " en rayos de oro;\nLa tierra se estremece alborozada;\nOigo flotando en olas de armonía\nRumor de besos y batir de alas;\nMis párpados se cierran... ¿Qué sucede?\n—¡Es el amor que pasa!",
+        "extraction": "poem:X",
+        "reviewed_headings": [
+          "X"
+        ]
+      }
+    ]
+  }
+]

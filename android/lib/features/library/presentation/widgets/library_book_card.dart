@@ -1,3 +1,4 @@
+import '../../../../core/widgets/literary_cover.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -9,6 +10,7 @@ import '../../models/library_book.dart';
 class LibraryBookCard extends StatelessWidget {
   const LibraryBookCard({
     super.key,
+    this.onRemove,
     required this.book,
     required this.status,
     required this.progress,
@@ -25,6 +27,7 @@ class LibraryBookCard extends StatelessWidget {
   final int progress;
   final BookReview? review;
   final VoidCallback onOpen;
+  final VoidCallback? onRemove;
   final VoidCallback onStartReading;
   final VoidCallback onAdvance;
   final VoidCallback onFinish;
@@ -55,7 +58,7 @@ class LibraryBookCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Cover(url: book.cover, width: 62, height: 88),
+            LiteraryCover(key: ValueKey('library-cover-${book.id}:${book.googleVolumeId}'), reference: book.cover, title: book.title, author: book.author, identity: 'library:${book.id}:${book.googleVolumeId}', width: 62, height: 88),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
@@ -79,6 +82,12 @@ class LibraryBookCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       _StatusBadge(status: status),
+                      if (onRemove != null) PopupMenuButton<String>(
+                        key: ValueKey('book-options-${book.id}'), tooltip: 'Opciones del libro',
+                        padding: EdgeInsets.zero, constraints: const BoxConstraints(),
+                        icon: Icon(Icons.more_vert, size: 18, color: AppColors.textSecondaryOf(context)),
+                        onSelected: (_) => onRemove!(),
+                        itemBuilder: (_) => const [PopupMenuItem(value: 'remove', child: Text('Eliminar de Mi Biblioteca'))]),
                     ],
                   ),
                   const SizedBox(height: 3),
@@ -87,6 +96,13 @@ class LibraryBookCard extends StatelessWidget {
                     style: GoogleFonts.inter(
                       color: AppColors.textSecondaryOf(context),
                       fontSize: 8,
+                    ),
+                  ),
+                  Text(
+                    book.isFree ? 'Gratis · Demo' : 'Lectura externa · Demo',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondaryOf(context),
                     ),
                   ),
                   const SizedBox(height: 7),
@@ -141,9 +157,17 @@ class LibraryBookCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                    Text(
+                      book.isFree ? 'Gratis · Demo' : 'Lectura externa · Demo',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textSecondaryOf(context),
+                      ),
+                    ),
                     const SizedBox(height: 7),
                   ],
                   _StatusActions(
+                    isFree: book.isFree,
                     status: status,
                     hasReview: review != null,
                     onStartReading: onStartReading,
@@ -163,6 +187,7 @@ class LibraryBookCard extends StatelessWidget {
 
 class _StatusActions extends StatelessWidget {
   const _StatusActions({
+    required this.isFree,
     required this.status,
     required this.hasReview,
     required this.onStartReading,
@@ -170,6 +195,8 @@ class _StatusActions extends StatelessWidget {
     required this.onFinish,
     required this.onReviewTap,
   });
+
+  final bool isFree;
 
   final BookStatus status;
   final bool hasReview;
@@ -182,7 +209,7 @@ class _StatusActions extends StatelessWidget {
   Widget build(BuildContext context) {
     if (status == BookStatus.porLeer) {
       return _PrimaryButton(
-        label: 'Comenzar lectura',
+        label: isFree ? status.readingActionLabel : 'Registrar lectura',
         onTap: onStartReading,
       );
     }
@@ -192,7 +219,7 @@ class _StatusActions extends StatelessWidget {
         children: [
           Expanded(
             child: _PrimaryButton(
-              label: '+ Avanzar',
+              label: isFree ? status.readingActionLabel : 'Registrar lectura',
               onTap: onAdvance,
             ),
           ),
@@ -207,7 +234,11 @@ class _StatusActions extends StatelessWidget {
       );
     }
 
-    return SizedBox(
+    return Column(
+      children: [
+        _SecondaryButton(label: isFree ? 'Abrir libro' : 'Registrar lectura', onTap: onAdvance),
+        const SizedBox(height: 6),
+        SizedBox(
       width: double.infinity,
       height: 34,
       child: hasReview
@@ -258,6 +289,8 @@ class _StatusActions extends StatelessWidget {
                 ),
               ),
             ),
+    ),
+      ],
     );
   }
 }
@@ -402,43 +435,6 @@ class _ProgressBar extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Cover extends StatelessWidget {
-  const _Cover({
-    required this.url,
-    required this.width,
-    required this.height,
-  });
-
-  final String url;
-  final double width;
-  final double height;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: width,
-        height: height,
-        child: Image.network(
-          url,
-          fit: BoxFit.cover,
-          errorBuilder: (_, _, _) {
-            return Container(
-              color: AppColors.deepOf(context),
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.menu_book_rounded,
-                color: AppColors.gold,
-              ),
-            );
-          },
         ),
       ),
     );

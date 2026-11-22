@@ -1,0 +1,267 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+
+import '../../features/auth/domain/auth_repository.dart';
+
+class ApiFailure implements Exception {
+  const ApiFailure(
+    this.statusCode,
+    this.message, {
+    this.code,
+    this.retryAfterSeconds,
+  });
+
+  final int statusCode;
+  final String message;
+  final String? code;
+  final int? retryAfterSeconds;
+
+  factory ApiFailure.forStatus(
+    int code, {
+    String? errorCode,
+    int? retryAfterSeconds,
+  }) => ApiFailure(code, switch (code) {
+    401 => 'La sesión no es válida o expiró. Vuelve a iniciar sesión.',
+    403 => 'Tu cuenta no tiene permiso para esta operación.',
+    404 => 'No se encontró el usuario o recurso solicitado.',
+    409 =>
+      'El correo ya está asociado a una cuenta interna. '
+          'Se necesita una vinculación segura.',
+    400 || 422 =>
+      'Los datos enviados no son válidos. '
+          'Revisa los campos e inténtalo de nuevo.',
+    503 =>
+      'El backend o su servicio de identidad no está disponible. '
+          'Tu sesión Firebase se conserva.',
+    _ => 'No pudimos completar la operación con el backend.',
+  }, code: errorCode, retryAfterSeconds: retryAfterSeconds);
+}
+
+class ApiClient {
+  ApiClient({
+    required this.auth,
+    this.baseUrl = const String.fromEnvironment('API_BASE_URL'),
+    http.Client? client,
+    this.timeout = const Duration(seconds: 15),
+    bool allowInsecureHttp = kDebugMode,
+  }) : _http = client ?? http.Client(),
+       _allowHttp = allowInsecureHttp;
+
+  final AuthRepository auth;
+  final String baseUrl;
+  final http.Client _http;
+  final Duration timeout;
+  final bool _allowHttp;
+
+  Uri _uri(String path, [Map<String, String>? queryParameters]) {
+    final base = Uri.tryParse(baseUrl);
+
+    if (base == null ||
+        base.host.isEmpty ||
+        base.userInfo.isNotEmpty ||
+        base.hasQuery ||
+        base.hasFragment ||
+        (base.scheme != 'https' && !(_allowHttp && base.scheme == 'http'))) {
+      throw const ApiFailure(
+        0,
+        'Falta una API_BASE_URL válida sin credenciales. '
+        'Configura HTTPS para la API.',
+      );
+    }
+
+    if (!path.startsWith('/api/') ||
+        path.contains('..') ||
+        path.contains('?') ||
+        path.contains('#')) {
+      throw const ApiFailure(0, 'La ruta de la API no es válida.');
+    }
+
+    return base.replace(
+      path: '${base.path.replaceFirst(RegExp(r"/+$"), "")}$path',
+      queryParameters: queryParameters,
+    );
+  }
+
+  Future<Object?> requestJson(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    String? expectedUid,
+    Duration? responseTimeout,
+    bool publicRead = false,
+    Map<String, String>? queryParameters,
+  }) async {
+    final uri = _uri(path, queryParameters);
+    final uid = auth.currentUser?.uid;
+
+    // Consultas públicas permitidas: catálogo y clubes.
+    final isPublicCatalog = path.startsWith('/api/catalog/');
+
+    final isPublicClubs =
+        path == '/api/clubs' ||
+        path == '/api/clubs/home' ||
+        RegExp(r'^/api/clubs/[0-9]+$').hasMatch(path);
+
+    if (publicRead &&
+        (method != 'GET' || (!isPublicCatalog && !isPublicClubs))) {
+      throw ApiFailure.forStatus(403);
+    }
+
+    if (!publicRead &&
+        (uid == null || (expectedUid != null && uid != expectedUid))) {
+      throw ApiFailure.forStatus(401);
+    }
+
+    for (var attempt = 0; attempt < 2; attempt++) {
+      final token = publicRead
+          ? null
+          : await auth.getIdToken(forceRefresh: attempt == 1);
+
+      if (!publicRead &&
+          (auth.currentUser?.uid != uid || token == null || token.isEmpty)) {
+        throw ApiFailure.forStatus(401);
+      }
+
+      http.Response response;
+
+      try {
+        final request = http.Request(method, uri)
+          ..followRedirects = false
+          ..headers['Accept'] = 'application/json';
+
+        if (!publicRead) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+
+        if (body != null) {
+          request.headers['Content-Type'] = 'application/json';
+          request.body = jsonEncode(body);
+        }
+
+        response = await _http
+            .send(request)
+            .then(http.Response.fromStream)
+            .timeout(responseTimeout ?? timeout);
+      } on TimeoutException {
+        throw const ApiFailure(
+          503,
+          'El backend tardó demasiado en responder. '
+          'Puedes reintentar.',
+        );
+      } on http.ClientException {
+        throw const ApiFailure(
+          503,
+          'No pudimos conectar con el backend. '
+          'Revisa tu conexión y la dirección configurada.',
+        );
+      }
+
+      if (!publicRead && auth.currentUser?.uid != uid) {
+        throw ApiFailure.forStatus(401);
+      }
+
+      if (!publicRead && response.statusCode == 401 && attempt == 0) {
+        continue;
+      }
+
+      // Interpretar los códigos de error del backend.
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        String? errorCode;
+
+        try {
+          final data = jsonDecode(response.body);
+
+          if (data is Map<String, dynamic>) {
+            final code = data['code'];
+
+            if (code is String) {
+              errorCode = code;
+            }
+          }
+        } on FormatException {
+          // Si la respuesta no es JSON válido,
+          // conservar el manejo de errores original.
+        }
+
+        // Username ocupado durante el registro.
+        if (response.statusCode == 409 && errorCode == 'USERNAME_TAKEN') {
+          throw const ApiFailure(
+            409,
+            'El nombre de usuario ya está en uso. Elige otro.',
+            code: 'USERNAME_TAKEN',
+          );
+        }
+
+        if (response.statusCode == 400 && errorCode == 'USERNAME_REQUIRED') {
+          throw const ApiFailure(
+            400,
+            'Debes elegir un nombre de usuario para completar tu cuenta.',
+            code: 'USERNAME_REQUIRED',
+          );
+        }
+
+        // Conservar el código del backend y los tiempos de reintento.
+        final retryHeader = response.headers.entries
+            .where((header) => header.key.toLowerCase() == 'retry-after')
+            .firstOrNull
+            ?.value;
+        final retryAfter = int.tryParse(retryHeader ?? '');
+        throw ApiFailure.forStatus(
+          response.statusCode,
+          errorCode: errorCode,
+          retryAfterSeconds: retryAfter != null && retryAfter >= 0
+              ? retryAfter
+              : null,
+        );
+      }
+
+      if (response.statusCode == 204) {
+        return null;
+      }
+
+      try {
+        final data = jsonDecode(response.body);
+
+        if (data is Map<String, dynamic> || data is List<dynamic>) {
+          return data;
+        }
+      } on FormatException {
+        // No se exponen detalles de respuestas inválidas.
+      }
+
+      throw const ApiFailure(
+        502,
+        'El backend devolvió una respuesta no válida.',
+      );
+    }
+
+    throw ApiFailure.forStatus(401);
+  }
+
+  Future<Map<String, dynamic>> request(
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+    String? expectedUid,
+    Duration? responseTimeout,
+  }) async {
+    final result = await requestJson(
+      method,
+      path,
+      body: body,
+      expectedUid: expectedUid,
+      responseTimeout: responseTimeout,
+    );
+
+    if (result is Map<String, dynamic>) {
+      return result;
+    }
+
+    throw const ApiFailure(502, 'El backend devolvió una respuesta no válida.');
+  }
+
+  void close() => _http.close();
+}

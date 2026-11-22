@@ -30,9 +30,7 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
       decoration: BoxDecoration(
         color: _backgroundColor(context),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.22),
-        ),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.22)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -242,8 +240,7 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
                             ),
                             decoration: InputDecoration(
                               isDense: true,
-                              hintText:
-                                  'Responder a ${comment.username}...',
+                              hintText: 'Responder a ${comment.username}...',
                               counterStyle: GoogleFonts.inter(
                                 fontSize: 5.5,
                                 color: _textSecondaryColor(context),
@@ -290,8 +287,7 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
                               color: _backgroundColor(context),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color:
-                                    AppColors.gold.withValues(alpha: 0.24),
+                                color: AppColors.gold.withValues(alpha: 0.24),
                               ),
                             ),
                             child: Row(
@@ -305,8 +301,9 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
                                     },
                                     borderRadius: BorderRadius.circular(6),
                                     child: AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 180),
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
                                       alignment: Alignment.center,
                                       decoration: BoxDecoration(
                                         color: comment.replyPublic
@@ -336,8 +333,9 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
                                     },
                                     borderRadius: BorderRadius.circular(6),
                                     child: AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 180),
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
                                       alignment: Alignment.center,
                                       decoration: BoxDecoration(
                                         color: !comment.replyPublic
@@ -384,8 +382,7 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
                                 ),
                                 child: Text(
                                   'Cancelar',
-                                  style:
-                                      GoogleFonts.inter(fontSize: 5.8),
+                                  style: GoogleFonts.inter(fontSize: 5.8),
                                 ),
                               ),
                               const SizedBox(width: 4),
@@ -393,8 +390,7 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
                                 onPressed: () {
                                   if (_guardGuestAction()) return;
 
-                                  final replyText =
-                                      controller.text.trim();
+                                  final replyText = controller.text.trim();
 
                                   if (replyText.isEmpty) {
                                     return;
@@ -415,8 +411,7 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
                                 },
                                 style: FilledButton.styleFrom(
                                   backgroundColor: AppColors.accent,
-                                  foregroundColor:
-                                      AppColors.background,
+                                  foregroundColor: AppColors.background,
                                   minimumSize: Size.zero,
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 9,
@@ -463,10 +458,7 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
                             .map(
                               (reply) => Padding(
                                 padding: const EdgeInsets.only(bottom: 6),
-                                child: _buildReplyCard(
-                                  context,
-                                  reply,
-                                ),
+                                child: _buildReplyCard(context, reply),
                               ),
                             )
                             .toList(),
@@ -480,19 +472,13 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
     );
   }
 
-  Widget _buildReplyCard(
-    BuildContext context,
-    Map<String, dynamic> reply,
-  ) {
+  Widget _buildReplyCard(BuildContext context, Map<String, dynamic> reply) {
     final isPublic = reply['isPublic'] as bool? ?? true;
     final replyText = reply['text']?.toString() ?? '';
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 9,
-        vertical: 8,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
       decoration: BoxDecoration(
         color: _backgroundColor(context),
         borderRadius: BorderRadius.circular(8),

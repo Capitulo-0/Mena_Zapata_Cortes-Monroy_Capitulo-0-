@@ -26,6 +26,64 @@ extension _SettingsHomeSection on _SettingsScreenState {
                 });
               },
             ),
+            // Crear clubes: disponible solo con verificacion aprobada.
+            Opacity(
+              opacity: _canCreateClubs ? 1.0 : 0.55,
+              child: AbsorbPointer(
+                absorbing: !_canCreateClubs,
+                child: _settingsItem(
+                  icon: Icons.auto_stories_rounded,
+                  title: 'Crear clubes',
+                  subtitle: _clubCreationLoading
+                      ? 'Comprobando tu verificación...'
+                      : _clubCreationError != null
+                      ? 'No pudimos comprobar tu permiso'
+                      : _canCreateClubs
+                      ? 'Organizador verificado · Crear un club'
+                      : _clubCreationStatus ==
+                            OrganizerVerificationStatus.pending
+                      ? 'Tu verificación está pendiente'
+                      : _clubCreationStatus ==
+                            OrganizerVerificationStatus.rejected
+                      ? 'Tu solicitud fue rechazada'
+                      : 'Primero debes verificar tu organización',
+                  showArrow: _canCreateClubs,
+                  onTap: () {
+                    if (!_canCreateClubs) return;
+
+                    _updateState(() {
+                      _currentView = SettingsView.createClub;
+                    });
+                  },
+                ),
+              ),
+            ),
+            if (_clubCreationError != null) ...[
+              Padding(
+                padding: const EdgeInsets.only(left: 12, right: 12, bottom: 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: _clubCreationLoading
+                        ? null
+                        : _loadClubCreationPermission,
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: const Text('Reintentar verificación'),
+                  ),
+                ),
+              ),
+            ],
+            _divider(),
+            _settingsItem(
+              icon: Icons.verified_user_outlined,
+              title: 'Verificación de organizador',
+              subtitle: 'Solicita permiso para crear clubes de lectura',
+              onTap: () {
+                _updateState(() {
+                  _currentView = SettingsView.verification;
+                });
+              },
+            ),
             _divider(),
             _settingsItem(
               icon: Icons.block_outlined,

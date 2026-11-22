@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../controllers/auth_controller.dart';
+import '../controllers/session_controller.dart';
 import '../widgets/auth_feedback.dart';
 import '../widgets/auth_header.dart';
 import '../widgets/auth_login_form.dart';
@@ -13,10 +14,12 @@ class AuthScreen extends StatefulWidget {
   const AuthScreen({
     super.key,
     required this.onAuthenticated,
+    required this.session,
     this.initialLogin = true,
   });
 
   final ValueChanged<bool> onAuthenticated;
+  final SessionController session;
   final bool initialLogin;
 
   @override
@@ -29,8 +32,10 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = AuthController(initialLogin: widget.initialLogin)
-      ..addListener(_refresh);
+    _controller = AuthController(
+      initialLogin: widget.initialLogin,
+      session: widget.session,
+    )..addListener(_refresh);
   }
 
   @override
@@ -50,24 +55,33 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _login() async {
     if (!_controller.loginFieldsAreValid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Completa el correo y la contraseña.'),
-        ),
+        const SnackBar(content: Text('Completa el correo y la contraseña.')),
       );
       return;
     }
 
-    await _controller.simulateLogin();
+    await _controller.login();
 
     if (!mounted) return;
-    widget.onAuthenticated(false);
+    if (widget.session.message != null) {
+      showAuthErrorMessage(context, widget.session.message!);
+    }
   }
 
   Future<void> _guestLogin() async {
-    await _controller.simulateGuestLogin();
+    if (!_controller.isBusy) widget.onAuthenticated(true);
+  }
 
-    if (!mounted) return;
-    widget.onAuthenticated(true);
+  Future<void> _google() async {
+    if (!_controller.isLogin &&
+        (!_controller.termsAccepted || !_controller.privacyAccepted)) {
+      showAuthErrorMessage(context, 'Debes aceptar ambos documentos antes de crear tu cuenta.');
+      return;
+    }
+    await _controller.google();
+    if (mounted && widget.session.message != null) {
+      showAuthErrorMessage(context, widget.session.message!);
+    }
   }
 
   Future<void> _register() async {
@@ -77,34 +91,30 @@ class _AuthScreenState extends State<AuthScreen> {
       case RegisterValidationResult.missingFields:
         showAuthErrorMessage(context, 'Completa todos los campos');
         return;
-      case RegisterValidationResult.invalidPassword:
+      case RegisterValidationResult.invalidUsername:
         showAuthErrorMessage(
           context,
-          'La contraseña no cumple los requisitos',
+          'El nombre de usuario debe tener entre 3 y 30 caracteres '
+          'y solo puede contener letras minúsculas, números y guiones bajos (_).',
         );
         return;
+      case RegisterValidationResult.invalidPassword:
+        showAuthErrorMessage(context, 'La contraseña no cumple los requisitos');
+        return;
       case RegisterValidationResult.passwordMismatch:
-        showAuthErrorMessage(
-          context,
-          'Las contraseñas no son iguales',
-        );
+        showAuthErrorMessage(context, 'Las contraseñas no son iguales');
+        return;
+      case RegisterValidationResult.legalConsentRequired:
+        showAuthErrorMessage(context, 'Debes aceptar los Términos y condiciones y la Política de privacidad.');
         return;
       case RegisterValidationResult.valid:
         break;
     }
 
-    await _controller.simulateRegister();
-
-    if (!mounted) return;
-
-    showAccountCreatedMessage(context);
-
-    await Future<void>.delayed(const Duration(milliseconds: 1500));
-
-    if (!mounted) return;
-
-    _controller.resetRegisterForm();
-    _controller.setLoginTab(true);
+    await _controller.register();
+    if (mounted && widget.session.message != null) {
+      showAuthErrorMessage(context, widget.session.message!);
+    }
   }
 
   Future<void> _selectBirthDate() async {
@@ -146,16 +156,11 @@ class _AuthScreenState extends State<AuthScreen> {
           if (_controller.isLogin)
             SliverPersistentHeader(
               pinned: true,
-              delegate: AuthHeaderDelegate(
-                topPadding: topPadding,
-              ),
+              delegate: AuthHeaderDelegate(topPadding: topPadding),
             )
           else
             SliverToBoxAdapter(
-              child: AuthHeaderVisual(
-                compact: true,
-                topPadding: topPadding,
-              ),
+              child: AuthHeaderVisual(compact: true, topPadding: topPadding),
             ),
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
@@ -178,6 +183,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ? AuthLoginForm(
                         controller: _controller,
                         onLogin: _login,
+                        onGoogle: _google,
                         onGuestLogin: _guestLogin,
                         onRegisterRequested: () =>
                             _controller.setLoginTab(false),
@@ -187,8 +193,8 @@ class _AuthScreenState extends State<AuthScreen> {
                         onBirthDateRequested: _selectBirthDate,
                         onCustomGenderRequested: _selectCustomGender,
                         onRegister: _register,
-                        onLoginRequested: () =>
-                            _controller.setLoginTab(true),
+                        onGoogle: _google,
+                        onLoginRequested: () => _controller.setLoginTab(true),
                       ),
               ),
             ),

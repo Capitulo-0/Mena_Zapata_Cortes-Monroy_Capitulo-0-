@@ -35,8 +35,7 @@ class _HomeIsbnScannerDialog extends StatefulWidget {
   final ValueChanged<String> onMessage;
 
   @override
-  State<_HomeIsbnScannerDialog> createState() =>
-      _HomeIsbnScannerDialogState();
+  State<_HomeIsbnScannerDialog> createState() => _HomeIsbnScannerDialogState();
 }
 
 class _HomeIsbnScannerDialogState extends State<_HomeIsbnScannerDialog> {
@@ -97,10 +96,7 @@ class _HomeIsbnScannerDialogState extends State<_HomeIsbnScannerDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       backgroundColor: const Color(0xFF120C0A),
-      insetPadding: const EdgeInsets.symmetric(
-        horizontal: 22,
-        vertical: 28,
-      ),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 28),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
         side: BorderSide(color: _gold.withValues(alpha: 0.55)),
@@ -112,11 +108,7 @@ class _HomeIsbnScannerDialogState extends State<_HomeIsbnScannerDialog> {
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.qr_code_scanner_rounded,
-                  color: _gold,
-                  size: 22,
-                ),
+                Icon(Icons.qr_code_scanner_rounded, color: _gold, size: 22),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -130,10 +122,7 @@ class _HomeIsbnScannerDialogState extends State<_HomeIsbnScannerDialog> {
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(
-                    Icons.close_rounded,
-                    color: Colors.white,
-                  ),
+                  icon: const Icon(Icons.close_rounded, color: Colors.white),
                 ),
               ],
             ),
@@ -150,9 +139,7 @@ class _HomeIsbnScannerDialogState extends State<_HomeIsbnScannerDialog> {
                 alignment: Alignment.center,
                 children: [
                   Positioned.fill(
-                    child: CustomPaint(
-                      painter: ScannerFramePainter(),
-                    ),
+                    child: CustomPaint(painter: ScannerFramePainter()),
                   ),
                   Column(
                     mainAxisSize: MainAxisSize.min,
@@ -181,10 +168,7 @@ class _HomeIsbnScannerDialogState extends State<_HomeIsbnScannerDialog> {
             TextField(
               controller: isbnController,
               keyboardType: TextInputType.number,
-              style: GoogleFonts.inter(
-                color: _textPrimary,
-                fontSize: 11,
-              ),
+              style: GoogleFonts.inter(color: _textPrimary, fontSize: 11),
               decoration: InputDecoration(
                 filled: true,
                 fillColor: _surface,
@@ -193,21 +177,14 @@ class _HomeIsbnScannerDialogState extends State<_HomeIsbnScannerDialog> {
                   color: _textSecondary,
                   fontSize: 10,
                 ),
-                prefixIcon: Icon(
-                  Icons.numbers_rounded,
-                  color: _gold,
-                  size: 18,
-                ),
+                prefixIcon: Icon(Icons.numbers_rounded, color: _gold, size: 18),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide(color: _gold),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: _gold,
-                    width: 1.5,
-                  ),
+                  borderSide: BorderSide(color: _gold, width: 1.5),
                 ),
               ),
             ),
@@ -216,9 +193,7 @@ class _HomeIsbnScannerDialogState extends State<_HomeIsbnScannerDialog> {
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => _openBookFromIsbn(
-                      isbnController.text,
-                    ),
+                    onPressed: () => _openBookFromIsbn(isbnController.text),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: _gold,
                       side: BorderSide(color: _gold),

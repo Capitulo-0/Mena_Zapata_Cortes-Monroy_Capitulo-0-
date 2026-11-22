@@ -34,8 +34,7 @@ extension _PublishedStoryPersistence on _PublishedStoryScreenState {
               }
 
               if (storedReply is Map) {
-                final replyText =
-                    storedReply['text']?.toString().trim() ?? '';
+                final replyText = storedReply['text']?.toString().trim() ?? '';
 
                 if (replyText.isEmpty) continue;
 
@@ -79,9 +78,6 @@ extension _PublishedStoryPersistence on _PublishedStoryScreenState {
       }
     }
 
-    await preferences.setString(
-      _repliesStorageKey,
-      jsonEncode(data),
-    );
+    await preferences.setString(_repliesStorageKey, jsonEncode(data));
   }
 }

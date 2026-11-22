@@ -1,0 +1,3 @@
+﻿from pathlib import Path
+p=Path('lib/features/epub/presentation/imported_epub_section.dart');s=p.read_text(encoding='utf-8').replace('if (_busy) const LinearProgressIndicator(),',"if (_busy) const Padding(padding: EdgeInsets.symmetric(vertical: 4), child: Text('Procesando EPUB…'))," );p.write_text(s,encoding='utf-8')
+p=Path('tool/epub_chrome.mjs');s=p.read_text(encoding='utf-8').replace("while(Date.now()-start<timeout){if((await this.text()).includes(text))return;", "while(Date.now()-start<timeout){await this.eval(\"document.querySelector('flt-semantics-placeholder')?.click()\");if((await this.text()).includes(text))return;");p.write_text(s,encoding='utf-8')

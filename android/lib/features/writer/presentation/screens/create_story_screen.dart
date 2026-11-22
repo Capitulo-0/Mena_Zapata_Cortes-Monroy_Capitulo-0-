@@ -1,10 +1,14 @@
+import '../widgets/writer_cover.dart';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../models/writer_story.dart';
-import '../../services/writer_local_service.dart';
-
+import '../../services/writer_repository.dart';
+import '../../services/literary_chat.dart';
+import '../widgets/literary_chat_screen.dart';
+import '../../services/writer_cover_picker.dart';
 
 part '../widgets/create_story_header_section.dart';
 part '../widgets/create_story_cover_section.dart';
@@ -13,9 +17,17 @@ part '../widgets/create_story_preview_section.dart';
 part '../widgets/create_story_progress_actions.dart';
 
 class CreateStoryScreen extends StatefulWidget {
-  const CreateStoryScreen({super.key, this.story});
+  const CreateStoryScreen({
+    super.key,
+    this.story,
+    this.repository,
+    this.coverPicker,
+  });
 
   final WriterStory? story;
+
+  final WriterRepository? repository;
+  final WriterCoverPicker? coverPicker;
 
   @override
   State<CreateStoryScreen> createState() => _CreateStoryScreenState();
@@ -26,7 +38,8 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     setState(callback);
   }
 
-  final WriterLocalService _writerService = WriterLocalService();
+  late final WriterRepository _writerService =
+      widget.repository ?? const UnavailableWriterRepository();
 
   late final TextEditingController _titleController;
   late final TextEditingController _synopsisController;
@@ -45,14 +58,20 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
   String? _selectedGenre;
   String? _selectedCover;
+  WriterCoverSelection? _localCoverPreview;
+  bool _pickingCover = false;
   bool _isSaving = false;
+  WriterStory? _savedStory;
+  late final String _storyId =
+      widget.story?.id ?? DateTime.now().microsecondsSinceEpoch.toString();
 
-  late final String _initialTitle;
-  late final String _initialSynopsis;
-  late final String? _initialGenre;
-  late final String? _initialCover;
+  late String _initialTitle;
+  late String _initialSynopsis;
+  late String? _initialGenre;
+  late String? _initialCover;
 
-  bool get _isEditing => widget.story != null;
+  WriterStory? get _currentStory => _savedStory ?? widget.story;
+  bool get _isEditing => _currentStory != null;
 
   bool get _isDarkMode => Theme.of(context).brightness == Brightness.dark;
 
@@ -135,6 +154,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
   bool get _canContinue => _completedSteps == 4;
 
   Future<bool> _confirmExit() async {
+    if (_isSaving) return false;
     if (!_hasUnsavedChanges) return true;
 
     final confirmed = await showDialog<bool>(
@@ -151,9 +171,7 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
             decoration: BoxDecoration(
               color: _surfaceColor,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: AppColors.gold.withValues(alpha: 0.34),
-              ),
+              border: Border.all(color: AppColors.gold.withValues(alpha: 0.34)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.14),
@@ -271,56 +289,114 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
 
     if (!mounted || !canExit) return;
 
-    Navigator.of(context).pop();
+    Navigator.of(context).pop(_savedStory ?? widget.story);
   }
 
   Future<WriterStory?> _saveStory({required bool closeAfterSaving}) async {
     if (_isSaving) return null;
-
-    setState(() {
-      _isSaving = true;
-    });
-
+    if (_localCoverPreview != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'La imagen es sólo una vista previa local. Falta configurar almacenamiento privado; elige una portada predeterminada para guardar.',
+          ),
+        ),
+      );
+      return null;
+    }
+    if (_titleController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Escribe un titulo antes de guardar.')),
+      );
+      return null;
+    }
+    setState(() => _isSaving = true);
+    final inputTitle = _titleController.text;
+    final inputSynopsis = _synopsisController.text;
+    final inputGenre = _selectedGenre;
+    final inputCover = _selectedCover;
     final now = DateTime.now();
-    final currentStory = widget.story;
-
+    final current = _savedStory ?? widget.story;
     final story = WriterStory(
-      id: currentStory?.id ?? now.microsecondsSinceEpoch.toString(),
+      id: _storyId,
+      revision: current?.revision ?? 0,
       title: _titleController.text.trim(),
       synopsis: _synopsisController.text.trim(),
       genre: _selectedGenre ?? '',
       coverPath: _selectedCover,
-      status: currentStory?.status ?? WriterStoryStatus.draft,
-      chapters: currentStory?.chapters ?? const [],
-      createdAt: currentStory?.createdAt ?? now,
+      status: current?.status ?? WriterStoryStatus.draft,
+      chapters: current?.chapters ?? const [],
+      createdAt: current?.createdAt ?? now,
       updatedAt: now,
-      followers: currentStory?.followers ?? 0,
-      rating: currentStory?.rating ?? 0,
     );
-
-    await _writerService.createStory(story);
-
-    if (!mounted) return story;
-
-    setState(() {
-      _isSaving = false;
-    });
-
-    if (closeAfterSaving) {
-      Navigator.of(context).pop(story);
-      return story;
+    try {
+      final saved = await _writerService.save(story);
+      if (!mounted) return saved;
+      setState(() {
+        _savedStory = saved;
+        _initialTitle = inputTitle;
+        _initialSynopsis = inputSynopsis;
+        _initialGenre = inputGenre;
+        _initialCover = inputCover;
+      });
+      if (closeAfterSaving) {
+        Navigator.of(context).pop(saved);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              saved.isPublished
+                  ? 'Cambios publicados en tu cuenta.'
+                  : 'Borrador guardado en tu cuenta.',
+            ),
+          ),
+        );
+      }
+      return saved;
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(writerError(error))));
+      }
+      return null;
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Borrador guardado correctamente.')),
-    );
-
-    return story;
   }
 
   Future<void> _continue() async {
     if (!_canContinue) return;
     await _saveStory(closeAfterSaving: true);
+  }
+
+  Future<void> _openAssistant(LiteraryChatRepository repository) async {
+    final title = _titleController.text;
+    final synopsis = _synopsisController.text;
+    final suggestion = await LiteraryChatScreen.open(
+      context,
+      LiteraryChatScreen(
+        repository: repository,
+        editor: ChatEditor.story,
+        genre: _selectedGenre ?? '',
+        title: title,
+        excerpt: synopsis.length <= 4000 ? synopsis : '',
+      ),
+    );
+    if (!mounted ||
+        suggestion == null ||
+        _isSaving ||
+        !repository.chatAccountIsCurrent) {
+      return;
+    }
+    if (_titleController.text != title ||
+        _synopsisController.text != synopsis) {
+      return;
+    }
+    if (suggestion.action == 'TITLE') {
+      _titleController.text = suggestion.text;
+    } else if (suggestion.action == 'SYNOPSIS') {
+      _synopsisController.text = suggestion.text;
+    }
   }
 
   @override
@@ -333,44 +409,52 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
       },
       child: Scaffold(
         backgroundColor: _backgroundColor,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 120),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildBackButton(),
-              const SizedBox(height: 8),
-              _buildHeading(),
-              const SizedBox(height: 20),
+        body: SafeArea(
+          child: AbsorbPointer(
+            absorbing: _isSaving,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 120),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildBackButton(),
+                  const SizedBox(height: 8),
+                  _buildHeading(),
+                  const SizedBox(height: 20),
 
-              _buildSectionTitle('PORTADA'),
-              const SizedBox(height: 12),
-              _buildCoverSection(),
-              const SizedBox(height: 25),
+                  _buildSectionTitle('PORTADA'),
+                  const SizedBox(height: 12),
+                  _buildCoverSection(),
+                  const SizedBox(height: 25),
 
-              _buildSectionTitle('IDENTIDAD DE LA OBRA'),
-              const SizedBox(height: 14),
-              _buildIdentitySection(),
-              const SizedBox(height: 28),
+                  _buildSectionTitle('IDENTIDAD DE LA OBRA'),
+                  const SizedBox(height: 14),
+                  _buildIdentitySection(),
+                  if (widget.repository case LiteraryChatRepository assistant)
+                    TextButton.icon(
+                      onPressed: () => _openAssistant(assistant),
+                      icon: const Icon(Icons.auto_awesome, size: 17),
+                      label: const Text('Asistente IA'),
+                    ),
+                  const SizedBox(height: 28),
 
-              _buildSectionTitle('VISTA PREVIA'),
-              const SizedBox(height: 12),
-              _buildPreview(),
-              const SizedBox(height: 28),
+                  _buildSectionTitle('VISTA PREVIA'),
+                  const SizedBox(height: 12),
+                  _buildPreview(),
+                  const SizedBox(height: 28),
 
-              _buildSectionTitle('CREANDO TU HISTORIA'),
-              const SizedBox(height: 12),
-              _buildProgressSection(),
-              const SizedBox(height: 18),
+                  _buildSectionTitle('CREANDO TU HISTORIA'),
+                  const SizedBox(height: 12),
+                  _buildProgressSection(),
+                  const SizedBox(height: 18),
 
-              _buildActions(),
-            ],
+                  _buildActions(),
+                ],
+              ),
+            ),
           ),
         ),
       ),
-      ),
     );
   }
-
 }

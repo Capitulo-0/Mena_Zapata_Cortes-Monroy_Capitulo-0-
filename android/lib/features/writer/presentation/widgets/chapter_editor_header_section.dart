@@ -7,10 +7,7 @@ extension _ChapterEditorHeaderSection on _ChapterEditorScreenState {
       icon: const Icon(Icons.arrow_back_rounded, size: 15),
       label: Text(
         'Administrar capítulos',
-        style: GoogleFonts.inter(
-          fontSize: 8.5,
-          fontWeight: FontWeight.w700,
-        ),
+        style: GoogleFonts.inter(fontSize: 8.5, fontWeight: FontWeight.w700),
       ),
       style: TextButton.styleFrom(
         foregroundColor: AppColors.accent,

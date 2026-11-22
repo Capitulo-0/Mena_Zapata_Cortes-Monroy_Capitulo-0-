@@ -1,18 +1,44 @@
+import '../../../library/data/library_repository.dart';
+import '../../../library/models/library_entry.dart';
+import '../../../library/presentation/controllers/library_controller.dart';
+import '../../../library/presentation/dialogs/add_library_book_dialog.dart';
+
+import 'dart:async';
+
+import '../../../catalog/data/catalog_repository.dart';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/theme/app_colors.dart';
 import '../../../clubs/models/reading_club.dart';
+import '../../../clubs/data/reading_club_repository.dart';
+import '../../../verification/data/organizer_verification_repository.dart';
+import '../../../profile/data/user_search_repository.dart';
+import '../../../profile/data/public_profile_repository.dart';
+import '../../../notifications/data/notification_repository.dart';
+import '../../../follow/data/follow_repository.dart';
+import '../../../notifications/presentation/screens/notifications_screen.dart';
+import '../../../auth/domain/domain_user.dart';
+import '../../../auth/data/account_repository.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/network/api_client.dart';
 import '../../../library/presentation/screens/library_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
+import '../../../profile/presentation/screens/public_profile_screen.dart';
 import '../../../profile/presentation/screens/settings_screen.dart';
 import 'home_screen.dart';
+import '../../../library/models/reading_record.dart';
+import '../../../library/presentation/screens/simulated_reader_screen.dart';
+import '../../../library/presentation/dialogs/reading_record_dialog.dart';
 import '../widgets/main_header.dart';
 import '../../../writer/models/writer_story.dart';
-import '../../../writer/services/writer_local_service.dart';
+import '../../../writer/services/writer_repository.dart';
+import '../../../writer/services/literary_chat.dart';
+import '../../../writer/presentation/widgets/literary_chat_screen.dart';
 import '../../../writer/presentation/screens/writer_screen.dart';
 
 import 'package:android/features/maps/presentation/screens/maps_screen.dart';
+import 'package:android/features/maps/models/map_point.dart';
 
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({
@@ -22,10 +48,36 @@ class MainShellScreen extends StatefulWidget {
     required this.onGuestLoginRequested,
     required this.onGuestRegisterRequested,
     required this.isDarkMode,
+    this.profileDisplayName,
+    this.profileUser,
+    this.libraryRepository,
+    this.writerRepository,
+    this.catalogRepository,
+    this.userSearchRepository,
+    this.publicProfileRepository,
+    this.notificationRepository,
+    this.followRepository,
+    this.accountRepository,
+    this.onProfileUpdated,
+    this.verificationRepository,
+    this.readingClubRepository,
     required this.onDarkModeChanged,
   });
 
   final bool isGuest;
+  final WriterRepository? writerRepository;
+  final LibraryRepository? libraryRepository;
+  final CatalogRepository? catalogRepository;
+  final UserSearchRepository? userSearchRepository;
+  final PublicProfileRepository? publicProfileRepository;
+  final NotificationRepository? notificationRepository;
+  final OrganizerVerificationRepository? verificationRepository;
+  final ReadingClubRepository? readingClubRepository;
+  final FollowRepository? followRepository;
+  final String? profileDisplayName;
+  final DomainUser? profileUser;
+  final ValueChanged<DomainUser>? onProfileUpdated;
+  final AccountRepository? accountRepository;
   final VoidCallback onLogout;
   final VoidCallback onGuestLoginRequested;
   final VoidCallback onGuestRegisterRequested;
@@ -38,90 +90,349 @@ class MainShellScreen extends StatefulWidget {
 
 class _MainShellScreenState extends State<MainShellScreen> {
   int selectedIndex = 0;
+  MapPoint? _homeHighlightedPoint;
+  bool _verifiedOrganizer = false;
+  int _verificationRequestGeneration = 0;
+
+  Future<void> _loadOrganizerVerification() async {
+    final generation = ++_verificationRequestGeneration;
+    final repository = widget.verificationRepository;
+
+    if (widget.isGuest || repository == null) {
+      if (mounted) {
+        setState(() => _verifiedOrganizer = false);
+      }
+      return;
+    }
+
+    try {
+      final verification = await repository.myStatus();
+
+      if (!mounted || generation != _verificationRequestGeneration) {
+        return;
+      }
+
+      setState(() {
+        _verifiedOrganizer =
+            verification?.status == OrganizerVerificationStatus.approved;
+      });
+    } catch (_) {
+      if (!mounted || generation != _verificationRequestGeneration) {
+        return;
+      }
+
+      // Ante un error no mostramos una verificación sin confirmar.
+      setState(() => _verifiedOrganizer = false);
+    }
+  }
+
+  // null: perfil propio; username: perfil de otra persona.
+  String? _visitingUsername;
+
+  void _openUserProfile(String username) {
+    final normalized = username.trim().replaceFirst(RegExp(r'^@'), '');
+    if (normalized.isEmpty) return;
+
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+
+    final repository = widget.publicProfileRepository;
+    final ownUsername = _profileUsername
+        .trim()
+        .replaceFirst(RegExp(r'^@'), '')
+        .toLowerCase();
+    final isOwnProfile = normalized.toLowerCase() == ownUsername;
+
+    // No intentamos abrir perfiles ajenos sin un repositorio autenticado.
+    if (!isOwnProfile && repository == null) return;
+
+    setState(() {
+      selectedIndex = 4;
+      _headerCompact = false;
+      showSettings = false;
+      _visitingUsername = isOwnProfile ? null : normalized;
+    });
+  }
 
   final GlobalKey<HomeScreenState> _homeKey = GlobalKey<HomeScreenState>();
   bool _headerCompact = false;
 
-  final WriterLocalService _writerService = WriterLocalService();
+  int _unreadNotificationsCount = 0;
+
+  Future<void> _refreshUnreadNotifications() async {
+    final repository = widget.notificationRepository;
+    if (widget.isGuest || repository == null) return;
+    try {
+      final count = await repository.getUnreadCount();
+      if (!mounted) return;
+      setState(() => _unreadNotificationsCount = count);
+    } catch (_) {
+      // El buzón mostrará cualquier error de red al abrirse.
+      // No bloqueamos Inicio por un fallo del contador.
+    }
+  }
+
+  Future<void> _openNotifications() async {
+    final repository = widget.notificationRepository;
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+    if (repository == null) return;
+
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (screenContext) => NotificationsScreen(
+          repository: repository,
+          followRepository: widget.followRepository,
+          onBack: () => Navigator.of(screenContext).pop(),
+        ),
+      ),
+    );
+    if (mounted) unawaited(_refreshUnreadNotifications());
+  }
+
   List<WriterStory> _writerStories = <WriterStory>[];
+  int _writerStoriesRequest = 0;
 
   bool showSettings = false;
+  LibraryController? _remoteLibrary;
+  String? _shownLibraryError;
 
-  String _profileName = 'Constanza Mena';
-  String _profileUsername = '@constanza.lectora';
-  String _profileBiography =
-      'Entre libros, café y lugares tranquilos para leer.';
+  void _syncRemoteLibrary() {
+    final remote = _remoteLibrary;
+    if (!mounted || remote == null) return;
+    setState(() {
+      _libraryBooks
+        ..clear()
+        ..addAll(remote.catalog);
+      _bookStatuses
+        ..clear()
+        ..addAll({
+          for (final entry in remote.entries.values)
+            entry.book.id: entry.status,
+        });
+      _bookProgresses
+        ..clear()
+        ..addAll({
+          for (final entry in remote.entries.values)
+            entry.book.id: entry.progressPercentage.floor(),
+        });
+      _readingRecords
+        ..clear()
+        ..addAll({
+          for (final entry in remote.entries.values)
+            entry.book.id: entry.record,
+        });
+      final reading =
+          remote.entries.values
+              .where((entry) => entry.status == BookStatus.leyendo)
+              .toList()
+            ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+      _lastAdvancedBookId = reading.isEmpty ? null : reading.first.book.id;
+    });
+    if (remote.error != null && _shownLibraryError != remote.error) {
+      _shownLibraryError = remote.error;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                remote.error ?? 'No se pudo sincronizar la biblioteca.',
+              ),
+            ),
+          );
+        }
+      });
+    } else if (remote.error == null) {
+      _shownLibraryError = null;
+    }
+  }
+
+  void _addRealBook() {
+    final remote = _remoteLibrary;
+    if (remote != null && remote.canWrite) {
+      showAddLibraryBookDialog(context, remote, initialManual: true);
+    }
+  }
+
+  Widget _libraryBody(Widget child) {
+    final remote = _remoteLibrary;
+    if (remote == null) return child;
+    return Column(
+      children: [
+        Expanded(key: const ValueKey('library-main-stack'), child: child),
+      ],
+    );
+  }
+
+  late String _profileName =
+      widget.profileUser?.displayName ??
+      widget.profileUser?.email ??
+      'Invitado';
+  late String _profileUsername =
+      widget.profileUser?.username != null &&
+          widget.profileUser!.username!.isNotEmpty
+      ? '@${widget.profileUser!.username}'
+      : '@sin_usuario';
+  late String _profileBiography = widget.profileUser?.biography ?? '';
   String _readingFormat = 'Ambos';
-  int _annualGoal = 25;
-
+  late int _annualGoal = widget.profileUser?.annualReadingGoal ?? 25;
 
   @override
   void initState() {
     super.initState();
     _loadWriterStories();
+    unawaited(_loadPersistedFavoriteBooks());
+    unawaited(_refreshUnreadNotifications());
+    unawaited(_loadOrganizerVerification());
+    unawaited(_loadHomeClubs());
+    unawaited(_loadMyClubs());
+    if (!widget.isGuest && widget.libraryRepository != null) {
+      _libraryBooks.clear();
+      _bookStatuses.clear();
+      _bookProgresses.clear();
+      _readingRecords.clear();
+      _bookReviews.clear();
+      _favoriteBookIds.clear();
+      _lastAdvancedBookId = null;
+      _remoteLibrary = LibraryController(widget.libraryRepository!)
+        ..addListener(_syncRemoteLibrary);
+      unawaited(_remoteLibrary!.load());
+    }
+  }
+
+  // Recupera las membresías de la cuenta autenticada desde Neon.
+  Future<void> _loadMyClubs() async {
+    final repository = widget.readingClubRepository;
+    final request = ++_myClubsRequestGeneration;
+
+    if (widget.isGuest || repository == null) {
+      if (!mounted) return;
+      setState(() {
+        _myClubs.clear();
+        _joinedClubIds.clear();
+      });
+      return;
+    }
+
+    try {
+      final clubs = await repository.myClubs();
+      if (!mounted || request != _myClubsRequestGeneration) return;
+
+      setState(() {
+        _myClubs
+          ..clear()
+          ..addAll(clubs);
+        _joinedClubIds
+          ..clear()
+          ..addAll(clubs.map((club) => club.id));
+      });
+    } on ApiFailure catch (error) {
+      if (!mounted || request != _myClubsRequestGeneration) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No pudimos cargar tus clubes: ${error.message}'),
+        ),
+      );
+    } catch (_) {
+      if (!mounted || request != _myClubsRequestGeneration) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No pudimos recuperar tus clubes de lectura.'),
+        ),
+      );
+    }
+  }
+
+  // Consulta los clubes activos desde Neon, también en modo invitado.
+  Future<void> _loadHomeClubs() async {
+    if (_clubsLoading) return;
+
+    final repository = widget.readingClubRepository;
+    if (repository == null) {
+      if (!mounted) return;
+      setState(() {
+        _clubs.clear();
+        _clubsError = 'No está disponible la consulta de clubes.';
+      });
+      return;
+    }
+
+    setState(() {
+      _clubsLoading = true;
+      _clubsError = null;
+    });
+
+    try {
+      final clubs = await repository.homeClubs();
+      if (!mounted) return;
+      setState(() {
+        _clubs
+          ..clear()
+          ..addAll(clubs);
+        _clubsLoading = false;
+        _clubsError = null;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _clubsLoading = false;
+        _clubsError = 'No pudimos cargar los clubes de lectura.';
+      });
+      // Sin datos ficticios: la interfaz de error/reintento se completará
+      // en la integración de Home.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _clubsError == null) return;
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(_clubsError!)));
+      });
+    }
   }
 
   Future<void> _loadWriterStories() async {
-    final stories = await _writerService.getStories();
-
-    if (!mounted) return;
-
-    setState(() {
-      _writerStories = stories;
-    });
+    if (widget.isGuest || widget.writerRepository == null) return;
+    final request = ++_writerStoriesRequest;
+    try {
+      final stories = await widget.writerRepository!.getStories();
+      if (mounted && request == _writerStoriesRequest) {
+        setState(() => _writerStories = stories);
+      }
+    } catch (_) {
+      // Writer exposes retry/error state; never replace remote data with legacy drafts.
+    }
   }
 
   void _handleWriterStoriesChanged(List<WriterStory> stories) {
+    ++_writerStoriesRequest; // Invalidate the older startup snapshot used by Perfil.
     // No hacemos setState aquí porque WriterScreen está actualmente visible.
     // El cambio se reflejará cuando MainShell cambie de pestaña.
     _writerStories = List<WriterStory>.from(stories);
+    _homeKey.currentState?.reloadCommunityStories();
   }
 
-  List<WriterStory> get _publishedWriterStories => _writerStories
-      .where((story) => story.isPublished)
-      .toList()
-    ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  List<WriterStory> get _publishedWriterStories =>
+      _writerStories.where((story) => story.isPublished).toList()
+        ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
-  // Estado compartido de clubes de lectura.
-  final List<ReadingClub> _clubs = [
-    const ReadingClub(
-      id: 1,
-      name: 'Adictos a los Clásicos ☕',
-      members: 342,
-      book: 'Cumbres Borrascosas',
-      date: 'Viernes 20:00',
-      modality: 'Presencial',
-      description:
-          'Un espacio para quienes aman los grandes clásicos de la literatura universal. Cada semana conversamos sobre capítulos, personajes y contexto histórico.',
-    ),
-    const ReadingClub(
-      id: 2,
-      name: 'Mansión Gótica 🕯️',
-      members: 189,
-      book: 'Jane Eyre',
-      date: 'Sábado 18:30',
-      modality: 'Online',
-      description:
-          'Para amantes de la literatura gótica y victoriana. Misterio, romanticismo oscuro y personajes inolvidables.',
-    ),
-    const ReadingClub(
-      id: 3,
-      name: 'Plumas del Sur ✍️',
-      members: 98,
-      book: 'El Jardín de los Recuerdos',
-      date: 'Miércoles 19:00',
-      modality: 'Presencial',
-      description:
-          'Club dedicado a literatura latinoamericana contemporánea y autores independientes.',
-    ),
-  ];
+  // Estado compartido de clubes de lectura. Fuente real: Neon.
+  final List<ReadingClub> _clubs = <ReadingClub>[];
+  bool _clubsLoading = false;
+  String? _clubsError;
 
   final Set<int> _joinedClubIds = <int>{};
+  final List<ReadingClub> _myClubs = <ReadingClub>[];
+  int _myClubsRequestGeneration = 0;
+
+  // Evita enviar dos solicitudes simultáneas para el mismo club.
+  final Set<int> _clubMembershipRequests = <int>{};
 
   // Estado compartido de Biblioteca. En el siguiente paso Perfil consumirá
   // exactamente estas mismas colecciones para mantener contadores, reto y estante
   // sincronizados con los cambios realizados en Mi Biblioteca.
-  final List<LibraryBook> _libraryBooks = const [
+  final List<LibraryBook> _libraryBooks = [
     LibraryBook(
       id: 1,
       title: 'Orgullo y Prejuicio',
@@ -146,6 +457,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
     ),
     LibraryBook(
       id: 3,
+      isFree: false,
+      publisher: 'Editorial demo',
+      totalPages: 300,
       title: 'Jane Eyre',
       author: 'Charlotte Brontë',
       authorHandle: '@CharlotteBronte',
@@ -168,6 +482,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
     ),
     LibraryBook(
       id: 5,
+      isFree: false,
+      publisher: 'Editorial demo',
+      totalPages: 200,
       title: 'Emma',
       author: 'Jane Austen',
       authorHandle: '@JaneAusten1',
@@ -420,36 +737,357 @@ class _MainShellScreenState extends State<MainShellScreen> {
     ),
   };
 
-  final Set<int> _favoriteBookIds = {1, 2, 3, 4};
+  final Set<int> _favoriteBookIds = <int>{};
+  int _favoriteBooksGeneration = 0;
+
+  Future<void> _loadPersistedFavoriteBooks() async {
+    final repository = widget.publicProfileRepository;
+    final request = ++_favoriteBooksGeneration;
+    if (widget.isGuest || repository is! ProfileActivitySource) return;
+    final ProfileActivitySource source = repository as ProfileActivitySource;
+    try {
+      final favoriteIds = await source.getMyFavoriteBooks();
+      if (!mounted || request != _favoriteBooksGeneration) return;
+      setState(() {
+        _favoriteBookIds
+          ..clear()
+          ..addAll(favoriteIds);
+      });
+    } catch (_) {
+      // No se muestran favoritos ficticios ni datos de otra cuenta.
+    }
+  }
+
   final Map<String, WriterStory> _favoriteCommunityStories =
       <String, WriterStory>{};
 
-  void _changeBookStatus(int bookId, BookStatus status) {
-    setState(() {
-      _bookStatuses[bookId] = status;
-      if (status == BookStatus.leido) {
-        _bookProgresses[bookId] = 100;
-      } else if (status == BookStatus.porLeer) {
-        _bookProgresses[bookId] = 0;
-      } else if ((_bookProgresses[bookId] ?? 0) >= 100) {
-        _bookProgresses[bookId] = 0;
+  Timer? _finishReadingTimer;
+  int? _finishingBookId;
+  final Map<int, int> _lastIncompleteProgresses = {};
+  final Map<int, ReadingRecord> _lastIncompleteRecords = {};
+
+  @override
+  void didUpdateWidget(covariant MainShellScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.profileUser?.id != widget.profileUser?.id ||
+        oldWidget.isGuest != widget.isGuest ||
+        oldWidget.publicProfileRepository != widget.publicProfileRepository) {
+      ++_favoriteBooksGeneration;
+      _favoriteBookIds.clear();
+      unawaited(_loadPersistedFavoriteBooks());
+    }
+
+    if (oldWidget.isGuest != widget.isGuest ||
+        oldWidget.profileUser?.id != widget.profileUser?.id ||
+        oldWidget.verificationRepository != widget.verificationRepository ||
+        oldWidget.readingClubRepository != widget.readingClubRepository) {
+      ++_verificationRequestGeneration;
+      _verifiedOrganizer = false;
+      unawaited(_loadOrganizerVerification());
+      unawaited(_loadMyClubs());
+    }
+  }
+
+  @override
+  void dispose() {
+    ++_verificationRequestGeneration;
+    ++_myClubsRequestGeneration;
+    ++_favoriteBooksGeneration;
+    _finishReadingTimer?.cancel();
+    _remoteLibrary
+      ?..removeListener(_syncRemoteLibrary)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _rememberIncompleteReading(int bookId) {
+    final progress = _bookProgresses[bookId] ?? 0;
+    if (_bookStatuses[bookId] != BookStatus.leyendo ||
+        progress <= 0 ||
+        progress >= 100) {
+      return;
+    }
+    _lastIncompleteProgresses[bookId] = progress;
+    final record = _readingRecords[bookId];
+    if (record != null) _lastIncompleteRecords[bookId] = record;
+  }
+
+  void _afterReadingChange(int bookId, BookStatus status, bool wasCurrent) {
+    if (status == BookStatus.leido && wasCurrent) {
+      _finishReadingTimer?.cancel();
+      setState(() => _finishingBookId = bookId);
+      _finishReadingTimer = Timer(const Duration(milliseconds: 2500), () {
+        if (mounted) setState(() => _finishingBookId = null);
+      });
+    } else if (status == BookStatus.leyendo ||
+        (status == BookStatus.porLeer && _finishingBookId == bookId)) {
+      _finishReadingTimer?.cancel();
+      if (_finishingBookId != null) setState(() => _finishingBookId = null);
+    }
+  }
+
+  String? get _finishedReadingTitle {
+    for (final book in _libraryBooks) {
+      if (book.id == _finishingBookId) return book.title;
+    }
+    return null;
+  }
+
+  final Map<int, ReadingRecord> _readingRecords = {
+    5: const ReadingRecord(
+      format: 'Físico',
+      currentPage: 60,
+      totalPages: 200,
+      publisher: 'Editorial demo',
+      status: BookStatus.leyendo,
+    ),
+  };
+
+  Future<void> _addToLibrary(Map<String, dynamic> data) async {
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+    if (_remoteLibrary != null) {
+      if (data['googleVolumeId'] is String &&
+          widget.catalogRepository != null) {
+        await _remoteLibrary!.addExternal(
+          () => widget.catalogRepository!.importBook(
+            data['googleVolumeId'] as String,
+          ),
+        );
+        final found = _remoteLibrary!.entries.values.where(
+          (entry) => entry.book.googleVolumeId == data['googleVolumeId'],
+        );
+        if (found.isNotEmpty) {
+          data['id'] = found.first.book.id;
+          data['isBackendBook'] = true;
+        }
+        return;
       }
+      if (data['isBackendBook'] != true) return;
+      await _remoteLibrary!.add(data['id'] as int);
+      return;
+    }
+    final id = data['id'] as int;
+    setState(() {
+      if (!_libraryBooks.any((book) => book.id == id)) {
+        _libraryBooks.add(
+          LibraryBook(
+            id: id,
+            title: data['title'] as String,
+            author: data['authorReal'] as String? ?? '',
+            authorHandle: data['author'] as String?,
+            year: data['year'] as int? ?? 0,
+            genre: data['genre'] as String? ?? '',
+            isbn: data['isbn'] as String? ?? '',
+            cover: data['cover'] as String? ?? '',
+            synopsis: data['synopsis'] as String? ?? '',
+            isFree: data['availability'] == 'GRATIS',
+            publisher: data['publisher'] as String? ?? '',
+            totalPages: data['totalPages'] as int? ?? 0,
+          ),
+        );
+      }
+      _bookStatuses.putIfAbsent(id, () => BookStatus.porLeer);
+      _bookProgresses.putIfAbsent(id, () => 0);
     });
   }
 
-  void _changeBookProgress(int bookId, int progress) {
-    final safeProgress = progress.clamp(0, 100).toInt();
-
-    setState(() {
-      _bookProgresses[bookId] = safeProgress;
-      _lastAdvancedBookId = bookId;
-
-      if (safeProgress >= 100) {
-        _bookStatuses[bookId] = BookStatus.leido;
-      } else {
-        _bookStatuses[bookId] = BookStatus.leyendo;
+  Future<int?> _openReading(BuildContext sourceContext, int bookId) async {
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return null;
+    }
+    final matches = _libraryBooks.where((book) => book.id == bookId);
+    if (matches.isEmpty) return null;
+    final book = matches.first;
+    if (_remoteLibrary != null) {
+      if (!_remoteLibrary!.canWrite || !_bookStatuses.containsKey(bookId)) {
+        return null;
       }
+      final record = await showReadingRecordDialog(
+        context: sourceContext,
+        book: book,
+        initial: _readingRecords[bookId],
+        status: _bookStatuses[bookId]!,
+        progress: _bookProgresses[bookId] ?? 0,
+        allowUnknownTotal: true,
+      );
+      if (record != null) await _remoteLibrary!.saveRecord(bookId, record);
+      return mounted ? _bookProgresses[bookId] : null;
+    }
+    if (book.isFree &&
+        (_bookStatuses[bookId] ?? BookStatus.porLeer) == BookStatus.porLeer) {
+      _changeBookStatus(bookId, BookStatus.leyendo);
+    }
+    void save(ReadingRecord record) {
+      if (!mounted) return;
+      final wasCurrent = _lastAdvancedBook?.id == bookId;
+      setState(() {
+        _rememberIncompleteReading(bookId);
+        _readingRecords[bookId] = record;
+        _bookStatuses[bookId] = record.status;
+        _bookProgresses[bookId] = record.progress;
+        _lastAdvancedBookId = bookId;
+        _rememberIncompleteReading(bookId);
+      });
+      _afterReadingChange(bookId, record.status, wasCurrent);
+    }
+
+    if (book.isFree) {
+      await Navigator.of(sourceContext).push<void>(
+        MaterialPageRoute(
+          builder: (_) => SimulatedReaderScreen(
+            book: book,
+            initialProgress: _bookProgresses[bookId] ?? 0,
+            initialStatus: _bookStatuses[bookId] ?? BookStatus.porLeer,
+            onChanged: save,
+          ),
+        ),
+      );
+    } else {
+      final record = await showReadingRecordDialog(
+        context: sourceContext,
+        book: book,
+        initial: _readingRecords[bookId],
+        status: _bookStatuses[bookId] ?? BookStatus.porLeer,
+        progress: _bookProgresses[bookId] ?? 0,
+      );
+      if (record != null) save(record);
+    }
+    return _bookProgresses[bookId];
+  }
+
+  Future<bool> _removeFromLibrary(
+    BuildContext sourceContext,
+    int bookId,
+  ) async {
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return false;
+    }
+    if (!_bookStatuses.containsKey(bookId)) return false;
+    final book = _libraryBooks.firstWhere((book) => book.id == bookId);
+    final confirmed = await showDialog<bool>(
+      context: sourceContext,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surfaceOf(dialogContext),
+        title: const Text('¿Eliminar de Mi Biblioteca?'),
+        content: Text(
+          'Se quitará «${book.title}» de tu Biblioteca y se borrará su seguimiento de lectura. '
+          'Tus favoritos y reseñas se conservarán. El libro seguirá en el catálogo.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return false;
+    if (_remoteLibrary != null && !await _remoteLibrary!.remove(bookId)) {
+      return false;
+    }
+    if (!mounted) return false;
+    setState(() {
+      _bookStatuses.remove(bookId);
+      _bookProgresses.remove(bookId);
+      _readingRecords.remove(bookId);
+      _lastIncompleteProgresses.remove(bookId);
+      _lastIncompleteRecords.remove(bookId);
+      if (_finishingBookId == bookId) {
+        _finishReadingTimer?.cancel();
+        _finishingBookId = null;
+      }
+      if (_lastAdvancedBookId == bookId) _lastAdvancedBookId = null;
     });
+    return true;
+  }
+
+  Future<void> _changeBookStatus(int bookId, BookStatus status) async {
+    if (_remoteLibrary != null) {
+      final wasCurrent = _lastAdvancedBook?.id == bookId;
+      if (!_remoteLibrary!.entries.containsKey(bookId)) {
+        if (!await _remoteLibrary!.add(bookId)) return;
+      }
+      if (await _remoteLibrary!.setStatus(bookId, status) && mounted) {
+        _afterReadingChange(bookId, status, wasCurrent);
+      }
+      return;
+    }
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+    final wasCurrent = _lastAdvancedBook?.id == bookId;
+    final previousStatus = _bookStatuses[bookId];
+    setState(() {
+      _rememberIncompleteReading(bookId);
+      final current = _bookProgresses[bookId] ?? 0;
+      var progress = status == BookStatus.porLeer
+          ? 0
+          : status == BookStatus.leido
+          ? 100
+          : current >= 100
+          ? (_lastIncompleteProgresses[bookId] ?? 99)
+          : current;
+      final record = _readingRecords[bookId];
+      if (record != null) {
+        final updated = record.withStatus(
+          status,
+          resume: _lastIncompleteRecords[bookId],
+        );
+        _readingRecords[bookId] = updated;
+        progress = updated.progress;
+      }
+      _bookStatuses[bookId] = status;
+      _bookProgresses[bookId] = progress;
+      if (status == BookStatus.leyendo) _lastAdvancedBookId = bookId;
+      _rememberIncompleteReading(bookId);
+    });
+    if (status != previousStatus) {
+      _afterReadingChange(bookId, status, wasCurrent);
+    }
+  }
+
+  Future<void> _changeBookProgress(int bookId, int progress) async {
+    if (_remoteLibrary != null) {
+      final wasCurrent = _lastAdvancedBook?.id == bookId;
+      if (await _remoteLibrary!.setProgress(bookId, progress) && mounted) {
+        _afterReadingChange(bookId, _bookStatuses[bookId]!, wasCurrent);
+      }
+      return;
+    }
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+    final safeProgress = progress.clamp(0, 100).toInt();
+    var status = safeProgress == 100 ? BookStatus.leido : BookStatus.leyendo;
+    final wasCurrent = _lastAdvancedBook?.id == bookId;
+    setState(() {
+      _rememberIncompleteReading(bookId);
+      final record = _readingRecords[bookId];
+      if (record != null) {
+        final updated = record.withProgress(safeProgress, status);
+        status = updated.status;
+        _readingRecords[bookId] = updated;
+        _bookProgresses[bookId] = updated.progress;
+      } else {
+        _bookProgresses[bookId] = safeProgress;
+      }
+      _bookStatuses[bookId] = status;
+      _lastAdvancedBookId = bookId;
+      _rememberIncompleteReading(bookId);
+    });
+    _afterReadingChange(bookId, status, wasCurrent);
   }
 
   void _saveBookReview(int bookId, BookReview review) {
@@ -458,16 +1096,45 @@ class _MainShellScreenState extends State<MainShellScreen> {
     });
   }
 
-  void _toggleFavoriteBook(int bookId) {
-    setState(() {
-      if (_favoriteBookIds.contains(bookId)) {
-        _favoriteBookIds.remove(bookId);
-      } else {
-        _favoriteBookIds.add(bookId);
-      }
-    });
+  Future<void> _toggleFavoriteBook(int bookId) async {
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+    final repository = widget.publicProfileRepository;
+    final ProfileActivitySource? source = repository is ProfileActivitySource
+        ? repository as ProfileActivitySource
+        : null;
+    final adding = !_favoriteBookIds.contains(bookId);
+    if (source == null) {
+      // Compatibilidad con los dobles de prueba que no utilizan API remota.
+      setState(() {
+        if (adding) {
+          _favoriteBookIds.add(bookId);
+        } else {
+          _favoriteBookIds.remove(bookId);
+        }
+      });
+      return;
+    }
+    // Persistir primero: un error no debe presentar un favorito inexistente.
+    try {
+      await source.setMyFavoriteBook(bookId, favorite: adding);
+      if (!mounted) return;
+      setState(() {
+        if (adding) {
+          _favoriteBookIds.add(bookId);
+        } else {
+          _favoriteBookIds.remove(bookId);
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No pudimos actualizar tus favoritos.')),
+      );
+    }
   }
-
 
   void _toggleFavoriteCommunityStory(WriterStory story) {
     setState(() {
@@ -479,41 +1146,91 @@ class _MainShellScreenState extends State<MainShellScreen> {
     });
   }
 
-
-  void _toggleClub(int clubId) {
-    final index = _clubs.indexWhere((club) => club.id == clubId);
-
-    if (index == -1) {
+  Future<void> _toggleClub(int clubId) async {
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
       return;
     }
 
-    final currentClub = _clubs[index];
+    final repository = widget.readingClubRepository;
+
+    if (repository == null || _clubMembershipRequests.contains(clubId)) {
+      return;
+    }
+
     final wasJoined = _joinedClubIds.contains(clubId);
 
-    final updatedMembers = wasJoined
-        ? (currentClub.members > 0 ? currentClub.members - 1 : 0)
-        : currentClub.members + 1;
+    _clubMembershipRequests.add(clubId);
 
-    setState(() {
-      if (wasJoined) {
-        _joinedClubIds.remove(clubId);
-      } else {
-        _joinedClubIds.add(clubId);
-      }
+    try {
+      // Neon confirma primero la operación.
+      final updatedClub = wasJoined
+          ? await repository.leaveClub(clubId)
+          : await repository.joinClub(clubId);
 
-      _clubs[index] = ReadingClub(
-        id: currentClub.id,
-        name: currentClub.name,
-        members: updatedMembers,
-        book: currentClub.book,
-        date: currentClub.date,
-        description: currentClub.description,
-        modality: currentClub.modality,
+      if (!mounted) return;
+
+      // Una respuesta de membresía confirmada prevalece sobre cualquier
+      // consulta de Mis clubes iniciada antes de esta operación.
+      ++_myClubsRequestGeneration;
+      setState(() {
+        if (updatedClub.joined) {
+          _joinedClubIds.add(clubId);
+          final personalIndex = _myClubs.indexWhere(
+            (club) => club.id == clubId,
+          );
+          if (personalIndex == -1) {
+            _myClubs.insert(0, updatedClub);
+          } else {
+            _myClubs[personalIndex] = updatedClub;
+          }
+        } else {
+          _joinedClubIds.remove(clubId);
+          _myClubs.removeWhere((club) => club.id == clubId);
+        }
+
+        final homeIndex = _clubs.indexWhere((club) => club.id == clubId);
+        if (homeIndex != -1) {
+          _clubs[homeIndex] = updatedClub;
+        }
+      });
+    } on ApiFailure catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No pudimos actualizar tu membresía. '
+            'Revisa tu conexión e inténtalo nuevamente.',
+          ),
+        ),
       );
+    } finally {
+      _clubMembershipRequests.remove(clubId);
+    }
+  }
+
+  void _openNearbyPointOnMap(MapPoint point) {
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+    setState(() {
+      _homeHighlightedPoint = point;
+      selectedIndex = 3;
+      _headerCompact = false;
     });
   }
 
   void _selectTab(int index) {
+    if (index == 0 && selectedIndex != 0) {
+      _homeKey.currentState?.reloadCommunityStories();
+    }
     if (widget.isGuest && (index == 3 || index == 4)) {
       _showGuestAccessDialog();
       return;
@@ -521,7 +1238,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
     setState(() {
       selectedIndex = index;
+      if (index == 3) _homeHighlightedPoint = null;
       _headerCompact = false;
+
+      if (index == 4) {
+        _visitingUsername = null;
+        showSettings = false;
+      }
     });
   }
 
@@ -546,7 +1269,22 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _openHeaderGemini() {
-    _homeKey.currentState?.showGeminiAssistant();
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return;
+    }
+    if (widget.writerRepository case LiteraryChatRepository repository) {
+      unawaited(
+        LiteraryChatScreen.open(
+          context,
+          LiteraryChatScreen(
+            repository: repository,
+            onBook: (book) async =>
+                _homeKey.currentState?.openAssistantBook(book),
+          ),
+        ),
+      );
+    }
   }
 
   void _showGuestAccessDialog() {
@@ -569,189 +1307,187 @@ class _MainShellScreenState extends State<MainShellScreen> {
             backgroundColor: Colors.transparent,
             insetPadding: const EdgeInsets.symmetric(horizontal: 24),
             child: Container(
-            width: double.infinity,
-            constraints: const BoxConstraints(maxWidth: 390),
-            padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
-            decoration: BoxDecoration(
-              color: surface,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(
-                color: gold.withValues(alpha: 0.48),
+              width: double.infinity,
+              constraints: const BoxConstraints(maxWidth: 390),
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 18),
+              decoration: BoxDecoration(
+                color: surface,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: gold.withValues(alpha: 0.48)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.22),
+                    blurRadius: 28,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.22),
-                  blurRadius: 28,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    color: gold.withValues(alpha: 0.11),
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: gold.withValues(alpha: 0.34),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: gold.withValues(alpha: 0.11),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: gold.withValues(alpha: 0.34)),
+                    ),
+                    child: Icon(
+                      Icons.auto_stories_outlined,
+                      color: gold,
+                      size: 28,
                     ),
                   ),
-                  child: Icon(
-                    Icons.auto_stories_outlined,
-                    color: gold,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 15),
-                Text(
-                  'ESTÁS EN MODO INVITADO',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.cinzel(
-                    color: textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.35,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Para acceder a las diferentes funcionalidades de Capítulo 0, inicia sesión o crea una cuenta.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    color: textSecondary,
-                    fontSize: 9.5,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 43,
-                        child: FilledButton(
-                          onPressed: () {
-                            final navigator = Navigator.of(
-                              dialogContext,
-                              rootNavigator: true,
-                            );
-
-                            navigator.pop();
-                            navigator.popUntil((route) => route.isFirst);
-
-                            widget.onGuestLoginRequested();
-                          },
-                          style: FilledButton.styleFrom(
-                            backgroundColor: accent,
-                            foregroundColor: background,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            'Iniciar sesión',
-                            style: GoogleFonts.inter(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: SizedBox(
-                        height: 43,
-                        child: OutlinedButton(
-                          onPressed: () {
-                            final navigator = Navigator.of(
-                              dialogContext,
-                              rootNavigator: true,
-                            );
-
-                            navigator.pop();
-                            navigator.popUntil((route) => route.isFirst);
-
-                            widget.onGuestRegisterRequested();
-                          },
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: deep,
-                            backgroundColor: background,
-                            side: BorderSide(
-                              color: gold.withValues(alpha: 0.72),
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            'Registrarse',
-                            style: GoogleFonts.inter(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  style: TextButton.styleFrom(
-                    foregroundColor: textSecondary,
-                  ),
-                  child: Text(
-                    'Seguir en modo invitado',
-                    style: GoogleFonts.inter(
-                      fontSize: 8.5,
+                  const SizedBox(height: 15),
+                  Text(
+                    'ESTÁS EN MODO INVITADO',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.cinzel(
+                      color: textPrimary,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
+                      letterSpacing: 0.35,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    'Para acceder a las diferentes funcionalidades de Capítulo 0, inicia sesión o crea una cuenta.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: textSecondary,
+                      fontSize: 9.5,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 43,
+                          child: FilledButton(
+                            onPressed: () {
+                              final navigator = Navigator.of(
+                                dialogContext,
+                                rootNavigator: true,
+                              );
+
+                              navigator.pop();
+                              navigator.popUntil((route) => route.isFirst);
+
+                              widget.onGuestLoginRequested();
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: accent,
+                              foregroundColor: background,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Iniciar sesión',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: SizedBox(
+                          height: 43,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              final navigator = Navigator.of(
+                                dialogContext,
+                                rootNavigator: true,
+                              );
+
+                              navigator.pop();
+                              navigator.popUntil((route) => route.isFirst);
+
+                              widget.onGuestRegisterRequested();
+                            },
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: deep,
+                              backgroundColor: background,
+                              side: BorderSide(
+                                color: gold.withValues(alpha: 0.72),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: Text(
+                              'Registrarse',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    style: TextButton.styleFrom(foregroundColor: textSecondary),
+                    child: Text(
+                      'Seguir en modo invitado',
+                      style: GoogleFonts.inter(
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         );
       },
     );
   }
 
   LibraryBook? get _lastAdvancedBook {
-    final id = _lastAdvancedBookId;
-
-    if (id == null) {
-      return null;
-    }
-
+    LibraryBook? fallback;
     for (final book in _libraryBooks) {
-      if (book.id == id) {
-        return book;
-      }
+      if (_bookStatuses[book.id] != BookStatus.leyendo) continue;
+      if (book.id == _lastAdvancedBookId) return book;
+      fallback ??= book;
     }
-
-    return null;
+    return fallback;
   }
 
-  int get _lastAdvancedBookProgress {
-    final id = _lastAdvancedBookId;
-
-    if (id == null) {
-      return 0;
-    }
-
-    return _bookProgresses[id] ?? 0;
-  }
+  int get _lastAdvancedBookProgress =>
+      _bookProgresses[_lastAdvancedBook?.id] ?? 0;
 
   List<Widget> _mainScreens() {
     return [
       HomeScreen(
+        readingClubRepository: widget.readingClubRepository,
+        catalogRepository: widget.catalogRepository,
+        userSearchRepository: widget.userSearchRepository,
+        communityWriterRepository:
+            widget.writerRepository is CommunityWriterRepository
+            ? widget.writerRepository! as CommunityWriterRepository
+            : null,
+        onOpenUserProfile: _openUserProfile,
+        catalogBooks: _remoteLibrary == null
+            ? null
+            : _libraryBooks.map(LibraryEntry.homeData).toList(),
+        onReadBook: _openReading,
+        onAddBook: _addToLibrary,
+        onBookStatusChanged: _changeBookStatus,
+        finishedReadingTitle: widget.isGuest ? null : _finishedReadingTitle,
+        statuses: widget.isGuest ? const <int, BookStatus>{} : _bookStatuses,
+        progresses: widget.isGuest ? const <int, int>{} : _bookProgresses,
         key: _homeKey,
         isGuest: widget.isGuest,
         currentName: _profileName,
@@ -772,8 +1508,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
           }
           _toggleFavoriteBook(bookId);
         },
-        favoriteCommunityStoryIds:
-            _favoriteCommunityStories.keys.toSet(),
+        favoriteCommunityStoryIds: _favoriteCommunityStories.keys.toSet(),
         onToggleCommunityStoryFavorite: (story) {
           if (widget.isGuest) {
             _showGuestAccessDialog();
@@ -783,29 +1518,35 @@ class _MainShellScreenState extends State<MainShellScreen> {
         },
         clubs: _clubs,
         joinedClubIds: _joinedClubIds,
-        onToggleClub: (clubId) {
+        onToggleClub: (clubId) async {
           if (widget.isGuest) {
             _showGuestAccessDialog();
             return;
           }
-          _toggleClub(clubId);
+          await _toggleClub(clubId);
         },
-        continueReadingBook: _lastAdvancedBook,
-        continueReadingProgress: _lastAdvancedBookProgress,
-        onContinueReadingProgressChanged: (bookId, progress) {
+        continueReadingBook: widget.isGuest ? null : _lastAdvancedBook,
+        continueReadingProgress: widget.isGuest ? 0 : _lastAdvancedBookProgress,
+        onContinueReadingProgressChanged: (bookId, progress) async {
           if (widget.isGuest) {
             _showGuestAccessDialog();
             return;
           }
-          _changeBookProgress(bookId, progress);
+          await _changeBookProgress(bookId, progress);
         },
         onGuestRestrictedAction: _showGuestAccessDialog,
         onOpenLibrary: () => _selectTab(1),
         onOpenWriter: () => _selectTab(2),
         onOpenPoints: () => _selectTab(3),
+        onOpenNearbyPoint: _openNearbyPointOnMap,
         onOpenProfile: () => _selectTab(4),
       ),
       LibraryScreen(
+        syncController: _remoteLibrary,
+        onAddBook: _addRealBook,
+        dataAvailable: _remoteLibrary?.loaded ?? true,
+        onRemoveBook: _removeFromLibrary,
+        onReadBook: _openReading,
         isGuest: widget.isGuest,
         onGuestRestrictedAction: _showGuestAccessDialog,
         books: widget.isGuest ? const <LibraryBook>[] : _libraryBooks,
@@ -822,6 +1563,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onToggleFavorite: _toggleFavoriteBook,
       ),
       WriterScreen(
+        active: selectedIndex == 2,
+        repository: widget.writerRepository,
         isGuest: widget.isGuest,
         onGuestRestrictedAction: _showGuestAccessDialog,
         currentName: widget.isGuest ? 'Invitado' : _profileName,
@@ -829,40 +1572,57 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onStoriesChanged: _handleWriterStoriesChanged,
       ),
       MapsScreen(
-        clubs: _clubs,
-        joinedClubIds: _joinedClubIds,
         currentUsername: _profileUsername,
         currentName: _profileName,
+        highlightedPointId: _homeHighlightedPoint?.id,
+        highlightedPoint: _homeHighlightedPoint,
       ),
-      ProfileScreen(
-        onOpenSettings: () {
-          setState(() {
-            showSettings = true;
-          });
-        },
-        name: _profileName,
-        username: _profileUsername,
-        biography: _profileBiography,
-        readingFormat: _readingFormat,
-        annualGoal: _annualGoal,
-        clubs: _clubs,
-        joinedClubIds: _joinedClubIds,
-        onToggleClub: _toggleClub,
-        books: _libraryBooks,
-        statuses: _bookStatuses,
-        progresses: _bookProgresses,
-        reviews: _bookReviews,
-        favorites: _favoriteBookIds,
-        favoriteCommunityStories:
-            _favoriteCommunityStories.values.toList(),
-        onToggleCommunityStoryFavorite:
-            _toggleFavoriteCommunityStory,
-        onStatusChanged: _changeBookStatus,
-        onProgressChanged: _changeBookProgress,
-        onReviewSaved: _saveBookReview,
-        onToggleFavorite: _toggleFavoriteBook,
-        publishedStories: _publishedWriterStories,
-      ),
+      if (_visitingUsername != null && widget.publicProfileRepository != null)
+        PublicProfileScreen(
+          key: ValueKey('visited-profile-${_visitingUsername!}'),
+          username: _visitingUsername!,
+          repository: widget.publicProfileRepository!,
+          followRepository: widget.followRepository,
+        )
+      else
+        ProfileScreen(
+          readingMoodSource: widget.isGuest
+              ? null
+              : (widget.publicProfileRepository is ReadingMoodSource
+                    ? widget.publicProfileRepository as ReadingMoodSource
+                    : null),
+          verifiedOrganizer: !widget.isGuest && _verifiedOrganizer,
+          followRepository: widget.isGuest ? null : widget.followRepository,
+          onOpenSocialProfile: _openUserProfile,
+          onReadBook: _openReading,
+          onOpenSettings: () {
+            setState(() {
+              showSettings = true;
+            });
+          },
+          name: _profileName,
+          username: _profileUsername,
+          biography: _profileBiography,
+          avatarUrl: widget.isGuest ? null : widget.profileUser?.avatarUrl,
+          createdAt: widget.isGuest ? null : widget.profileUser?.createdAt,
+          readingFormat: _readingFormat,
+          annualGoal: _annualGoal,
+          clubs: _myClubs,
+          joinedClubIds: _joinedClubIds,
+          onToggleClub: _toggleClub,
+          books: _libraryBooks,
+          statuses: widget.isGuest ? const <int, BookStatus>{} : _bookStatuses,
+          progresses: widget.isGuest ? const <int, int>{} : _bookProgresses,
+          reviews: _bookReviews,
+          favorites: _favoriteBookIds,
+          favoriteCommunityStories: _favoriteCommunityStories.values.toList(),
+          onToggleCommunityStoryFavorite: _toggleFavoriteCommunityStory,
+          onStatusChanged: _changeBookStatus,
+          onProgressChanged: _changeBookProgress,
+          onReviewSaved: _saveBookReview,
+          onToggleFavorite: _toggleFavoriteBook,
+          publishedStories: _publishedWriterStories,
+        ),
     ];
   }
 
@@ -870,13 +1630,30 @@ class _MainShellScreenState extends State<MainShellScreen> {
   Widget build(BuildContext context) {
     if (showSettings) {
       return SettingsScreen(
+        accountRepository: widget.accountRepository,
+        readingClubRepository: widget.isGuest
+            ? null
+            : widget.readingClubRepository,
+        onProfileUpdated: widget.onProfileUpdated,
         onBack: () {
           setState(() {
             showSettings = false;
           });
+          // Refresca los clubes desde Neon al volver de Configuración,
+          // incluido un club que se haya creado durante esta visita.
+          unawaited(_loadHomeClubs());
+          unawaited(_loadMyClubs());
         },
         onLogout: widget.onLogout,
-        onDeleteAccount: widget.onLogout,
+        onDeleteAccount: () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'La eliminación de cuenta aún no está disponible. No se eliminó ningún dato.',
+              ),
+            ),
+          );
+        },
 
         isDarkMode: widget.isDarkMode,
         onDarkModeChanged: widget.onDarkModeChanged,
@@ -885,15 +1662,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
         initialUsername: _profileUsername,
         initialBiography: _profileBiography,
         initialReadingFormat: _readingFormat,
+        verificationRepository: widget.verificationRepository,
         initialAnnualGoal: _annualGoal,
-        
-        onProfileSaved: (
-          name,
-          username,
-          biography,
-          readingFormat,
-          annualGoal,
-        ) {
+
+        onProfileSaved: (name, username, biography, readingFormat, annualGoal) {
           setState(() {
             _profileName = name;
             _profileUsername = username;
@@ -914,6 +1686,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
             isGuest: widget.isGuest,
             onScannerTap: _openHeaderScanner,
             onGeminiTap: _openHeaderGemini,
+
+            onNotificationsTap: widget.isGuest ? null : _openNotifications,
+            unreadNotificationsCount: _unreadNotificationsCount,
           ),
           Expanded(
             child: NotificationListener<ScrollNotification>(
@@ -921,9 +1696,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
               child: MediaQuery.removePadding(
                 context: context,
                 removeTop: true,
-                child: IndexedStack(
-                  index: selectedIndex,
-                  children: _mainScreens(),
+                child: _libraryBody(
+                  IndexedStack(index: selectedIndex, children: _mainScreens()),
                 ),
               ),
             ),
@@ -1089,13 +1863,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
         child: Center(
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 350),
-            curve: Curves.easeOutBack,
+            curve: Curves.easeOutCubic,
             width: active ? 68 : 42,
             height: active ? 58 : 42,
             decoration: BoxDecoration(
-              color: active
-                  ? AppColors.goldOf(context)
-                  : Colors.transparent,
+              color: active ? AppColors.goldOf(context) : Colors.transparent,
               borderRadius: BorderRadius.circular(active ? 28 : 999),
               boxShadow: active
                   ? [
@@ -1110,16 +1882,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
             ),
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              switchInCurve: Curves.easeOutBack,
+              switchInCurve: Curves.easeOutCubic,
               switchOutCurve: Curves.easeInCubic,
               transitionBuilder: (child, animation) {
                 return FadeTransition(
                   opacity: animation,
                   child: ScaleTransition(
-                    scale: Tween<double>(
-                      begin: 0.88,
-                      end: 1,
-                    ).animate(
+                    scale: Tween<double>(begin: 0.88, end: 1).animate(
                       CurvedAnimation(
                         parent: animation,
                         curve: Curves.easeOutBack,
@@ -1165,9 +1934,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
       ),
     );
   }
-
 }
-
 
 class _QuillPainter extends CustomPainter {
   const _QuillPainter({required this.color});

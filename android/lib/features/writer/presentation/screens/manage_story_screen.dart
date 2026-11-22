@@ -1,14 +1,16 @@
+import '../widgets/writer_cover.dart';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../models/writer_chapter.dart';
 import '../../models/writer_story.dart';
-import '../../services/writer_local_service.dart';
+import '../../services/writer_repository.dart';
+import '../../services/writer_draft_store.dart';
 import 'chapter_editor_screen.dart';
 import 'create_story_screen.dart';
 import 'published_story_screen.dart';
-
 
 part '../widgets/manage_story_header_summary.dart';
 part '../widgets/manage_story_stats_actions.dart';
@@ -19,6 +21,8 @@ part '../widgets/manage_story_chapters_section.dart';
 class ManageStoryScreen extends StatefulWidget {
   const ManageStoryScreen({
     super.key,
+    this.repository,
+    this.ownerUid,
     required this.story,
     required this.currentUsername,
   });
@@ -26,12 +30,16 @@ class ManageStoryScreen extends StatefulWidget {
   final WriterStory story;
   final String currentUsername;
 
+  final WriterRepository? repository;
+  final String? ownerUid;
+
   @override
   State<ManageStoryScreen> createState() => _ManageStoryScreenState();
 }
 
 class _ManageStoryScreenState extends State<ManageStoryScreen> {
-  final WriterLocalService _writerService = WriterLocalService();
+  late final WriterRepository _writerService =
+      widget.repository ?? const UnavailableWriterRepository();
 
   late WriterStory _story;
   bool _isLoading = false;
@@ -64,33 +72,63 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
     _refreshStory();
   }
 
-  Future<void> _refreshStory() async {
-    final storedStory = await _writerService.getStoryById(_story.id);
-
-    if (!mounted || storedStory == null) return;
-
-    setState(() {
-      _story = storedStory;
-    });
+  void _showError(Object error) {
+    if (mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(writerError(error))));
+    }
   }
 
-  Future<void> _saveStory(WriterStory updatedStory) async {
-    await _writerService.updateStory(updatedStory);
+  Future<void> _refreshStory() async {
+    try {
+      final stored = await _writerService.getStoryById(_story.id);
+      if (mounted && stored != null && stored.revision >= _story.revision) {
+        setState(() => _story = stored);
+      }
+    } catch (error) {
+      _showError(error);
+    }
+  }
 
-    if (!mounted) return;
-
-    setState(() {
-      _story = updatedStory;
-    });
+  Future<bool> _saveStory(WriterStory updated) async {
+    if (_isLoading) return false;
+    if (updated.isPublished &&
+        (updated.chapters.isEmpty ||
+            updated.chapters.any(
+              (c) => c.title.trim().isEmpty || c.content.trim().isEmpty,
+            ))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Retira la historia antes de eliminar el último capítulo o guardar contenido incompleto.',
+          ),
+        ),
+      );
+      return false;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final saved = await _writerService.save(updated);
+      if (mounted) setState(() => _story = saved);
+      return true;
+    } catch (error) {
+      _showError(error);
+      return false;
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _editStory() async {
     final result = await Navigator.of(context).push<WriterStory>(
-      MaterialPageRoute(builder: (_) => CreateStoryScreen(story: _story)),
+      MaterialPageRoute(
+        builder: (_) =>
+            CreateStoryScreen(story: _story, repository: _writerService),
+      ),
     );
 
-    if (result != null) {
-      await _refreshStory();
+    if (result != null && mounted) {
+      setState(() => _story = result);
     }
   }
 
@@ -107,40 +145,218 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
 
   Future<void> _toggleStoryPublication() async {
     if (_isLoading) return;
-
-    final wasPublished = _story.isPublished;
-
-    setState(() {
-      _isLoading = true;
-      _isPublishingStory = !wasPublished;
-    });
-
-    // Simulación visual de escritura en backend.
-    await Future<void>.delayed(const Duration(milliseconds: 1000));
-
-    final updatedStory = _story.copyWith(
-      status: wasPublished
-          ? WriterStoryStatus.draft
-          : WriterStoryStatus.published,
-      updatedAt: DateTime.now(),
-    );
-
-    await _writerService.updateStory(updatedStory);
-
-    if (!mounted) return;
-
-    setState(() {
-      _story = updatedStory;
-      _isLoading = false;
-      _isPublishingStory = false;
-    });
-
-    if (!wasPublished) {
-      _showPublicationSuccessMessage('Historia publicada correctamente');
+    final publishing = !_story.isPublished;
+    if (publishing &&
+        (_story.chapters.isEmpty ||
+            _story.chapters.any(
+              (c) => c.title.trim().isEmpty || c.content.trim().isEmpty,
+            ))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Completa al menos un capitulo y todos los capitulos antes de publicar.',
+          ),
+        ),
+      );
       return;
     }
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialog) {
+        final isDark = Theme.of(dialog).brightness == Brightness.dark;
+        final surface = isDark ? AppColors.darkSurface : AppColors.surface;
+        final heading = isDark ? AppColors.darkTextPrimary : AppColors.deep;
+        final textPrimary = isDark
+            ? AppColors.darkTextPrimary
+            : AppColors.textPrimary;
+        final textSecondary = isDark
+            ? AppColors.darkTextSecondary
+            : AppColors.textSecondary;
+        final accent = isDark ? AppColors.darkAccent : AppColors.accent;
 
-    _showPublicationSuccessMessage('Historia volvió a borrador');
+        return Dialog(
+          elevation: 0,
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Container(
+            decoration: BoxDecoration(
+              color: surface,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: AppColors.gold.withValues(alpha: 0.7)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 22,
+                  offset: const Offset(0, 14),
+                ),
+              ],
+            ),
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: publishing
+                            ? AppColors.accent.withValues(alpha: 0.14)
+                            : AppColors.gold.withValues(alpha: 0.18),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        publishing
+                            ? Icons.auto_stories_rounded
+                            : Icons.edit_note_rounded,
+                        color: publishing ? accent : AppColors.deepOf(context),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            publishing
+                                ? 'Publicar historia'
+                                : 'Volver a borrador',
+                            style: GoogleFonts.merriweather(
+                              fontSize: 24,
+                              height: 1.2,
+                              fontWeight: FontWeight.w700,
+                              color: heading,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            publishing
+                                ? 'Tu obra quedará lista para ser leída por otros usuarios.'
+                                : 'La obra dejará de estar visible para otros lectores.',
+                            style: GoogleFonts.inter(
+                              fontSize: 12.5,
+                              height: 1.35,
+                              color: textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundOf(context),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: AppColors.gold.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '¿Qué ocurrirá ahora?',
+                        style: GoogleFonts.cinzel(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: heading,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        publishing
+                            ? '• Se publicarán todos los capítulos completos.\n'
+                                  '• Los lectores autenticados podrán encontrar tu obra en la comunidad.\n'
+                                  '• Siempre podrás volverla a borrador más adelante.'
+                            : '• La historia saldrá de la comunidad de lectura.\n'
+                                  '• Los lectores dejarán de verla como publicada.\n'
+                                  '• Tus capítulos seguirán guardados en tu cuenta.',
+                        style: GoogleFonts.inter(
+                          fontSize: 12.8,
+                          height: 1.45,
+                          color: textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(dialog, false),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(46),
+                          side: BorderSide(
+                            color: AppColors.gold.withValues(alpha: 0.8),
+                          ),
+                          foregroundColor: heading,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text('Cancelar'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        key: const ValueKey('writer-confirm-publication'),
+                        onPressed: () => Navigator.pop(dialog, true),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(46),
+                          backgroundColor: AppColors.accent,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          publishing ? 'Publicar' : 'Volver a borrador',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      _isLoading = true;
+      _isPublishingStory = publishing;
+    });
+    try {
+      final saved = await _writerService.setPublished(_story, publishing);
+      if (!mounted) return;
+      setState(() => _story = saved);
+      _showPublicationSuccessMessage(
+        publishing
+            ? 'Historia publicada en tu cuenta'
+            : 'Historia guardada como borrador',
+      );
+    } catch (error) {
+      _showError(error);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isPublishingStory = false;
+        });
+      }
+    }
   }
 
   void _showPublicationSuccessMessage(String message) {
@@ -355,37 +571,19 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
       _isDeletingStory = true;
     });
 
-    // Simulación visual de eliminación en backend.
-    await Future<void>.delayed(const Duration(milliseconds: 1000));
-
-    await _writerService.deleteStory(_story.id);
-
-    if (!mounted) return;
-
-    setState(() {
-      _isLoading = false;
-      _isDeletingStory = false;
-    });
-
-    Navigator.of(context).pop(_story);
-  }
-
-  Future<void> _toggleChapterPublication(WriterChapter chapter) async {
-    final updatedChapters = _story.chapters.map((currentChapter) {
-      if (currentChapter.id != chapter.id) return currentChapter;
-
-      return currentChapter.copyWith(
-        isPublished: !currentChapter.isPublished,
-        updatedAt: DateTime.now(),
-      );
-    }).toList();
-
-    final updatedStory = _story.copyWith(
-      chapters: updatedChapters,
-      updatedAt: DateTime.now(),
-    );
-
-    await _saveStory(updatedStory);
+    try {
+      await _writerService.remove(_story);
+      if (mounted) Navigator.of(context).pop(_story);
+    } catch (error) {
+      _showError(error);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isDeletingStory = false;
+        });
+      }
+    }
   }
 
   Future<void> _deleteChapter(WriterChapter chapter) async {
@@ -418,17 +616,16 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
 
     if (confirmed != true) return;
 
-    final updatedChapters = _story.chapters
-        .where((currentChapter) => currentChapter.id != chapter.id)
-        .toList()
-      ..sort((a, b) => a.order.compareTo(b.order));
+    final updatedChapters =
+        _story.chapters
+            .where((currentChapter) => currentChapter.id != chapter.id)
+            .toList()
+          ..sort((a, b) => a.order.compareTo(b.order));
 
     final reorderedChapters = <WriterChapter>[];
 
     for (var index = 0; index < updatedChapters.length; index++) {
-      reorderedChapters.add(
-        updatedChapters[index].copyWith(order: index + 1),
-      );
+      reorderedChapters.add(updatedChapters[index].copyWith(order: index + 1));
     }
 
     final updatedStory = _story.copyWith(
@@ -436,17 +633,31 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
       updatedAt: DateTime.now(),
     );
 
-    await _saveStory(updatedStory);
+    final saved = await _saveStory(updatedStory);
 
-    if (!mounted) return;
+    if (!mounted || !saved) return;
 
     ScaffoldMessenger.of(context)
         .showSnackBar(const SnackBar(content: Text('Capítulo eliminado.')));
   }
 
+  WriterDraftStore? _draftFor(WriterChapter? chapter) => widget.ownerUid == null
+      ? null
+      : WriterDraftStore(
+          ownerUid: widget.ownerUid!,
+          storyId: _story.id,
+          chapterId: chapter?.id,
+        );
+
   Future<void> _openNewChapter() async {
     final result = await Navigator.of(context).push<WriterStory>(
-      MaterialPageRoute(builder: (_) => ChapterEditorScreen(story: _story)),
+      MaterialPageRoute(
+        builder: (_) => ChapterEditorScreen(
+          story: _story,
+          repository: _writerService,
+          draftStore: _draftFor(null),
+        ),
+      ),
     );
 
     if (result == null || !mounted) return;
@@ -462,6 +673,8 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
         builder: (_) => ChapterEditorScreen(
           story: _story,
           chapter: chapter,
+          draftStore: _draftFor(chapter),
+          repository: _writerService,
         ),
       ),
     );
@@ -504,55 +717,68 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
         child: ColorFiltered(
           colorFilter: _isLoading
               ? const ColorFilter.matrix(<double>[
-                  0.2126, 0.7152, 0.0722, 0, 0,
-                  0.2126, 0.7152, 0.0722, 0, 0,
-                  0.2126, 0.7152, 0.0722, 0, 0,
-                  0, 0, 0, 1, 0,
+                  0.2126,
+                  0.7152,
+                  0.0722,
+                  0,
+                  0,
+                  0.2126,
+                  0.7152,
+                  0.0722,
+                  0,
+                  0,
+                  0.2126,
+                  0.7152,
+                  0.0722,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
                 ])
-              : const ColorFilter.mode(
-                  Colors.transparent,
-                  BlendMode.dst,
-                ),
+              : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
           child: SafeArea(
             child: RefreshIndicator(
               onRefresh: _refreshStory,
               child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(18, 10, 18, 120),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildBackButton(),
-                const SizedBox(height: 10),
-                _buildSectionTitle('GESTIÓN DE OBRA'),
-                const SizedBox(height: 10),
-                _buildHeader(),
-                const SizedBox(height: 14),
-                _buildStoryCard(),
-                const SizedBox(height: 12),
-                _buildStats(),
-                const SizedBox(height: 14),
-                _buildMainActions(),
-                const SizedBox(height: 20),
-                _buildSectionTitle('PROGRESO DE LA OBRA'),
-                const SizedBox(height: 10),
-                _buildProgress(),
-                const SizedBox(height: 20),
-                _buildChapterHeading(),
-                const SizedBox(height: 10),
-                if (chapters.isEmpty)
-                  _buildEmptyChapters()
-                else
-                  ...chapters.map(
-                    (chapter) => Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
-                      child: _buildChapterCard(chapter),
-                    ),
-                  ),
-                const SizedBox(height: 10),
-                _buildStoryManagement(),
-              ],
-            ),
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(18, 10, 18, 120),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildBackButton(),
+                    const SizedBox(height: 10),
+                    _buildSectionTitle('GESTIÓN DE OBRA'),
+                    const SizedBox(height: 10),
+                    _buildHeader(),
+                    const SizedBox(height: 14),
+                    _buildStoryCard(),
+                    const SizedBox(height: 12),
+                    _buildStats(),
+                    const SizedBox(height: 14),
+                    _buildMainActions(),
+                    const SizedBox(height: 20),
+                    _buildSectionTitle('PROGRESO DE LA OBRA'),
+                    const SizedBox(height: 10),
+                    _buildProgress(),
+                    const SizedBox(height: 20),
+                    _buildChapterHeading(),
+                    const SizedBox(height: 10),
+                    if (chapters.isEmpty)
+                      _buildEmptyChapters()
+                    else
+                      ...chapters.map(
+                        (chapter) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _buildChapterCard(chapter),
+                        ),
+                      ),
+                    const SizedBox(height: 10),
+                    _buildStoryManagement(),
+                  ],
+                ),
               ),
             ),
           ),
@@ -560,5 +786,4 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
       ),
     );
   }
-
 }

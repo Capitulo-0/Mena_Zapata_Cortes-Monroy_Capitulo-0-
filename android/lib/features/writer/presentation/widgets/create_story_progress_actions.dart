@@ -113,8 +113,9 @@ extension _CreateStoryProgressActions on _CreateStoryScreenState {
               backgroundColor: AppColors.accent,
               disabledBackgroundColor: AppColors.accent.withValues(alpha: 0.24),
               foregroundColor: AppColors.background,
-              disabledForegroundColor:
-                  AppColors.background.withValues(alpha: 0.92),
+              disabledForegroundColor: AppColors.background.withValues(
+                alpha: 0.92,
+              ),
               padding: const EdgeInsets.symmetric(vertical: 13),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -140,6 +141,7 @@ extension _CreateStoryProgressActions on _CreateStoryScreenState {
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
+          key: const ValueKey('writer-save-story-draft'),
           onPressed: _isSaving
               ? null
               : () {
@@ -147,7 +149,9 @@ extension _CreateStoryProgressActions on _CreateStoryScreenState {
                 },
           icon: const Icon(Icons.save_outlined, size: 13),
           label: Text(
-            _isEditing ? 'Guardar borrador' : 'Guardar borrador',
+            _currentStory?.isPublished == true
+                ? 'Guardar cambios publicados'
+                : 'Guardar borrador',
             style: GoogleFonts.inter(
               fontSize: 7.8,
               fontWeight: FontWeight.w600,
@@ -155,9 +159,7 @@ extension _CreateStoryProgressActions on _CreateStoryScreenState {
           ),
           style: OutlinedButton.styleFrom(
             foregroundColor: _textSecondaryColor,
-            side: BorderSide(
-              color: AppColors.gold.withValues(alpha: 0.20),
-            ),
+            side: BorderSide(color: AppColors.gold.withValues(alpha: 0.20)),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(9),

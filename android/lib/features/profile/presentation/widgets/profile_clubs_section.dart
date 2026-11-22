@@ -87,7 +87,9 @@ extension _ProfileClubsSection on _ProfileScreenState {
                               onPressed: () => _showClubDetails(club),
                               style: TextButton.styleFrom(
                                 foregroundColor: AppColors.gold,
-                                padding: const EdgeInsets.symmetric(horizontal: 6),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
                                 minimumSize: const Size(0, 28),
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                                 textStyle: GoogleFonts.inter(
@@ -98,31 +100,37 @@ extension _ProfileClubsSection on _ProfileScreenState {
                               child: const Text('Ver'),
                             ),
                             TextButton(
-                              onPressed: () => widget.onToggleClub(club.id),
-                          style: TextButton.styleFrom(
-                            foregroundColor: AppColors.accent,
-                            padding: const EdgeInsets.symmetric(horizontal: 6),
-                            minimumSize: const Size(0, 28),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            textStyle: GoogleFonts.inter(
-                              fontSize: 7,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+                              onPressed: widget.readOnly
+                                  ? null
+                                  : () => widget.onToggleClub(club.id),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.accent,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
+                                minimumSize: const Size(0, 28),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                textStyle: GoogleFonts.inter(
+                                  fontSize: 7,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                               child: const Text('Salir'),
                             ),
                           ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      'Leyendo: ${club.book}',
-                      style: GoogleFonts.inter(
-                        color: _textSecondaryColor,
-                        fontSize: 7.5,
+                    if (club.book.trim().isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        'Leyendo: ${club.book}',
+                        style: GoogleFonts.inter(
+                          color: _textSecondaryColor,
+                          fontSize: 7.5,
+                        ),
                       ),
-                    ),
+                    ],
                     const SizedBox(height: 3),
                     Text(
                       '📅 ${club.date} · ${club.members} lectores',
@@ -151,36 +159,22 @@ extension _ProfileClubsSection on _ProfileScreenState {
   }
 
   Map<String, String> _clubExtraData(ReadingClub club) {
-    switch (club.id) {
-      case 1:
-        return {
-          'author': '@mariaPaz200',
-          'instagram': '@adictosclasicos',
-          'facebook': 'Adictos a los Clásicos',
-          'x': '@adictosclasicos_x',
-        };
-      case 2:
-        return {
-          'author': '@valencruz',
-          'instagram': '@mansiongotica',
-          'facebook': 'Mansión Gótica',
-          'x': '@mansiongotica_club',
-        };
-      case 3:
-        return {
-          'author': '@marcoibanez17',
-          'instagram': '@plumasdelsur',
-          'facebook': 'Plumas del Sur',
-          'x': '@plumasdelsur',
-        };
-      default:
-        return {
-          'author': '@capitulo0',
-          'instagram': '@capitulo0',
-          'facebook': 'Capítulo 0',
-          'x': '@capitulo0',
-        };
-    }
+    final username = club.organizerUsername?.trim() ?? '';
+
+    return {
+      'author': username.isEmpty
+          ? 'Organizador no disponible'
+          : '@${username.replaceFirst(RegExp(r'^@'), '')}',
+      'instagram': club.instagram?.trim().isNotEmpty == true
+          ? club.instagram!.trim()
+          : 'No informado',
+      'facebook': club.facebook?.trim().isNotEmpty == true
+          ? club.facebook!.trim()
+          : 'No informado',
+      'x': club.xHandle?.trim().isNotEmpty == true
+          ? club.xHandle!.trim()
+          : 'No informado',
+    };
   }
 
   void _showClubDetails(ReadingClub club) {
@@ -278,16 +272,39 @@ extension _ProfileClubsSection on _ProfileScreenState {
                                         ),
                                       ),
                                       Expanded(
-                                        child: Text(
-                                          extra['author']!,
-                                          style: GoogleFonts.inter(
-                                            color: AppColors.accent,
-                                            fontSize: 8,
-                                            fontWeight: FontWeight.w700,
-                                            decoration:
-                                                TextDecoration.underline,
-                                            decorationColor:
-                                                AppColors.accent,
+                                        child: InkWell(
+                                          onTap: () {
+                                            final username = currentClub
+                                                .organizerUsername
+                                                ?.trim();
+                                            final onOpenProfile =
+                                                widget.onOpenSocialProfile;
+
+                                            if (username == null ||
+                                                username.isEmpty ||
+                                                onOpenProfile == null) {
+                                              return;
+                                            }
+
+                                            Navigator.of(sheetContext).pop();
+
+                                            onOpenProfile(
+                                              username.replaceFirst(
+                                                RegExp(r'^@'),
+                                                '',
+                                              ),
+                                            );
+                                          },
+                                          child: Text(
+                                            extra['author']!,
+                                            style: GoogleFonts.inter(
+                                              color: AppColors.accent,
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.w700,
+                                              decoration:
+                                                  TextDecoration.underline,
+                                              decorationColor: AppColors.accent,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -358,12 +375,7 @@ extension _ProfileClubsSection on _ProfileScreenState {
                             const SizedBox(height: 11),
                             Container(
                               width: double.infinity,
-                              padding: const EdgeInsets.fromLTRB(
-                                13,
-                                12,
-                                13,
-                                8,
-                              ),
+                              padding: const EdgeInsets.fromLTRB(13, 12, 13, 8),
                               decoration: BoxDecoration(
                                 color: _surfaceColor,
                                 borderRadius: BorderRadius.circular(13),
@@ -422,7 +434,7 @@ extension _ProfileClubsSection on _ProfileScreenState {
                         height: 42,
                         child: FilledButton(
                           onPressed: () {
-                            widget.onToggleClub(id);
+                            if (!widget.readOnly) widget.onToggleClub(id);
                             setSheetState(() {});
                           },
                           style: FilledButton.styleFrom(
@@ -437,8 +449,9 @@ extension _ProfileClubsSection on _ProfileScreenState {
                             ),
                             side: joined
                                 ? BorderSide(
-                                    color:
-                                        AppColors.gold.withValues(alpha: 0.55),
+                                    color: AppColors.gold.withValues(
+                                      alpha: 0.55,
+                                    ),
                                   )
                                 : BorderSide.none,
                           ),
@@ -471,18 +484,11 @@ extension _ProfileClubsSection on _ProfileScreenState {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: _textSecondaryColor,
-            size: 13,
-          ),
+          Icon(icon, color: _textSecondaryColor, size: 13),
           const SizedBox(width: 8),
           Text(
             label,
-            style: GoogleFonts.inter(
-              color: _textSecondaryColor,
-              fontSize: 8,
-            ),
+            style: GoogleFonts.inter(color: _textSecondaryColor, fontSize: 8),
           ),
           const SizedBox(width: 4),
           Expanded(
@@ -502,10 +508,6 @@ extension _ProfileClubsSection on _ProfileScreenState {
   }
 
   Widget _clubSocialDivider() {
-    return Divider(
-      height: 1,
-      color: AppColors.gold.withValues(alpha: 0.14),
-    );
+    return Divider(height: 1, color: AppColors.gold.withValues(alpha: 0.14));
   }
-
 }

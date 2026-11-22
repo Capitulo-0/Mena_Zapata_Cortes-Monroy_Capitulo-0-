@@ -9,37 +9,104 @@ class ProfileMainCard extends StatelessWidget {
     required this.name,
     required this.username,
     required this.biography,
-    required this.moodEmoji,
-    required this.readBooksCount,
-    required this.followerCount,
-    required this.followingCount,
-    required this.onFollowersTap,
-    required this.onFollowingTap,
+    required this.avatarUrl,
+    required this.createdAt,
+    this.moodEmoji,
+    this.readBooksCount,
+    this.followerCount,
+    this.followingCount,
+    this.onFollowersTap,
+    this.onFollowingTap,
+    this.booksLabel = 'Total Leídos',
+    this.showStats = true,
+    this.verifiedOrganizer = false,
   });
 
   final String name;
   final String username;
   final String biography;
-  final String moodEmoji;
-  final int readBooksCount;
-  final int followerCount;
-  final int followingCount;
-  final VoidCallback onFollowersTap;
-  final VoidCallback onFollowingTap;
+  final String? avatarUrl;
+  final DateTime? createdAt;
+  final String? moodEmoji;
+  final int? readBooksCount;
+  final int? followerCount;
+  final int? followingCount;
+  final VoidCallback? onFollowersTap;
+  final VoidCallback? onFollowingTap;
+  final String booksLabel;
+  final bool showStats;
+  final bool verifiedOrganizer;
+
+  String get memberSince {
+    if (createdAt == null) {
+      return 'Fecha de registro no disponible';
+    }
+
+    const months = [
+      'Enero',
+      'Febrero',
+      'Marzo',
+      'Abril',
+      'Mayo',
+      'Junio',
+      'Julio',
+      'Agosto',
+      'Septiembre',
+      'Octubre',
+      'Noviembre',
+      'Diciembre',
+    ];
+
+    final date = createdAt!.toLocal();
+
+    return 'Miembro desde: ${months[date.month - 1]} ${date.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor =
-        isDark ? AppColors.darkSurface : AppColors.surface;
-    final textPrimaryColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.textPrimary;
-    final textSecondaryColor =
-        isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
-    final headingColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.deep;
-    final deepSurfaceColor =
-        isDark ? AppColors.darkDeep : AppColors.deep;
+
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
+
+    final textPrimaryColor = isDark
+        ? AppColors.darkTextPrimary
+        : AppColors.textPrimary;
+
+    final textSecondaryColor = isDark
+        ? AppColors.darkTextSecondary
+        : AppColors.textSecondary;
+
+    final headingColor = isDark ? AppColors.darkTextPrimary : AppColors.deep;
+
+    final goldColor = isDark ? AppColors.darkGold : AppColors.gold;
+
+    final stats = <Widget>[
+      if (readBooksCount != null)
+        _StatItem(
+          value: '$readBooksCount',
+          label: booksLabel,
+          headingColor: headingColor,
+          textSecondaryColor: textSecondaryColor,
+        ),
+      if (followerCount != null)
+        _StatItem(
+          value: '$followerCount',
+          label: 'Seguidores',
+          headingColor: headingColor,
+          textSecondaryColor: textSecondaryColor,
+          highlighted: onFollowersTap != null,
+          onTap: onFollowersTap,
+        ),
+      if (followingCount != null)
+        _StatItem(
+          value: '$followingCount',
+          label: 'Siguiendo',
+          headingColor: headingColor,
+          textSecondaryColor: textSecondaryColor,
+          highlighted: onFollowingTap != null,
+          onTap: onFollowingTap,
+        ),
+    ];
 
     return Container(
       padding: const EdgeInsets.all(15),
@@ -61,62 +128,38 @@ class ProfileMainCard extends StatelessWidget {
                     height: 64,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(
-                        color: AppColors.gold,
-                        width: 2,
-                      ),
+                      border: Border.all(color: AppColors.gold, width: 2),
                     ),
                     child: ClipOval(
-                      child: Image.network(
-                        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=face',
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) {
-                          return Container(
-                            color: deepSurfaceColor,
-                            alignment: Alignment.center,
-                            child: Text(
-                              name.trim().isEmpty
-                                  ? '?'
-                                  : name.trim()[0].toUpperCase(),
-                              style: GoogleFonts.cinzel(
-                                color: AppColors.gold,
-                                fontSize: 26,
-                                fontWeight: FontWeight.w700,
-                              ),
+                      child: _ProfileAvatar(avatarUrl: avatarUrl),
+                    ),
+                  ),
+                  if (moodEmoji != null && moodEmoji!.isNotEmpty)
+                    Positioned(
+                      right: -5,
+                      bottom: -4,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          color: surfaceColor,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: AppColors.gold, width: 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.10),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    right: -5,
-                    bottom: -4,
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: surfaceColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: AppColors.gold,
-                          width: 2,
+                          ],
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.10),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        moodEmoji,
-                        style: const TextStyle(fontSize: 14),
+                        alignment: Alignment.center,
+                        child: Text(
+                          moodEmoji!,
+                          style: const TextStyle(fontSize: 14),
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
               const SizedBox(width: 14),
@@ -143,7 +186,7 @@ class ProfileMainCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Miembro desde: Marzo 2024',
+                      memberSince,
                       style: GoogleFonts.inter(
                         color: textSecondaryColor,
                         fontSize: 8,
@@ -152,6 +195,56 @@ class ProfileMainCard extends StatelessWidget {
                   ],
                 ),
               ),
+
+              // Insignia pública de organizador verificado.
+              if (verifiedOrganizer) ...[
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Organizador verificado por Capítulo 0',
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(24),
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Organizador verificado por Capítulo 0',
+                            ),
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: goldColor.withValues(alpha: 0.11),
+                          border: Border.all(
+                            color: goldColor.withValues(alpha: 0.55),
+                            width: 1.2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: goldColor.withValues(alpha: 0.10),
+                              blurRadius: 10,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.verified_rounded,
+                          color: goldColor,
+                          size: 27,
+                          semanticLabel: 'Organizador verificado',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 11),
@@ -166,51 +259,60 @@ class ProfileMainCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              border: Border.symmetric(
-                horizontal: BorderSide(
-                  color: AppColors.gold.withValues(alpha: 0.28),
+          if (showStats && stats.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.symmetric(
+                  horizontal: BorderSide(
+                    color: AppColors.gold.withValues(alpha: 0.28),
+                  ),
                 ),
               ),
+              child: Row(
+                children: [for (final stat in stats) Expanded(child: stat)],
+              ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _StatItem(
-                    value: '$readBooksCount',
-                    label: 'Total Leídos',
-                    headingColor: headingColor,
-                    textSecondaryColor: textSecondaryColor,
-                  ),
-                ),
-                Expanded(
-                  child: _StatItem(
-                    value: '$followerCount',
-                    label: 'Seguidores',
-                    headingColor: headingColor,
-                    textSecondaryColor: textSecondaryColor,
-                    highlighted: true,
-                    onTap: onFollowersTap,
-                  ),
-                ),
-                Expanded(
-                  child: _StatItem(
-                    value: '$followingCount',
-                    label: 'Siguiendo',
-                    headingColor: headingColor,
-                    textSecondaryColor: textSecondaryColor,
-                    highlighted: true,
-                    onTap: onFollowingTap,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          ],
         ],
       ),
+    );
+  }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({required this.avatarUrl});
+
+  final String? avatarUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final value = avatarUrl?.trim();
+
+    if (value == null || value.isEmpty) {
+      return const _DefaultProfileAvatar();
+    }
+
+    return Image.network(
+      value,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) {
+        return const _DefaultProfileAvatar();
+      },
+    );
+  }
+}
+
+class _DefaultProfileAvatar extends StatelessWidget {
+  const _DefaultProfileAvatar();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      alignment: Alignment.center,
+      child: Icon(Icons.person, size: 34, color: Colors.grey.shade500),
     );
   }
 }
@@ -244,9 +346,7 @@ class _StatItem extends StatelessWidget {
             Text(
               value,
               style: GoogleFonts.inter(
-                color: highlighted
-                    ? AppColors.accent
-                    : headingColor,
+                color: highlighted ? AppColors.accent : headingColor,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -258,8 +358,7 @@ class _StatItem extends StatelessWidget {
               style: GoogleFonts.inter(
                 color: textSecondaryColor,
                 fontSize: 7,
-                decoration:
-                    highlighted ? TextDecoration.underline : null,
+                decoration: highlighted ? TextDecoration.underline : null,
               ),
             ),
           ],

@@ -5,20 +5,15 @@ import '../../../../core/theme/app_colors.dart';
 import 'profile_privacy_store.dart';
 
 class ProfileHeader extends StatelessWidget {
-  const ProfileHeader({
-    super.key,
-    required this.onOpenSettings,
-  });
+  const ProfileHeader({super.key, required this.onOpenSettings});
 
   final VoidCallback onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceColor =
-        isDark ? AppColors.darkSurface : AppColors.surface;
-    final headingColor =
-        isDark ? AppColors.darkTextPrimary : AppColors.deep;
+    final surfaceColor = isDark ? AppColors.darkSurface : AppColors.surface;
+    final headingColor = isDark ? AppColors.darkTextPrimary : AppColors.deep;
 
     return Row(
       children: [
@@ -46,10 +41,7 @@ class ProfileHeader extends StatelessWidget {
                       return FadeTransition(
                         opacity: animation,
                         child: ScaleTransition(
-                          scale: Tween<double>(
-                            begin: 0.86,
-                            end: 1,
-                          ).animate(
+                          scale: Tween<double>(begin: 0.86, end: 1).animate(
                             CurvedAnimation(
                               parent: animation,
                               curve: Curves.easeOutBack,
@@ -60,9 +52,7 @@ class ProfileHeader extends StatelessWidget {
                       );
                     },
                     child: Icon(
-                      isPrivate
-                          ? Icons.lock_rounded
-                          : Icons.lock_open_rounded,
+                      isPrivate ? Icons.lock_rounded : Icons.lock_open_rounded,
                       key: ValueKey<bool>(isPrivate),
                       size: 16,
                       color: isDark
@@ -86,11 +76,7 @@ class ProfileHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppColors.gold),
             ),
-            child: Icon(
-              Icons.settings_outlined,
-              color: headingColor,
-              size: 18,
-            ),
+            child: Icon(Icons.settings_outlined, color: headingColor, size: 18),
           ),
         ),
       ],

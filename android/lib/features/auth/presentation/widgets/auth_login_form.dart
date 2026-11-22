@@ -10,12 +10,14 @@ class AuthLoginForm extends StatelessWidget {
   const AuthLoginForm({
     super.key,
     required this.controller,
+    required this.onGoogle,
     required this.onLogin,
     required this.onGuestLogin,
     required this.onRegisterRequested,
   });
 
   final AuthController controller;
+  final Future<void> Function() onGoogle;
   final Future<void> Function() onLogin;
   final Future<void> Function() onGuestLogin;
   final VoidCallback onRegisterRequested;
@@ -84,7 +86,8 @@ class AuthLoginForm extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => const ForgotPasswordScreen(),
+                  builder: (_) =>
+                      ForgotPasswordScreen(auth: controller.session.auth),
                 ),
               );
             },
@@ -107,17 +110,17 @@ class AuthLoginForm extends StatelessWidget {
               ? 'Entrando${'.' * controller.loginDots}'
               : 'Iniciar sesión',
           loading: controller.isLoggingIn,
-          onPressed: controller.isLoggingIn ? null : onLogin,
+          onPressed: controller.isBusy ? null : onLogin,
         ),
         const SizedBox(height: 12),
         _GuestButton(
           loading: controller.isGuestLoading,
-          onPressed: controller.isGuestLoading ? null : onGuestLogin,
+          onPressed: controller.isBusy ? null : onGuestLogin,
         ),
         const SizedBox(height: 18),
         const AuthDivider('o continúa con'),
         const SizedBox(height: 16),
-        const AuthGoogleButton(),
+        AuthGoogleButton(onPressed: controller.isBusy ? null : onGoogle),
         const SizedBox(height: 16),
         AuthBottomSwitch(
           text: '¿Aún no tienes cuenta?',
@@ -130,10 +133,7 @@ class AuthLoginForm extends StatelessWidget {
 }
 
 class _GuestButton extends StatelessWidget {
-  const _GuestButton({
-    required this.loading,
-    required this.onPressed,
-  });
+  const _GuestButton({required this.loading, required this.onPressed});
 
   final bool loading;
   final VoidCallback? onPressed;
@@ -149,9 +149,7 @@ class _GuestButton extends StatelessWidget {
           disabledForegroundColor: AppColors.textSecondary,
           backgroundColor: AppColors.surface,
           disabledBackgroundColor: AppColors.surface,
-          side: BorderSide(
-            color: AppColors.gold.withValues(alpha: 0.42),
-          ),
+          side: BorderSide(color: AppColors.gold.withValues(alpha: 0.42)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(11),
           ),
@@ -172,9 +170,7 @@ class _GuestButton extends StatelessWidget {
               const SizedBox(width: 8),
             ],
             Text(
-              loading
-                  ? 'Iniciando como invitado...'
-                  : 'Iniciar como invitado',
+              loading ? 'Iniciando como invitado...' : 'Iniciar como invitado',
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w500,
                 fontSize: 12,
