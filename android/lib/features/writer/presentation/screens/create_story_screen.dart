@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../models/writer_story.dart';
 import '../../services/writer_repository.dart';
+import '../../services/literary_chat.dart';
+import '../widgets/literary_chat_screen.dart';
 import '../../services/writer_cover_picker.dart';
 
 part '../widgets/create_story_header_section.dart';
@@ -367,6 +369,36 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
     await _saveStory(closeAfterSaving: true);
   }
 
+  Future<void> _openAssistant(LiteraryChatRepository repository) async {
+    final title = _titleController.text;
+    final synopsis = _synopsisController.text;
+    final suggestion = await LiteraryChatScreen.open(
+      context,
+      LiteraryChatScreen(
+        repository: repository,
+        editor: ChatEditor.story,
+        genre: _selectedGenre ?? '',
+        title: title,
+        excerpt: synopsis.length <= 4000 ? synopsis : '',
+      ),
+    );
+    if (!mounted ||
+        suggestion == null ||
+        _isSaving ||
+        !repository.chatAccountIsCurrent) {
+      return;
+    }
+    if (_titleController.text != title ||
+        _synopsisController.text != synopsis) {
+      return;
+    }
+    if (suggestion.action == 'TITLE') {
+      _titleController.text = suggestion.text;
+    } else if (suggestion.action == 'SYNOPSIS') {
+      _synopsisController.text = suggestion.text;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -398,6 +430,12 @@ class _CreateStoryScreenState extends State<CreateStoryScreen> {
                   _buildSectionTitle('IDENTIDAD DE LA OBRA'),
                   const SizedBox(height: 14),
                   _buildIdentitySection(),
+                  if (widget.repository case LiteraryChatRepository assistant)
+                    TextButton.icon(
+                      onPressed: () => _openAssistant(assistant),
+                      icon: const Icon(Icons.auto_awesome, size: 17),
+                      label: const Text('Asistente IA'),
+                    ),
                   const SizedBox(height: 28),
 
                   _buildSectionTitle('VISTA PREVIA'),
