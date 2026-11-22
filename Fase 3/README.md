@@ -11,3 +11,6 @@ La autenticación de usuarios se realiza mediante Firebase Authentication.
 
 ## Integraciones
 El proyecto integra servicios externos para catálogo de libros y funcionalidades complementarias.
+
+## Evidencias
+Las evidencias, documentos y presentaciones finales se encuentran organizados dentro de las carpetas de la Fase 3.
