@@ -5,3 +5,6 @@ Capítulo 0 es una aplicación orientada a la lectura, comunidad y creación lit
 
 ## Tecnologías
 Frontend: Flutter y Dart. Backend: Spring Boot. Base de datos: PostgreSQL.
+
+## Autenticación
+La autenticación de usuarios se realiza mediante Firebase Authentication.
