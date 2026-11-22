@@ -12,6 +12,8 @@ class LibraryHeader extends StatelessWidget {
   });
   final String currentName;
   final VoidCallback onOptionsTap;
+  // Compatibilidad con integraciones y pruebas anteriores.
+  // El acceso visual de registro está ahora dentro del menú de opciones.
   final VoidCallback? onAddTap;
   @override
   Widget build(BuildContext context) {
@@ -37,21 +39,6 @@ class LibraryHeader extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 4),
-            IconButton(
-              key: const ValueKey('library-add'),
-              tooltip: 'Añadir libro',
-              onPressed: onAddTap,
-              style: IconButton.styleFrom(
-                backgroundColor: AppColors.deep,
-                foregroundColor: AppColors.gold,
-                disabledBackgroundColor: AppColors.surfaceSoftOf(context),
-                disabledForegroundColor: AppColors.textSecondaryOf(context),
-                minimumSize: const Size(48, 48),
-                shape: const CircleBorder(),
-              ),
-              icon: const Icon(Icons.add_rounded, size: 23),
             ),
             const SizedBox(width: 4),
             IconButton(

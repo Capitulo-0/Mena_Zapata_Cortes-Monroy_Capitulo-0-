@@ -85,29 +85,29 @@ class MapPointCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 10),
-            _InfoRow(
-              icon: Icons.location_on_outlined,
-              text: point.address,
-            ),
+
+            _InfoRow(icon: Icons.location_on_outlined, text: point.address),
+
             if (point.date != null)
-              _InfoRow(
-                icon: Icons.calendar_month_outlined,
-                text: point.date!,
-              ),
+              _InfoRow(icon: Icons.calendar_month_outlined, text: point.date!),
+
             if (point.schedule != null)
+              _InfoRow(icon: Icons.schedule_outlined, text: point.schedule!),
+
+            // Solo mostramos informacion de precios
+            // cuando el modelo indica que se conoce.
+            if (point.showAdmission)
               _InfoRow(
-                icon: Icons.schedule_outlined,
-                text: point.schedule!,
+                icon: point.isFree
+                    ? Icons.confirmation_number_outlined
+                    : Icons.payments_outlined,
+                text: point.isFree
+                    ? 'Entrada gratuita'
+                    : 'Puede requerir consumo o entrada',
               ),
-            _InfoRow(
-              icon: point.isFree
-                  ? Icons.confirmation_number_outlined
-                  : Icons.payments_outlined,
-              text: point.isFree
-                  ? 'Entrada gratuita'
-                  : 'Puede requerir consumo o entrada',
-            ),
+
             const SizedBox(height: 7),
+
             Text(
               point.description,
               maxLines: 2,
@@ -118,7 +118,9 @@ class MapPointCard extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+
             const SizedBox(height: 13),
+
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -130,9 +132,7 @@ class MapPointCard extends StatelessWidget {
                 icon: const Icon(Icons.near_me_outlined, size: 18),
                 label: Text(
                   'Ver en el mapa',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -144,10 +144,7 @@ class MapPointCard extends StatelessWidget {
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.text,
-  });
+  const _InfoRow({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
@@ -160,15 +157,13 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 5),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: AppColors.goldOf(context),
-          ),
+          Icon(icon, size: 16, color: AppColors.goldOf(context)),
           const SizedBox(width: 7),
           Expanded(
             child: Text(
               text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: GoogleFonts.inter(
                 fontSize: 10,
                 color: theme.colorScheme.onSurfaceVariant,

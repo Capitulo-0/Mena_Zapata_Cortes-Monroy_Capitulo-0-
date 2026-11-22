@@ -56,10 +56,7 @@ class ChapterPreviewScreen extends StatelessWidget {
                       padding: EdgeInsets.zero,
                       minimumSize: const Size(34, 34),
                     ),
-                    icon: const Icon(
-                      Icons.arrow_back_rounded,
-                      size: 18,
-                    ),
+                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
                   ),
                   const SizedBox(width: 5),
                   Expanded(
@@ -111,10 +108,7 @@ class ChapterPreviewScreen extends StatelessWidget {
                 ],
               ),
             ),
-            Divider(
-              height: 1,
-              color: AppColors.gold.withValues(alpha: 0.20),
-            ),
+            Divider(height: 1, color: AppColors.gold.withValues(alpha: 0.20)),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(24, 26, 24, 48),
@@ -234,4 +228,3 @@ class ChapterPreviewScreen extends StatelessWidget {
     );
   }
 }
-

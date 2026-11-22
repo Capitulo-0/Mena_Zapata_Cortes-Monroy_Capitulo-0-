@@ -46,16 +46,11 @@ InputDecoration authInputDecoration({
     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
     enabledBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: BorderSide(
-        color: AppColors.gold.withValues(alpha: 0.55),
-      ),
+      borderSide: BorderSide(color: AppColors.gold.withValues(alpha: 0.55)),
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(12),
-      borderSide: const BorderSide(
-        color: AppColors.gold,
-        width: 1.2,
-      ),
+      borderSide: const BorderSide(color: AppColors.gold, width: 1.2),
     ),
   );
 }
@@ -93,12 +88,14 @@ class AuthPrimaryButton extends StatelessWidget {
         child: ElevatedButton(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
-            backgroundColor:
-                loading ? const Color(0xFF747474) : AppColors.accent,
+            backgroundColor: loading
+                ? const Color(0xFF747474)
+                : AppColors.accent,
             disabledBackgroundColor: const Color(0xFF747474),
             foregroundColor: AppColors.background,
-            disabledForegroundColor:
-                AppColors.background.withValues(alpha: 0.92),
+            disabledForegroundColor: AppColors.background.withValues(
+              alpha: 0.92,
+            ),
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(11),
@@ -134,19 +131,14 @@ class AuthGoogleButton extends StatelessWidget {
         icon: const Icon(Icons.g_mobiledata_rounded, size: 22),
         label: Text(
           'Continuar con Google',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w500,
-            fontSize: 12,
-          ),
+          style: GoogleFonts.inter(fontWeight: FontWeight.w500, fontSize: 12),
         ),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.deep,
           disabledForegroundColor: AppColors.deep,
           backgroundColor: AppColors.surface,
           disabledBackgroundColor: AppColors.surface,
-          side: BorderSide(
-            color: AppColors.gold.withValues(alpha: 0.55),
-          ),
+          side: BorderSide(color: AppColors.gold.withValues(alpha: 0.55)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(11),
           ),
@@ -165,11 +157,7 @@ class AuthDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: Divider(
-            color: AppColors.gold.withValues(alpha: 0.30),
-          ),
-        ),
+        Expanded(child: Divider(color: AppColors.gold.withValues(alpha: 0.30))),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Text(
@@ -181,11 +169,7 @@ class AuthDivider extends StatelessWidget {
             ),
           ),
         ),
-        Expanded(
-          child: Divider(
-            color: AppColors.gold.withValues(alpha: 0.30),
-          ),
-        ),
+        Expanded(child: Divider(color: AppColors.gold.withValues(alpha: 0.30))),
       ],
     );
   }

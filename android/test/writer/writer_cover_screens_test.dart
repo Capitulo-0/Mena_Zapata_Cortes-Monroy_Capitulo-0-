@@ -224,11 +224,11 @@ void main() {
         ),
       );
       await t.pump();
-      await t.tap(find.byKey(const ValueKey('writer-options')));
+      // El menú de tres puntos se eliminó: la recarga disponible es pull-to-refresh.
+      expect(find.byKey(const ValueKey('writer-options')), findsNothing);
+      await t.drag(find.byType(CustomScrollView), const Offset(0, 350));
       await t.pump();
-      await t.pump(const Duration(milliseconds: 400));
-      await t.tap(find.text('Actualizar historias'));
-      await t.pumpAndSettle();
+      await t.pump(const Duration(seconds: 1));
       expectBlue(t);
       repo.older.complete([latest.copyWith(removeCover: true)]);
       await t.pumpAndSettle();
@@ -298,9 +298,7 @@ void main() {
     expect((await fresh.readPublication(story.id)).coverPath, 'preset:night');
   });
   for (final width in [320.0, 360.0, 390.0]) {
-    testWidgets('Writer header navigation, menu and create at $width', (
-      t,
-    ) async {
+    testWidgets('Writer encabezado personal y crear obra a $width', (t) async {
       t.view.physicalSize = Size(width, 844);
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.resetPhysicalSize);
@@ -317,34 +315,18 @@ void main() {
       );
       await t.pumpAndSettle();
       expectBlue(t);
-      expect(find.text('Leer obras de la comunidad'), findsNothing);
+      expect(find.text('MIS HISTORIAS'), findsOneWidget);
       expect(
-        find.text('Consultar borradores locales anteriores'),
-        findsNothing,
-      );
-      await t.tap(find.byKey(const ValueKey('writer-options')));
-      await t.pumpAndSettle();
-      expect(
-        find.text('Consultar borradores locales anteriores'),
+        find.textContaining('Escribe, guarda y comparte tus historias, Autora'),
         findsOneWidget,
       );
-      await t.tap(find.text('Comprobar portadas y versión'));
-      await t.pumpAndSettle();
-      expect(find.text('Writer 20261117-portadas-v2'), findsOneWidget);
-      expect(
-        find.textContaining('Referencia API: preset:night'),
-        findsOneWidget,
-      );
-      await t.tap(find.text('Cerrar'));
-      await t.pumpAndSettle();
-      await t.tap(find.byKey(const ValueKey('writer-community')));
-      await t.pumpAndSettle();
-      expect(find.byType(WriterCommunityScreen), findsOneWidget);
-      expectBlue(t);
-      await t.pageBack();
-      await t.pumpAndSettle();
-      await t.tap(find.byKey(const ValueKey('writer-my-works')));
-      await t.pumpAndSettle();
+      expect(find.byKey(const ValueKey('writer-options')), findsNothing);
+      expect(find.byKey(const ValueKey('writer-my-works')), findsNothing);
+      expect(find.byKey(const ValueKey('writer-community')), findsNothing);
+      expect(find.byKey(const ValueKey('writer-create-story')), findsOneWidget);
+      expect(find.text('Todas'), findsOneWidget);
+      expect(find.text('Publicadas'), findsWidgets);
+      expect(find.text('Borradores'), findsWidgets);
       await t.tap(find.byKey(const ValueKey('writer-create-story')));
       await t.pumpAndSettle();
       expect(find.byType(CreateStoryScreen), findsOneWidget);

@@ -2,6 +2,7 @@
 package com.capitulo0.backend.auth.service;
 
 import java.util.Locale;
+import java.time.Instant;
 import java.util.regex.Pattern;
 
 import com.capitulo0.backend.auth.model.AuthenticatedFirebaseUser;
@@ -24,6 +25,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 public class UserProvisioningService {
+
+    public static final String LEGAL_VERSION = "2026-11-20";
 
     private static final Pattern USERNAME_PATTERN =
         Pattern.compile("^[a-z0-9_]{3,30}$");
@@ -54,7 +57,11 @@ public class UserProvisioningService {
     // El username se elige durante el registro inicial.
     public UserResponse provision(
         AuthenticatedFirebaseUser identity,
-        String username
+        String username,
+        Boolean termsAccepted,
+        Boolean privacyAccepted,
+        String termsVersion,
+        String privacyVersion
     ) {
 
         // Las cuentas existentes nunca se modifican
@@ -63,6 +70,19 @@ public class UserProvisioningService {
 
         if (existing.isPresent()) {
             return UserMapper.toResponse(existing.get());
+        }
+
+        // Solo se exige a cuentas que aún no existen en nuestra base de datos.
+        // No atribuir consentimiento a cuentas antiguas ni autocompletarlo.
+        if (!Boolean.TRUE.equals(termsAccepted) ||
+            !Boolean.TRUE.equals(privacyAccepted) ||
+            !LEGAL_VERSION.equals(termsVersion) ||
+            !LEGAL_VERSION.equals(privacyVersion)) {
+            throw new ApiException(
+                org.springframework.http.HttpStatus.BAD_REQUEST,
+                "LEGAL_CONSENT_REQUIRED",
+                "Debes aceptar los Términos y condiciones y la Política de privacidad vigentes antes de crear tu cuenta."
+            );
         }
 
         // Validar formato del username.
@@ -123,6 +143,7 @@ public class UserProvisioningService {
                 user.setFirebaseUid(identity.uid());
                 user.setEmail(email);
                 user.setUsername(username);
+                user.acceptLegalDocuments(termsVersion, privacyVersion, Instant.now());
 
                 String name = identity.displayName();
 

@@ -32,10 +32,7 @@ extension _ManageStoryChaptersSection on _ManageStoryScreenState {
                 ),
               ),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 6,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
@@ -53,9 +50,7 @@ extension _ManageStoryChaptersSection on _ManageStoryScreenState {
       decoration: BoxDecoration(
         color: _surfaceColor,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: AppColors.gold.withValues(alpha: 0.26),
-        ),
+        border: Border.all(color: AppColors.gold.withValues(alpha: 0.26)),
       ),
       child: Column(
         children: [
@@ -260,10 +255,7 @@ extension _ManageStoryChaptersSection on _ManageStoryScreenState {
                                 ),
                               ),
                               const SizedBox(width: 4),
-                              const Icon(
-                                Icons.chevron_right_rounded,
-                                size: 11,
-                              ),
+                              const Icon(Icons.chevron_right_rounded, size: 11),
                             ],
                           ),
                         ),

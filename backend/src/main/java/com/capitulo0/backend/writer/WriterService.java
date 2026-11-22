@@ -78,8 +78,8 @@ public class WriterService {
   String authorName,String authorUsername,Instant updatedAt,int chapterCount){}
  @Transactional(readOnly=true) public List<PublicationSummary> community(Long reader){
   // Payload is an aggregate TEXT in V10. Filter on the server; never return private documents.
-  var published=stories.findByOwnerIdNotOrderByUpdatedAtDesc(reader).stream()
-   .filter(row->"published".equals(document(row).status())).limit(100).toList();
+  var published=stories.findAllByOrderByUpdatedAtDesc().stream()
+   .filter(row->"published".equals(document(row).status())).toList();
   var authors=new HashMap<Long,com.capitulo0.backend.user.entity.User>();
   users.findAllById(published.stream().map(row->row.ownerId).distinct().toList()).forEach(u->authors.put(u.getId(),u));
   return published.stream().map(row->{var d=document(row);var author=authors.get(row.ownerId);

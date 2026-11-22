@@ -17,6 +17,7 @@ class ImportedEpubSection extends StatefulWidget {
     this.files = const SystemEpubFileAccess(),
     this.readerBuilder,
     this.libraryBuilder,
+    this.libraryBuilderWithImport,
   });
   final EpubStore? store;
   final EpubFileAccess files;
@@ -29,6 +30,18 @@ class ImportedEpubSection extends StatefulWidget {
     Widget,
   )?
   libraryBuilder;
+
+  /// For LibraryScreen: exposes the existing import action to its options
+  /// menu without recreating the picker or changing the EPUB storage flow.
+  /// Other callers can keep using [libraryBuilder] unchanged.
+  final Widget Function(
+    List<ImportedEpub>,
+    Widget Function(ImportedEpub),
+    Widget,
+    VoidCallback?,
+  )?
+  libraryBuilderWithImport;
+
   @override
   State<ImportedEpubSection> createState() => _ImportedEpubSectionState();
 }
@@ -247,6 +260,37 @@ class _ImportedEpubSectionState extends State<ImportedEpubSection> {
           ),
       ],
     );
+    // The import button can live in LibraryScreen's options sheet, while
+    // progress/errors stay visible in the library body. The same _import()
+    // callback still performs picking, confirmation, validation and saving.
+    final importFeedback = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_busy) const LinearProgressIndicator(minHeight: 2),
+        if (_busy)
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text('Procesando EPUB...'),
+          ),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              _error!,
+              key: const ValueKey('epub-error'),
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+      ],
+    );
+    if (widget.libraryBuilderWithImport != null) {
+      return widget.libraryBuilderWithImport!(
+        List<ImportedEpub>.unmodifiable(_books),
+        _buildCard,
+        importFeedback,
+        _busy ? null : () => _import(),
+      );
+    }
     return widget.libraryBuilder?.call(
           List<ImportedEpub>.unmodifiable(_books),
           _buildCard,

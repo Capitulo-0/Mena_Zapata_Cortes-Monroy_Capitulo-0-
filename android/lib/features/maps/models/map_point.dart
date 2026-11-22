@@ -9,19 +9,25 @@ class MapPoint {
     required this.type,
     required this.position,
     required this.address,
+    this.commune,
     required this.description,
     this.schedule,
     this.date,
     this.isFree = true,
+    this.showAdmission = true,
+    this.osmUrl,
   });
 
   final String id;
   final String name;
   final MapPointType type;
   final LatLng position;
+  final String? commune;
   final String address;
   final String description;
   final String? schedule;
   final String? date;
   final bool isFree;
+  final bool showAdmission;
+  final String? osmUrl;
 }

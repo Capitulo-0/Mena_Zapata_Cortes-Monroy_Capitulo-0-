@@ -82,7 +82,10 @@ class UserProvisioningServiceTests {
 
         var result = service(users).provision(
             identity(),
-            USERNAME
+            USERNAME,
+            true, true,
+            UserProvisioningService.LEGAL_VERSION,
+            UserProvisioningService.LEGAL_VERSION
         );
 
         assertThat(result.id()).isEqualTo(42L);
@@ -117,7 +120,10 @@ class UserProvisioningServiceTests {
 
         var result = service(users).provision(
             identity(),
-            USERNAME
+            USERNAME,
+            true, true,
+            UserProvisioningService.LEGAL_VERSION,
+            UserProvisioningService.LEGAL_VERSION
         );
 
         assertThat(result.id()).isEqualTo(42L);
@@ -128,4 +134,50 @@ class UserProvisioningServiceTests {
         // Se utiliza una segunda transacción para
         // recuperar el usuario después de la colisión.
     }
+
+    @Test
+    void existingAccountIsNotForcedToReacceptLegalDocuments() {
+        var users = mock(UserRepository.class);
+        when(users.findByFirebaseUid(UID)).thenReturn(Optional.of(winner()));
+
+        var result = service(users).provision(
+            identity(), USERNAME, null, null, null, null
+        );
+
+        assertThat(result.username()).isEqualTo(USERNAME);
+        verify(users, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void newAccountWithoutBothLegalConsentsIsRejectedBeforeInsertion() {
+        var users = mock(UserRepository.class);
+        when(users.findByFirebaseUid(UID)).thenReturn(Optional.empty());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+            service(users).provision(
+                identity(), USERNAME, true, false,
+                UserProvisioningService.LEGAL_VERSION,
+                UserProvisioningService.LEGAL_VERSION
+            )
+        ).isInstanceOf(com.capitulo0.backend.common.exception.ApiException.class)
+         .hasMessageContaining("Debes aceptar");
+
+        verify(users, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void newAccountWithObsoleteDocumentVersionIsRejected() {
+        var users = mock(UserRepository.class);
+        when(users.findByFirebaseUid(UID)).thenReturn(Optional.empty());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+            service(users).provision(
+                identity(), USERNAME, true, true,
+                "old-version", UserProvisioningService.LEGAL_VERSION
+            )
+        ).isInstanceOf(com.capitulo0.backend.common.exception.ApiException.class);
+
+        verify(users, never()).saveAndFlush(any());
+    }
+
 }

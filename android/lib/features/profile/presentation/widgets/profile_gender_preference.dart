@@ -4,12 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
 
-enum ProfileGender {
-  woman,
-  man,
-  preferNotToSay,
-  selfDescribe,
-}
+enum ProfileGender { woman, man, preferNotToSay, selfDescribe }
 
 extension ProfileGenderLabel on ProfileGender {
   String get label {
@@ -55,8 +50,9 @@ class ProfileGenderStore {
 
   static set customGender(String? value) {
     final normalized = value?.trim();
-    customGenderNotifier.value =
-        normalized == null || normalized.isEmpty ? null : normalized;
+    customGenderNotifier.value = normalized == null || normalized.isEmpty
+        ? null
+        : normalized;
   }
 
   static bool get hasCustomGender => customGender != null;
@@ -71,10 +67,7 @@ class ProfileGenderStore {
 }
 
 class ProfileGenderPreferenceField extends StatefulWidget {
-  const ProfileGenderPreferenceField({
-    super.key,
-    this.label = 'Género',
-  });
+  const ProfileGenderPreferenceField({super.key, this.label = 'Género'});
 
   final String label;
 
@@ -112,10 +105,7 @@ class _ProfileGenderPreferenceFieldState
       reverseCurve: Curves.easeIn,
     );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.96,
-      end: 1,
-    ).animate(
+    _scaleAnimation = Tween<double>(begin: 0.96, end: 1).animate(
       CurvedAnimation(
         parent: _animationController,
         curve: Curves.easeOutBack,
@@ -219,10 +209,7 @@ class _ProfileGenderPreferenceFieldState
 
       if (!mounted) return;
 
-      await _openCustomGenderEditor(
-        selectAfterSave: true,
-        isEditing: false,
-      );
+      await _openCustomGenderEditor(selectAfterSave: true, isEditing: false);
       return;
     }
 
@@ -241,10 +228,7 @@ class _ProfileGenderPreferenceFieldState
 
     if (!mounted) return;
 
-    await _openCustomGenderEditor(
-      selectAfterSave: false,
-      isEditing: true,
-    );
+    await _openCustomGenderEditor(selectAfterSave: false, isEditing: true);
   }
 
   Future<void> _openCustomGenderEditor({
@@ -278,7 +262,8 @@ class _ProfileGenderPreferenceFieldState
 
     ProfileGenderStore.customGender = savedGender;
 
-    if (selectAfterSave || ProfileGenderStore.value == ProfileGender.selfDescribe) {
+    if (selectAfterSave ||
+        ProfileGenderStore.value == ProfileGender.selfDescribe) {
       ProfileGenderStore.value = ProfileGender.selfDescribe;
     }
 
@@ -358,9 +343,7 @@ class _ProfileGenderPreferenceFieldState
                         color: surface,
                         borderRadius: BorderRadius.circular(11),
                         border: Border.all(
-                          color: _isOpen
-                              ? gold
-                              : gold.withValues(alpha: 0.55),
+                          color: _isOpen ? gold : gold.withValues(alpha: 0.55),
                           width: _isOpen ? 1.35 : 1,
                         ),
                         boxShadow: _isOpen
@@ -378,18 +361,19 @@ class _ProfileGenderPreferenceFieldState
                           Expanded(
                             child: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 180),
-                              layoutBuilder: (
-                                Widget? currentChild,
-                                List<Widget> previousChildren,
-                              ) {
-                                return Stack(
-                                  alignment: Alignment.centerLeft,
-                                  children: <Widget>[
-                                    ...previousChildren,
-                                    ?currentChild,
-                                  ],
-                                );
-                              },
+                              layoutBuilder:
+                                  (
+                                    Widget? currentChild,
+                                    List<Widget> previousChildren,
+                                  ) {
+                                    return Stack(
+                                      alignment: Alignment.centerLeft,
+                                      children: <Widget>[
+                                        ...previousChildren,
+                                        ?currentChild,
+                                      ],
+                                    );
+                                  },
                               child: Align(
                                 key: ValueKey(
                                   '${selectedGender.name}-${customGender ?? ''}',
@@ -426,10 +410,7 @@ class _ProfileGenderPreferenceFieldState
                 const SizedBox(height: 5),
                 Text(
                   'Esta información no se mostrará en tu perfil público.',
-                  style: GoogleFonts.inter(
-                    color: textSecondary,
-                    fontSize: 8,
-                  ),
+                  style: GoogleFonts.inter(color: textSecondary, fontSize: 8),
                 ),
               ],
             );
@@ -534,7 +515,8 @@ class _GenderDropdownMenu extends StatelessWidget {
         label: ProfileGender.selfDescribe.label,
         // Cuando existe género personalizado, la fila guardada de arriba es
         // la que representa visualmente la selección actual.
-        selected: selectedGender == ProfileGender.selfDescribe &&
+        selected:
+            selectedGender == ProfileGender.selfDescribe &&
             customGender == null,
         index: 3,
         background: background,
@@ -551,9 +533,7 @@ class _GenderDropdownMenu extends StatelessWidget {
       decoration: BoxDecoration(
         color: surface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(
-          color: gold.withValues(alpha: 0.62),
-        ),
+        border: Border.all(color: gold.withValues(alpha: 0.62)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.18),
@@ -563,10 +543,7 @@ class _GenderDropdownMenu extends StatelessWidget {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: entries,
-      ),
+      child: Column(mainAxisSize: MainAxisSize.min, children: entries),
     );
   }
 
@@ -590,15 +567,12 @@ class _GenderDropdownMenu extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         curve: Curves.easeOut,
         width: double.infinity,
-        padding: const EdgeInsets.symmetric(
-          horizontal: 13,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
         color: selected
             ? accent.withValues(alpha: 0.08)
             : index.isEven
-                ? surface
-                : surfaceSoft.withValues(alpha: 0.34),
+            ? surface
+            : surfaceSoft.withValues(alpha: 0.34),
         child: Row(
           children: [
             _optionIcon(
@@ -614,8 +588,7 @@ class _GenderDropdownMenu extends StatelessWidget {
                 style: GoogleFonts.inter(
                   color: selected ? accent : textPrimary,
                   fontSize: 10,
-                  fontWeight:
-                      selected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
               ),
             ),
@@ -688,18 +661,11 @@ class _GenderDropdownMenu extends StatelessWidget {
               onTap: onEditCustom,
               borderRadius: BorderRadius.circular(8),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 7,
-                  vertical: 7,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.edit_outlined,
-                      size: 11,
-                      color: accent,
-                    ),
+                    Icon(Icons.edit_outlined, size: 11, color: accent),
                     const SizedBox(width: 3),
                     Text(
                       'Editar',
@@ -822,9 +788,7 @@ class _CustomGenderSheetState extends State<_CustomGenderSheet> {
     final accent = AppColors.accentOf(context);
 
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(context).bottom,
-      ),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SafeArea(
         top: false,
         child: Container(
@@ -833,9 +797,7 @@ class _CustomGenderSheetState extends State<_CustomGenderSheet> {
           decoration: BoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-              color: gold.withValues(alpha: 0.42),
-            ),
+            border: Border.all(color: gold.withValues(alpha: 0.42)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.18),
@@ -911,16 +873,11 @@ class _CustomGenderSheetState extends State<_CustomGenderSheet> {
                 maxLines: 1,
                 textCapitalization: TextCapitalization.sentences,
                 textInputAction: TextInputAction.done,
-                inputFormatters: [
-                  LengthLimitingTextInputFormatter(_maxLength),
-                ],
+                inputFormatters: [LengthLimitingTextInputFormatter(_maxLength)],
                 onSubmitted: (_) {
                   if (_canSave) _save();
                 },
-                style: GoogleFonts.inter(
-                  color: textPrimary,
-                  fontSize: 11,
-                ),
+                style: GoogleFonts.inter(color: textPrimary, fontSize: 11),
                 decoration: InputDecoration(
                   hintText: 'Ej. No binario',
                   hintStyle: GoogleFonts.inter(
@@ -939,16 +896,11 @@ class _CustomGenderSheetState extends State<_CustomGenderSheet> {
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(11),
-                    borderSide: BorderSide(
-                      color: gold.withValues(alpha: 0.44),
-                    ),
+                    borderSide: BorderSide(color: gold.withValues(alpha: 0.44)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(11),
-                    borderSide: BorderSide(
-                      color: gold,
-                      width: 1.25,
-                    ),
+                    borderSide: BorderSide(color: gold, width: 1.25),
                   ),
                 ),
               ),
@@ -985,10 +937,12 @@ class _CustomGenderSheetState extends State<_CustomGenderSheet> {
                         style: FilledButton.styleFrom(
                           backgroundColor: accent,
                           foregroundColor: background,
-                          disabledBackgroundColor:
-                              accent.withValues(alpha: 0.30),
-                          disabledForegroundColor:
-                              background.withValues(alpha: 0.75),
+                          disabledBackgroundColor: accent.withValues(
+                            alpha: 0.30,
+                          ),
+                          disabledForegroundColor: background.withValues(
+                            alpha: 0.75,
+                          ),
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(horizontal: 14),
                           shape: RoundedRectangleBorder(

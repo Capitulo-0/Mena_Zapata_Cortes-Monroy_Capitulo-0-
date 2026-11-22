@@ -7,9 +7,7 @@ extension _ManageStoryStatsActions on _ManageStoryScreenState {
       padding: const EdgeInsets.symmetric(vertical: 9),
       decoration: BoxDecoration(
         border: Border.symmetric(
-          horizontal: BorderSide(
-            color: AppColors.gold.withValues(alpha: 0.22),
-          ),
+          horizontal: BorderSide(color: AppColors.gold.withValues(alpha: 0.22)),
         ),
       ),
       child: Row(
@@ -24,10 +22,7 @@ extension _ManageStoryStatsActions on _ManageStoryScreenState {
     );
   }
 
-  Widget _inlineStat({
-    required IconData icon,
-    required String value,
-  }) {
+  Widget _inlineStat({required IconData icon, required String value}) {
     return Flexible(
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -83,15 +78,13 @@ extension _ManageStoryStatsActions on _ManageStoryScreenState {
             onPressed: _isLoading
                 ? null
                 : (_story.isPublished
-                    ? _openPublishedView
-                    : _toggleStoryPublication),
+                      ? _openPublishedView
+                      : _toggleStoryPublication),
             icon: _isPublishingStory
                 ? const SizedBox(
                     width: 13,
                     height: 13,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 1.8,
-                    ),
+                    child: CircularProgressIndicator(strokeWidth: 1.8),
                   )
                 : Icon(
                     _story.isPublished
@@ -103,8 +96,8 @@ extension _ManageStoryStatsActions on _ManageStoryScreenState {
               _isPublishingStory
                   ? 'Publicando...'
                   : (_story.isPublished
-                      ? 'Vista publicada'
-                      : 'Publicar historia'),
+                        ? 'Vista publicada'
+                        : 'Publicar historia'),
               style: GoogleFonts.inter(
                 fontSize: 7.8,
                 fontWeight: FontWeight.w700,
@@ -112,9 +105,7 @@ extension _ManageStoryStatsActions on _ManageStoryScreenState {
             ),
             style: OutlinedButton.styleFrom(
               foregroundColor: _headingColor,
-              side: BorderSide(
-                color: AppColors.gold.withValues(alpha: 0.45),
-              ),
+              side: BorderSide(color: AppColors.gold.withValues(alpha: 0.45)),
               padding: const EdgeInsets.symmetric(vertical: 9),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(9),

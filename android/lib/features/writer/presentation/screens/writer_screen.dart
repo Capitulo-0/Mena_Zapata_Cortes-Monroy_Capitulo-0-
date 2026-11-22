@@ -13,8 +13,6 @@ import '../../services/writer_repository.dart';
 import 'create_story_screen.dart';
 import 'manage_story_screen.dart';
 import 'published_story_screen.dart';
-import 'writer_community_screen.dart';
-import 'writer_legacy_screen.dart';
 
 part '../widgets/writer_overview_section.dart';
 part '../widgets/writer_story_card_section.dart';
@@ -82,6 +80,14 @@ class _WriterScreenState extends State<WriterScreen> {
 
   Color get _headingColor =>
       _isDarkMode ? AppColors.darkTextPrimary : AppColors.deep;
+
+  String get _writerDisplayName {
+    final currentName = widget.currentName.trim();
+    if (currentName.isNotEmpty) return currentName;
+    final currentUsername = widget.currentUsername.trim();
+    if (currentUsername.isNotEmpty) return currentUsername;
+    return 'lectora';
+  }
 
   @override
   void initState() {
@@ -203,69 +209,6 @@ class _WriterScreenState extends State<WriterScreen> {
     await _loadStories(notifyParent: true);
   }
 
-  Future<void> _openCommunity() async {
-    if (_blockGuestAction()) return;
-    if (_writerService is! CommunityWriterRepository) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => WriterCommunityScreen(
-          repository: _writerService as CommunityWriterRepository,
-          currentUsername: widget.currentUsername,
-        ),
-      ),
-    );
-    if (mounted) await _loadStories(notifyParent: true);
-  }
-
-  void _openLegacy() {
-    if (_blockGuestAction()) return;
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) =>
-            WriterLegacyScreen(ownerUid: LocalAccountScope.read(context)),
-      ),
-    );
-  }
-
-  void _showCoverDiagnostics() {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Portadas de Writer'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Writer 20261117-portadas-v2'),
-              const SizedBox(height: 12),
-              ..._stories.map(
-                (story) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    '${story.title}\nReferencia API: ${_safeCoverLabel(story.coverPath)}\nInterpretación: ${_safeCoverLabel(WriterCover.canonical(story.coverPath))}',
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cerrar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _safeCoverLabel(String? value) {
-    if (value == null || value.isEmpty) return 'Sin portada';
-    if (RegExp(r'^\s*preset:[a-zA-Z_-]+\s*$').hasMatch(value)) return value;
-    return 'Imagen personalizada (referencia oculta)';
-  }
-
   String _formatUpdatedDate(DateTime date) {
     const months = [
       'ene',
@@ -296,7 +239,6 @@ class _WriterScreenState extends State<WriterScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _buildHeader()),
-              SliverToBoxAdapter(child: _buildNavigation()),
               SliverToBoxAdapter(child: _buildStats()),
               SliverToBoxAdapter(child: _buildWorksSectionTitle()),
               SliverToBoxAdapter(child: _buildFilters()),

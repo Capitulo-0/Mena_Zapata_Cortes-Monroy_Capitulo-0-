@@ -176,10 +176,13 @@ extension _ProfileWorksBadgesSection on _ProfileScreenState {
     );
   }
 
-  Widget _buildWriterStoryCover(WriterStory story) => WriterCover(storyId: story.id,
-    coverPath: story.coverPath, title: story.title, width: 50, height: 70);
-
-
+  Widget _buildWriterStoryCover(WriterStory story) => WriterCover(
+    storyId: story.id,
+    coverPath: story.coverPath,
+    title: story.title,
+    width: 50,
+    height: 70,
+  );
 
   Widget _publishedWorkBadge() {
     return Container(

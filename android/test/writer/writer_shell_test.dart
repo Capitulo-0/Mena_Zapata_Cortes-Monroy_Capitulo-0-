@@ -61,7 +61,10 @@ void main() {
           ),
         ),
       );
-      await t.pumpAndSettle();
+      // MainShell incorpora Maps, que puede programar frames continuamente.
+      // La comprobación consulta el perfil montado, no requiere animaciones en reposo.
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 450));
       final profile = t.widget<ProfileScreen>(
         find.byType(ProfileScreen, skipOffstage: false),
       );

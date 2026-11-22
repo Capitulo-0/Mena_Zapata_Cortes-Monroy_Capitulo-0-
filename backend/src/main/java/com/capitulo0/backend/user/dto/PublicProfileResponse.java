@@ -1,4 +1,3 @@
-
 package com.capitulo0.backend.user.dto;
 
 import java.time.Instant;
@@ -14,5 +13,7 @@ public record PublicProfileResponse(
     Boolean canViewContent,
     Long followersCount,
     Long followingCount,
-    Long booksCount
+    Long booksCount,
+    Boolean verifiedOrganizer,
+    ReadingMoodResponse readingMood
 ) {}

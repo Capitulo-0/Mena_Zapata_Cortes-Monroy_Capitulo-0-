@@ -27,10 +27,7 @@ class ProfileBlockedUsersStore {
 
     blockedUsers.value = <Map<String, String>>[
       ...blockedUsers.value,
-      <String, String>{
-        'name': user['name'] ?? username,
-        'username': username,
-      },
+      <String, String>{'name': user['name'] ?? username, 'username': username},
     ];
   }
 

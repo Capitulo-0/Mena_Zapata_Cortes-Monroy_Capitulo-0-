@@ -1,8 +1,9 @@
 import '../../../core/network/api_client.dart';
+import 'pending_legal_consent_store.dart';
 import '../domain/domain_user.dart';
 
 abstract interface class AccountRepository {
-  Future<DomainUser> provisionAndLoad({String? username});
+  Future<DomainUser> provisionAndLoad({String? username, bool legalAccepted = false});
 
   Future<DomainUser> updateProfile({
     required String displayName,
@@ -22,11 +23,19 @@ class ApiAccountRepository implements AccountRepository {
   final ApiClient api;
 
   @override
-  Future<DomainUser> provisionAndLoad({String? username}) async {
+  Future<DomainUser> provisionAndLoad({String? username, bool legalAccepted = false}) async {
     final provision = await api.request(
       'POST',
       '/api/me/provision',
-      body: username == null ? null : {'username': username},
+      body: {
+        'username': ?username,
+        if (legalAccepted) ...{
+          'termsAccepted': true,
+          'privacyAccepted': true,
+          'termsVersion': PendingLegalConsentStore.version,
+          'privacyVersion': PendingLegalConsentStore.version,
+        },
+      },
     );
 
     final me = await api.request('GET', '/api/me');

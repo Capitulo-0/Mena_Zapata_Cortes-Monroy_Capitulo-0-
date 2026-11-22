@@ -86,7 +86,8 @@ class AuthLoginForm extends StatelessWidget {
             onPressed: () {
               Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => ForgotPasswordScreen(auth: controller.session.auth),
+                  builder: (_) =>
+                      ForgotPasswordScreen(auth: controller.session.auth),
                 ),
               );
             },
@@ -132,10 +133,7 @@ class AuthLoginForm extends StatelessWidget {
 }
 
 class _GuestButton extends StatelessWidget {
-  const _GuestButton({
-    required this.loading,
-    required this.onPressed,
-  });
+  const _GuestButton({required this.loading, required this.onPressed});
 
   final bool loading;
   final VoidCallback? onPressed;
@@ -151,9 +149,7 @@ class _GuestButton extends StatelessWidget {
           disabledForegroundColor: AppColors.textSecondary,
           backgroundColor: AppColors.surface,
           disabledBackgroundColor: AppColors.surface,
-          side: BorderSide(
-            color: AppColors.gold.withValues(alpha: 0.42),
-          ),
+          side: BorderSide(color: AppColors.gold.withValues(alpha: 0.42)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(11),
           ),
@@ -174,9 +170,7 @@ class _GuestButton extends StatelessWidget {
               const SizedBox(width: 8),
             ],
             Text(
-              loading
-                  ? 'Iniciando como invitado...'
-                  : 'Iniciar como invitado',
+              loading ? 'Iniciando como invitado...' : 'Iniciar como invitado',
               style: GoogleFonts.inter(
                 fontWeight: FontWeight.w500,
                 fontSize: 12,

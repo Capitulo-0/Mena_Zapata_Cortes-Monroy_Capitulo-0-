@@ -18,14 +18,21 @@ extension _ProfileReadingSummarySection on _ProfileScreenState {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('CITA FAVORITA ANCLADA', style: GoogleFonts.cinzel(
-              color: _headingColor, fontSize: 9, fontWeight: FontWeight.w700,
-              letterSpacing: 0.5,
-            )),
+            Text(
+              'CITA FAVORITA ANCLADA',
+              style: GoogleFonts.cinzel(
+                color: _headingColor,
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.5,
+              ),
+            ),
             const SizedBox(height: 9),
-            Text('Este lector aún no tiene una cita favorita disponible.',
+            Text(
+              'Este lector aún no tiene una cita favorita disponible.',
               style: GoogleFonts.merriweather(
-                color: _textSecondaryColor, fontSize: 9,
+                color: _textSecondaryColor,
+                fontSize: 9,
                 fontStyle: FontStyle.italic,
               ),
             ),
@@ -269,30 +276,30 @@ extension _ProfileReadingSummarySection on _ProfileScreenState {
                   ),
                 ),
               ),
-              if (!widget.readOnly) OutlinedButton.icon(
-                onPressed: _showMarkBookAsRead,
-                icon: const Icon(Icons.add_rounded, size: 14),
-                label: const Text('Registrar libro'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.accent,
-                  side: BorderSide(
-                    color: AppColors.accent.withValues(alpha: 0.5),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 9,
-                    vertical: 6,
-                  ),
-                  textStyle: GoogleFonts.inter(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w700,
+              if (!widget.readOnly)
+                OutlinedButton.icon(
+                  onPressed: _showMarkBookAsRead,
+                  icon: const Icon(Icons.add_rounded, size: 14),
+                  label: const Text('Registrar libro'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.accent,
+                    side: BorderSide(
+                      color: AppColors.accent.withValues(alpha: 0.5),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 6,
+                    ),
+                    textStyle: GoogleFonts.inter(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
       ),
     );
   }
-
 }

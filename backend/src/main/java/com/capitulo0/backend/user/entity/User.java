@@ -17,6 +17,30 @@ public class User {
     private String username;
     @Column(length = 500)
     private String biography;
+    @Column(name = "reading_mood_emoji", length = 32)
+    private String readingMoodEmoji;
+    @Column(name = "reading_mood_title", length = 120)
+    private String readingMoodTitle;
+    @Column(name = "reading_mood_detail", length = 500)
+    private String readingMoodDetail;
+    @Column(name = "terms_accepted_at")
+    private Instant termsAcceptedAt;
+    @Column(name = "privacy_accepted_at")
+    private Instant privacyAcceptedAt;
+    @Column(name = "terms_version", length = 32)
+    private String termsVersion;
+    @Column(name = "privacy_version", length = 32)
+    private String privacyVersion;
+    public void acceptLegalDocuments(String terms, String privacy, Instant when) {
+        this.termsVersion = terms;
+        this.privacyVersion = privacy;
+        this.termsAcceptedAt = when;
+        this.privacyAcceptedAt = when;
+    }
+    public Instant getTermsAcceptedAt() { return termsAcceptedAt; }
+    public Instant getPrivacyAcceptedAt() { return privacyAcceptedAt; }
+    public String getTermsVersion() { return termsVersion; }
+    public String getPrivacyVersion() { return privacyVersion; }
     @Column(name = "avatar_url", length = 2048)
     private String avatarUrl;
     @Column(name = "annual_reading_goal", nullable = false)
@@ -90,6 +114,13 @@ public class User {
     public void setAnnualReadingGoal(Integer annualReadingGoal) {
         this.annualReadingGoal = annualReadingGoal;
     }
+
+    public String getReadingMoodEmoji() { return readingMoodEmoji; }
+    public void setReadingMoodEmoji(String value) { readingMoodEmoji = value; }
+    public String getReadingMoodTitle() { return readingMoodTitle; }
+    public void setReadingMoodTitle(String value) { readingMoodTitle = value; }
+    public String getReadingMoodDetail() { return readingMoodDetail; }
+    public void setReadingMoodDetail(String value) { readingMoodDetail = value; }
 
     public Boolean getIsPrivate() {
         return isPrivate;

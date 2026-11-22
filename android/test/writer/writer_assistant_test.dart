@@ -262,7 +262,11 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      // MainShell contiene un mapa con cargas/animaciones ajenas al chat.
+      // No esperar a que todos los widgets del Shell queden globalmente inactivos.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 450));
+      expect(find.byTooltip('Asistente Capítulo 0'), findsOneWidget);
       await tester.tap(find.byTooltip('Asistente Capítulo 0'));
       await tester.pumpAndSettle();
       expect(find.byType(LiteraryChatScreen), findsOneWidget);
@@ -333,36 +337,24 @@ void main() {
     expect(find.byTooltip('Enviar'), findsNothing);
   });
 
-  testWidgets('Writer revisa, descarta y confirma sin guardar', (tester) async {
+  testWidgets('CreateStory no muestra el acceso de Asistente IA', (
+    tester,
+  ) async {
     final repo = ChatFixture();
     addTearDown(repo.account.close);
     final story = fixture();
     await tester.pumpWidget(
       app(CreateStoryScreen(story: story, repository: repo)),
     );
-    final button = find.text('Asistente IA');
-    await tester.ensureVisible(button);
-    await tester.tap(button);
     await tester.pumpAndSettle();
-    await send(tester, 'Propón un título');
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Descartar'));
-    await tester.pumpAndSettle();
-    expect(find.text('La llave del silencio'), findsNothing);
-    await send(tester, 'Propón otro título');
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Usar título'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Aplicar'));
-    await tester.pumpAndSettle();
-    final title = tester.widget<TextField>(
-      find.byKey(const ValueKey('writer-story-title')),
-    );
-    expect(title.controller!.text, 'La llave del silencio');
+
+    expect(find.text('Asistente IA'), findsNothing);
+    expect(find.text('Deshacer inserción IA'), findsNothing);
+    expect(find.byType(LiteraryChatScreen), findsNothing);
     expect(repo.documents, isEmpty);
   });
 
-  testWidgets('Editor conserva texto y puede deshacer una inserción', (
+  testWidgets('ChapterEditor no muestra controles del Asistente IA', (
     tester,
   ) async {
     final repo = ChatFixture()..action = 'INSERT';
@@ -383,22 +375,14 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Asistente IA'));
-    await tester.pumpAndSettle();
-    await send(tester, 'Continúa mi escena');
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Insertar'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Aplicar'));
-    await tester.pumpAndSettle();
-    String content() => tester
+
+    expect(find.text('Asistente IA'), findsNothing);
+    expect(find.text('Deshacer inserción IA'), findsNothing);
+    final content = tester
         .widget<TextField>(find.byKey(const ValueKey('writer-chapter-content')))
         .controller!
         .text;
-    expect(content(), 'Original\n\nLa llave del silencio');
-    await tester.tap(find.text('Deshacer inserción IA'));
-    await tester.pumpAndSettle();
-    expect(content(), 'Original');
+    expect(content, 'Original');
     expect(repo.documents, isEmpty);
   });
 
@@ -512,20 +496,18 @@ void main() {
     });
   }
 
-  testWidgets('Cerrar el chat descarta la respuesta en curso', (tester) async {
+  testWidgets('CreateStory permanece estable sin acceso al Asistente IA', (
+    tester,
+  ) async {
     final repo = ChatFixture()..pending = Completer<ChatReply>();
     addTearDown(repo.account.close);
     await tester.pumpWidget(
       app(CreateStoryScreen(story: fixture(), repository: repo)),
     );
-    final button = find.text('Asistente IA');
-    await tester.ensureVisible(button);
-    await tester.tap(button);
     await tester.pumpAndSettle();
-    await send(tester, 'Dame un título');
-    await tester.pump(const Duration(milliseconds: 500));
-    await tester.tap(find.byType(CloseButton));
-    await tester.pumpAndSettle();
+
+    expect(find.text('Asistente IA'), findsNothing);
+    expect(find.byType(CloseButton), findsNothing);
     repo.pending!.complete((
       sections: [(heading: '', text: 'Resultado tardío', action: 'TITLE')],
       books: <Map<String, dynamic>>[],

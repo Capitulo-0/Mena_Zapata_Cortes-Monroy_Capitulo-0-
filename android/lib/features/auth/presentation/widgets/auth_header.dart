@@ -77,11 +77,7 @@ class AuthHeaderVisual extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.deep,
-            AppColors.deepAlt,
-            Color(0xFF2E1510),
-          ],
+          colors: [AppColors.deep, AppColors.deepAlt, Color(0xFF2E1510)],
         ),
         boxShadow: showShadow
             ? [
@@ -102,10 +98,7 @@ class AuthHeaderVisual extends StatelessWidget {
               opacity: 0.50,
               child: Text(
                 '✦',
-                style: TextStyle(
-                  color: AppColors.gold,
-                  fontSize: 12 - (3 * t),
-                ),
+                style: TextStyle(color: AppColors.gold, fontSize: 12 - (3 * t)),
               ),
             ),
           ),
@@ -116,10 +109,7 @@ class AuthHeaderVisual extends StatelessWidget {
               opacity: 0.30,
               child: Text(
                 '✦',
-                style: TextStyle(
-                  color: AppColors.gold,
-                  fontSize: 8 - (1 * t),
-                ),
+                style: TextStyle(color: AppColors.gold, fontSize: 8 - (1 * t)),
               ),
             ),
           ),

@@ -2,25 +2,30 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../writer/models/writer_publication.dart';
 import 'home_section_title.dart';
 
 class CommunityStoriesSection extends StatelessWidget {
   const CommunityStoriesSection({
     super.key,
     required this.stories,
-    required this.isGuest,
-    required this.onWrite,
-    required this.onGuestRestricted,
+    required this.loading,
+    required this.error,
+    required this.onRetry,
+    required this.onCommunity,
+    this.openingPublicationId,
     required this.onAuthorTap,
     required this.onStoryTap,
   });
 
-  final List<Map<String, String>> stories;
-  final bool isGuest;
-  final VoidCallback onWrite;
-  final VoidCallback onGuestRestricted;
-  final ValueChanged<Map<String, String>> onAuthorTap;
-  final ValueChanged<Map<String, String>> onStoryTap;
+  final List<WriterPublication> stories;
+  final bool loading;
+  final String? error;
+  final VoidCallback onRetry;
+  final VoidCallback onCommunity;
+  final String? openingPublicationId;
+  final ValueChanged<WriterPublication> onAuthorTap;
+  final ValueChanged<WriterPublication> onStoryTap;
 
   @override
   Widget build(BuildContext context) {
@@ -36,13 +41,7 @@ class CommunityStoriesSection extends StatelessWidget {
                 child: HomeSectionTitle('Historias de la Comunidad'),
               ),
               TextButton(
-                onPressed: () {
-                  if (isGuest) {
-                    onGuestRestricted();
-                    return;
-                  }
-                  onWrite();
-                },
+                onPressed: onCommunity,
                 style: TextButton.styleFrom(
                   foregroundColor: accent,
                   shape: RoundedRectangleBorder(
@@ -50,10 +49,10 @@ class CommunityStoriesSection extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  '✦ Escribir',
+                  '✦ Comunidad',
                   style: GoogleFonts.inter(
                     color: accent,
-                    fontSize: 8,
+                    fontSize: 10,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -61,27 +60,49 @@ class CommunityStoriesSection extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 3),
-          ...stories.map(
-            (story) => _StoryCard(
-              story: story,
-              onAuthorTap: () => onAuthorTap(story),
-              onStoryTap: () => onStoryTap(story),
+          if (loading && stories.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (error != null && stories.isEmpty)
+            Column(
+              children: [
+                Text(error!),
+                TextButton(onPressed: onRetry, child: const Text('Reintentar')),
+              ],
+            )
+          else if (stories.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('Aún no hay historias publicadas en la comunidad.'),
+            )
+          else
+            ...stories.map(
+              (story) => CommunityStoryCard(
+                story: story,
+                onAuthorTap: () => onAuthorTap(story),
+                onStoryTap: () => onStoryTap(story),
+                loading: openingPublicationId == story.id,
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 }
 
-class _StoryCard extends StatelessWidget {
-  const _StoryCard({
+class CommunityStoryCard extends StatelessWidget {
+  const CommunityStoryCard({
+    super.key,
     required this.story,
     required this.onAuthorTap,
     required this.onStoryTap,
+    this.loading = false,
   });
 
-  final Map<String, String> story;
+  final WriterPublication story;
+  final bool loading;
   final VoidCallback onAuthorTap;
   final VoidCallback onStoryTap;
 
@@ -103,15 +124,13 @@ class _StoryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: surface,
         borderRadius: BorderRadius.circular(13),
-        border: Border.all(
-          color: gold.withValues(alpha: 0.45),
-        ),
+        border: Border.all(color: gold.withValues(alpha: 0.45)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            story['title']!,
+            story.title,
             style: GoogleFonts.merriweather(
               color: textPrimary,
               fontSize: 10,
@@ -129,7 +148,7 @@ class _StoryCard extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Text(
-                    story['author']!,
+                    story.author,
                     style: GoogleFonts.inter(
                       color: accent,
                       fontSize: 7,
@@ -141,10 +160,7 @@ class _StoryCard extends StatelessWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 5,
-                  vertical: 2,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                 decoration: BoxDecoration(
                   color: deep,
                   borderRadius: BorderRadius.circular(4),
@@ -162,7 +178,9 @@ class _StoryCard extends StatelessWidget {
           ),
           const SizedBox(height: 7),
           Text(
-            story['extract']!,
+            story.synopsis.trim().isEmpty
+                ? 'Sin sinopsis disponible.'
+                : story.synopsis,
             style: GoogleFonts.merriweather(
               color: textPrimary,
               fontSize: 8,
@@ -172,7 +190,7 @@ class _StoryCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           FilledButton(
-            onPressed: onStoryTap,
+            onPressed: loading ? null : onStoryTap,
             style: FilledButton.styleFrom(
               backgroundColor: accent,
               foregroundColor: onAccent,
