@@ -14,3 +14,6 @@ El proyecto integra servicios externos para catálogo de libros y funcionalidade
 
 ## Evidencias
 Las evidencias, documentos y presentaciones finales se encuentran organizados dentro de las carpetas de la Fase 3.
+
+## Estado del proyecto
+El proyecto se encuentra en su etapa final de integración, pruebas, documentación y presentación.
