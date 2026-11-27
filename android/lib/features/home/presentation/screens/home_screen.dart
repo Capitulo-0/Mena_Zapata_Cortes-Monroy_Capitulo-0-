@@ -643,10 +643,45 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<Map<String, dynamic>?> _findBookByIsbn(String rawIsbn) async {
+    final isbn = rawIsbn.replaceAll(RegExp(r'[^0-9Xx]'), '');
+
+    final repository = widget.catalogRepository;
+
+    if (repository != null) {
+      final result = await repository.search(isbn, mode: 'isbn');
+
+      for (final book in result.items) {
+        final bookIsbn = book['isbn']?.toString().replaceAll(
+          RegExp(r'[^0-9Xx]'),
+          '',
+        );
+
+        if (bookIsbn == isbn) {
+          return book;
+        }
+      }
+    }
+
+    for (final book in books) {
+      final bookIsbn = book['isbn']?.toString().replaceAll(
+        RegExp(r'[^0-9Xx]'),
+        '',
+      );
+
+      if (bookIsbn == isbn) {
+        return book;
+      }
+    }
+
+    return null;
+  }
+
   void showIsbnScanner() {
     showHomeIsbnScannerDialog(
       context: context,
       books: books,
+      onSearchIsbn: _findBookByIsbn,
       onBookSelected: _showBookDetails,
       onMessage: _showMessage,
     );

@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../widgets/scanner_frame_painter.dart';
@@ -7,6 +10,7 @@ import '../widgets/scanner_frame_painter.dart';
 Future<void> showHomeIsbnScannerDialog({
   required BuildContext context,
   required List<Map<String, dynamic>> books,
+  required Future<Map<String, dynamic>?> Function(String isbn) onSearchIsbn,
   required ValueChanged<Map<String, dynamic>> onBookSelected,
   required ValueChanged<String> onMessage,
 }) async {
@@ -16,6 +20,7 @@ Future<void> showHomeIsbnScannerDialog({
     builder: (dialogContext) {
       return _HomeIsbnScannerDialog(
         books: books,
+        onSearchIsbn: onSearchIsbn,
         onBookSelected: onBookSelected,
         onMessage: onMessage,
       );
@@ -26,11 +31,13 @@ Future<void> showHomeIsbnScannerDialog({
 class _HomeIsbnScannerDialog extends StatefulWidget {
   const _HomeIsbnScannerDialog({
     required this.books,
+    required this.onSearchIsbn,
     required this.onBookSelected,
     required this.onMessage,
   });
 
   final List<Map<String, dynamic>> books;
+  final Future<Map<String, dynamic>?> Function(String isbn) onSearchIsbn;
   final ValueChanged<Map<String, dynamic>> onBookSelected;
   final ValueChanged<String> onMessage;
 
@@ -40,26 +47,38 @@ class _HomeIsbnScannerDialog extends StatefulWidget {
 
 class _HomeIsbnScannerDialogState extends State<_HomeIsbnScannerDialog> {
   final TextEditingController isbnController = TextEditingController();
+  late final MobileScannerController scannerController;
+  bool scanningIsbn = false;
 
   Color get _surface => AppColors.surfaceOf(context);
   Color get _textPrimary => AppColors.textPrimaryOf(context);
   Color get _textSecondary => AppColors.textSecondaryOf(context);
   Color get _gold => AppColors.goldOf(context);
-  Color get _accent => AppColors.accentOf(context);
-  Color get _onAccent => AppColors.isDark(context)
-      ? AppColors.darkTextPrimary
-      : AppColors.background;
   Color get _onDeep => AppColors.isDark(context)
       ? AppColors.darkTextPrimary
       : AppColors.background;
 
   @override
+  void initState() {
+    super.initState();
+
+    scannerController = MobileScannerController(
+      facing: CameraFacing.back,
+      detectionSpeed: DetectionSpeed.noDuplicates,
+      formats: const [BarcodeFormat.ean13],
+    );
+  }
+
+  @override
   void dispose() {
     isbnController.dispose();
+    unawaited(scannerController.dispose());
     super.dispose();
   }
 
-  void _openBookFromIsbn(String rawIsbn) {
+  Future<void> _openBookFromIsbn(String rawIsbn) async {
+    if (scanningIsbn) return;
+
     final normalized = rawIsbn.replaceAll(RegExp(r'[^0-9Xx]'), '');
 
     if (normalized.isEmpty) {
@@ -68,28 +87,59 @@ class _HomeIsbnScannerDialogState extends State<_HomeIsbnScannerDialog> {
       return;
     }
 
-    Map<String, dynamic>? found;
-    for (final book in widget.books) {
-      final bookIsbn = book['isbn'].toString().replaceAll(
-        RegExp(r'[^0-9Xx]'),
-        '',
-      );
-      if (bookIsbn == normalized) {
-        found = book;
-        break;
+    setState(() {
+      scanningIsbn = true;
+    });
+
+    try {
+      final found = await widget.onSearchIsbn(normalized);
+
+      if (!mounted) return;
+
+      Navigator.of(context).pop();
+
+      if (found == null) {
+        widget.onMessage('No encontramos un libro con el ISBN $normalized.');
+        return;
+      }
+
+      widget.onBookSelected(found);
+    } catch (_) {
+      if (!mounted) return;
+
+      Navigator.of(context).pop();
+
+      widget.onMessage('No fue posible buscar el libro. Inténtalo nuevamente.');
+    } finally {
+      if (mounted) {
+        setState(() {
+          scanningIsbn = false;
+        });
       }
     }
+  }
 
-    Navigator.of(context).pop();
+  void _handleBarcode(BarcodeCapture capture) {
+    if (scanningIsbn) return;
 
-    if (found == null) {
-      widget.onMessage(
-        'No encontramos ese ISBN en la colección de demostración.',
-      );
+    for (final barcode in capture.barcodes) {
+      final rawValue = barcode.rawValue;
+
+      if (rawValue == null || rawValue.isEmpty) {
+        continue;
+      }
+
+      final isbn = rawValue.replaceAll(RegExp(r'[^0-9]'), '');
+
+      if (!RegExp(r'^(978|979)\d{10}$').hasMatch(isbn)) {
+        continue;
+      }
+
+      isbnController.text = isbn;
+
+      unawaited(_openBookFromIsbn(isbn));
       return;
     }
-
-    widget.onBookSelected(found);
   }
 
   @override
@@ -135,22 +185,54 @@ class _HomeIsbnScannerDialogState extends State<_HomeIsbnScannerDialog> {
                 border: Border.all(color: _gold, width: 1.5),
                 color: Colors.black,
               ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Positioned.fill(
-                    child: CustomPaint(painter: ScannerFramePainter()),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.document_scanner_outlined,
-                        color: _gold,
-                        size: 44,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Positioned.fill(
+                      child: MobileScanner(
+                        controller: scannerController,
+                        onDetect: _handleBarcode,
+                        errorBuilder: (context, error) {
+                          String message =
+                              'No fue posible iniciar la cámara.\nPuedes escribir el ISBN manualmente.';
+
+                          if (error.errorCode ==
+                              MobileScannerErrorCode.permissionDenied) {
+                            message = 'Permiso de cámara denegado.\nPuedes escribir el ISBN manualmente.';
+                          } else if (error.errorCode ==
+                              MobileScannerErrorCode.unsupported) {
+                            message = 'La cámara no está disponible en este dispositivo.\nPuedes escribir el ISBN manualmente.';
+                          }
+
+                          return Container(
+                            color: Colors.black,
+                            alignment: Alignment.center,
+                            padding: const EdgeInsets.all(16),
+                            child: Text(
+                              message,
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                color: Colors.white70,
+                                fontSize: 10,
+                                height: 1.45,
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                      const SizedBox(height: 10),
-                      Text(
+                    ),
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: CustomPaint(painter: ScannerFramePainter()),
+                      ),
+                    ),
+                    Positioned(
+                      left: 10,
+                      right: 10,
+                      bottom: 8,
+                      child: Text(
                         'Apunta la cámara al código de barras\ndel libro impreso',
                         textAlign: TextAlign.center,
                         style: GoogleFonts.inter(
@@ -159,9 +241,9 @@ class _HomeIsbnScannerDialogState extends State<_HomeIsbnScannerDialog> {
                           height: 1.45,
                         ),
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -202,23 +284,6 @@ class _HomeIsbnScannerDialogState extends State<_HomeIsbnScannerDialog> {
                       ),
                     ),
                     child: const Text('Buscar ISBN'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      widget.onBookSelected(widget.books.first);
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _accent,
-                      foregroundColor: _onAccent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: const Text('Simular lectura'),
                   ),
                 ),
               ],
