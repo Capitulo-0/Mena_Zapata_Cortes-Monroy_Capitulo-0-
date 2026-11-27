@@ -1,4 +1,7 @@
 import 'dart:async';
+import '../../../writer/models/writer_publication.dart';
+import '../../../writer/services/writer_repository.dart';
+import '../../../writer/presentation/screens/published_story_screen.dart';
 
 import '../../../epub/data/epub_store.dart';
 import '../../../epub/data/epub_file_access.dart';
@@ -21,6 +24,7 @@ import '../dialogs/personal_list_dialogs.dart';
 import '../widgets/personal_lists_view.dart';
 import 'library_book_detail_screen.dart';
 import '../widgets/library_book_card.dart';
+import '../widgets/library_saved_community_story_card.dart';
 import '../widgets/library_feedback_widgets.dart';
 import '../widgets/library_header.dart';
 import '../widgets/library_search_field.dart';
@@ -56,6 +60,10 @@ class LibraryScreen extends StatefulWidget {
     required this.onToggleFavorite,
     this.isGuest = false,
     this.onGuestRestrictedAction,
+    this.savedCommunityStories = const [],
+    this.communityWriterRepository,
+    this.onRemoveCommunityStory,
+    this.onOpenCommunityAuthor,
   });
 
   final LibraryController? syncController;
@@ -81,6 +89,10 @@ class LibraryScreen extends StatefulWidget {
   final Future<bool> Function(BuildContext context, int bookId)? onRemoveBook;
   final bool isGuest;
   final bool dataAvailable;
+  final List<WriterPublication> savedCommunityStories;
+  final CommunityWriterRepository? communityWriterRepository;
+  final Future<void> Function(String id)? onRemoveCommunityStory;
+  final ValueChanged<WriterPublication>? onOpenCommunityAuthor;
   final VoidCallback? onGuestRestrictedAction;
 
   @override
@@ -89,7 +101,9 @@ class LibraryScreen extends StatefulWidget {
 
 class _LibraryScreenState extends State<LibraryScreen> {
   bool _blockGuestAction() {
-    if (!widget.isGuest) return false;
+    if (!widget.isGuest) {
+      return false;
+    }
     widget.onGuestRestrictedAction?.call();
     return true;
   }
@@ -101,6 +115,41 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String _filter = 'leyendo';
   String _query = '';
   bool _showFinishSuccess = false;
+  String? _openingSavedStory;
+
+  Future<void> _openSavedStory(WriterPublication publication) async {
+    if (_openingSavedStory != null ||
+        widget.communityWriterRepository == null) {
+      return;
+    }
+    setState(() => _openingSavedStory = publication.id);
+    try {
+      final story = await widget.communityWriterRepository!
+          .readPublication(publication.id);
+      if (!mounted) {
+        return;
+      }
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => PublishedStoryScreen(
+            story: story,
+            currentUsername: widget.currentUsername,
+            authorUsername: publication.author,
+          ),
+        ),
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No pudimos abrir esta historia.')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _openingSavedStory = null);
+      }
+    }
+  }
 
   final List<PersonalLibraryList> _personalLists = <PersonalLibraryList>[];
 
@@ -140,11 +189,31 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return result;
   }
 
+  // Las historias guardadas son publicaciones de Writer, no libros del catálogo.
+  // Se muestran solamente en «Por leer» y respetan la búsqueda de Library.
+  List<WriterPublication> get _filteredSavedStories {
+    if (_filter != 'porLeer' || widget.isGuest) {
+      return const <WriterPublication>[];
+    }
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) {
+      return widget.savedCommunityStories;
+    }
+    return widget.savedCommunityStories.where((story) {
+      return story.title.toLowerCase().contains(query) ||
+          story.author.toLowerCase().contains(query) ||
+          story.genre.toLowerCase().contains(query);
+    }).toList();
+  }
+
   int _count(BookStatus status) {
     return _booksInLibrary
             .where((b) => widget.statuses[b.id] == status)
             .length +
-        _epubBooks.where((b) => _epubStatus(b) == status).length;
+        _epubBooks.where((b) => _epubStatus(b) == status).length +
+        (status == BookStatus.porLeer && !widget.isGuest
+            ? widget.savedCommunityStories.length
+            : 0);
   }
 
   BookStatus _epubStatus(ImportedEpub book) => book.cfi.isEmpty
@@ -263,10 +332,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ),
               if (widget.dataAvailable &&
                   _filteredBooks.isEmpty &&
-                  _filteredEpubs.isEmpty)
+                  _filteredEpubs.isEmpty &&
+                  _filteredSavedStories.isEmpty)
                 _buildEmptyState()
               else ...[
                 ..._filteredBooks.map(_buildBookCard),
+                ..._filteredSavedStories.map(
+                  (story) => LibrarySavedCommunityStoryCard(
+                    key: ValueKey('library-saved-story-${story.id}'),
+                    story: story,
+                    loading: _openingSavedStory == story.id,
+                    onRead: () => _openSavedStory(story),
+                    onAuthorTap: widget.onOpenCommunityAuthor == null
+                        ? null
+                        : () => widget.onOpenCommunityAuthor!(story),
+                  ),
+                ),
                 ..._filteredEpubs.map(buildEpubCard),
               ],
             ] else
@@ -333,7 +414,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   Widget _buildEmptyState() {
     return LibraryEmptyState(
-      libraryEmpty: _booksInLibrary.isEmpty && _epubBooks.isEmpty,
+      libraryEmpty: _booksInLibrary.isEmpty &&
+          _epubBooks.isEmpty &&
+          widget.savedCommunityStories.isEmpty,
     );
   }
 
