@@ -16,6 +16,9 @@ class CommunityStoriesSection extends StatelessWidget {
     this.openingPublicationId,
     required this.onAuthorTap,
     required this.onStoryTap,
+    this.savedStoryIds = const {},
+    this.savingStoryIds = const {},
+    this.onSaveStory,
   });
 
   final List<WriterPublication> stories;
@@ -26,6 +29,9 @@ class CommunityStoriesSection extends StatelessWidget {
   final String? openingPublicationId;
   final ValueChanged<WriterPublication> onAuthorTap;
   final ValueChanged<WriterPublication> onStoryTap;
+  final Set<String> savedStoryIds;
+  final Set<String> savingStoryIds;
+  final ValueChanged<WriterPublication>? onSaveStory;
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +90,9 @@ class CommunityStoriesSection extends StatelessWidget {
                 onAuthorTap: () => onAuthorTap(story),
                 onStoryTap: () => onStoryTap(story),
                 loading: openingPublicationId == story.id,
+                saved: savedStoryIds.contains(story.id),
+                saving: savingStoryIds.contains(story.id),
+                onSave: onSaveStory == null ? null : () => onSaveStory!(story),
               ),
             ),
         ],
@@ -99,10 +108,16 @@ class CommunityStoryCard extends StatelessWidget {
     required this.onAuthorTap,
     required this.onStoryTap,
     this.loading = false,
+    this.saved = false,
+    this.saving = false,
+    this.onSave,
   });
 
   final WriterPublication story;
   final bool loading;
+  final bool saved;
+  final bool saving;
+  final VoidCallback? onSave;
   final VoidCallback onAuthorTap;
   final VoidCallback onStoryTap;
 
@@ -189,25 +204,38 @@ class CommunityStoryCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          FilledButton(
-            onPressed: loading ? null : onStoryTap,
-            style: FilledButton.styleFrom(
-              backgroundColor: accent,
-              foregroundColor: onAccent,
-              minimumSize: const Size(0, 30),
-              padding: const EdgeInsets.symmetric(horizontal: 11),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(7),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              FilledButton(
+                onPressed: loading ? null : onStoryTap,
+                style: FilledButton.styleFrom(
+                  backgroundColor: accent,
+                  foregroundColor: onAccent,
+                  minimumSize: const Size(0, 30),
+                  padding: const EdgeInsets.symmetric(horizontal: 11),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+                ),
+                child: Text('Leer historia completa', style: GoogleFonts.inter(fontSize: 7, fontWeight: FontWeight.w700)),
               ),
-            ),
-            child: Text(
-              'Leer historia completa',
-              style: GoogleFonts.inter(
-                fontSize: 7,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+              if (onSave != null)
+                OutlinedButton.icon(
+                  onPressed: saved || saving ? null : onSave,
+                  icon: Icon(saved ? Icons.check_rounded : Icons.bookmark_add_outlined, size: 13),
+                  label: Text(saving ? 'Guardando...' : saved ? 'En tu biblioteca' : 'Añadir a mi biblioteca',
+                    style: GoogleFonts.inter(fontSize: 7, fontWeight: FontWeight.w700)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: accent,
+                    side: BorderSide(color: gold.withValues(alpha: 0.65)),
+                    minimumSize: const Size(0, 30),
+                    padding: const EdgeInsets.symmetric(horizontal: 9),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
+                  ),
+                ),
+            ],
           ),
         ],
       ),

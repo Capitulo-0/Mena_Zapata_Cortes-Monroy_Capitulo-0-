@@ -75,6 +75,17 @@ class CommunityFixture extends TestWriterRepository
     if (!visible) throw const ApiFailure(404, 'Historia retirada.');
     return fixture(published: true);
   }
+  // Simulación de las historias guardadas en la biblioteca.
+  @override
+  Future<List<WriterPublication>> getSavedPublications() async {
+    return [];
+  }
+
+  @override
+  Future<void> savePublication(String id) async {}
+
+  @override
+  Future<void> removeSavedPublication(String id) async {}
 }
 
 void main() {

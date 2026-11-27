@@ -207,6 +207,25 @@ class ApiWriterRepository
   }
 
   @override
+  Future<List<WriterPublication>> getSavedPublications() async {
+    final data = await api.requestJson('GET', '/api/me/library/stories', expectedUid: ownerUid);
+    if (data is! List) throw const ApiFailure(502, 'Biblioteca de historias no válida.');
+    return data.map((item) => WriterPublication.fromJson(Map<String, dynamic>.from(item as Map))).toList();
+  }
+
+  @override
+  Future<void> savePublication(String id) async {
+    _path(id);
+    await api.requestJson('POST', '/api/me/library/stories/$id', expectedUid: ownerUid);
+  }
+
+  @override
+  Future<void> removeSavedPublication(String id) async {
+    _path(id);
+    await api.requestJson('DELETE', '/api/me/library/stories/$id', expectedUid: ownerUid);
+  }
+
+  @override
   Future<List<WriterPublication>> getPublications() async {
     final data = await api.requestJson(
       'GET',

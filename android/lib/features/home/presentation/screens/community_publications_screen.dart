@@ -17,6 +17,9 @@ class CommunityPublicationsScreen extends StatefulWidget {
     required this.onAuthorTap,
     required this.favoriteIds,
     required this.onToggleFavorite,
+    required this.savedStoryIds,
+    required this.savingStoryIds,
+    required this.onSaveStory,
   });
 
   final CommunityWriterRepository repository;
@@ -24,6 +27,9 @@ class CommunityPublicationsScreen extends StatefulWidget {
   final ValueChanged<WriterPublication> onAuthorTap;
   final Set<String> favoriteIds;
   final ValueChanged<WriterStory> onToggleFavorite;
+  final Set<String> savedStoryIds;
+  final Set<String> savingStoryIds;
+  final Future<bool> Function(WriterPublication) onSaveStory;
 
   @override
   State<CommunityPublicationsScreen> createState() =>
@@ -37,6 +43,19 @@ class _CommunityPublicationsScreenState
   String? _error;
   String? _opening;
   int _request = 0;
+  final Set<String> _newlySaved = {};
+  final Set<String> _saving = {};
+
+  Future<void> _save(WriterPublication story) async {
+    if (_saving.contains(story.id) || widget.savedStoryIds.contains(story.id) || _newlySaved.contains(story.id)) return;
+    setState(() => _saving.add(story.id));
+    try {
+      final success = await widget.onSaveStory(story);
+      if (success && mounted) setState(() => _newlySaved.add(story.id));
+    } finally {
+      if (mounted) setState(() => _saving.remove(story.id));
+    }
+  }
 
   @override
   void initState() {
@@ -153,6 +172,9 @@ class _CommunityPublicationsScreenState
                   onAuthorTap: () => _openAuthor(publication),
                   onStoryTap: () => _read(publication),
                   loading: _opening == publication.id,
+                  saved: widget.savedStoryIds.contains(publication.id) || _newlySaved.contains(publication.id),
+                  saving: widget.savingStoryIds.contains(publication.id) || _saving.contains(publication.id),
+                  onSave: () => _save(publication),
                 ),
           ],
         ),
