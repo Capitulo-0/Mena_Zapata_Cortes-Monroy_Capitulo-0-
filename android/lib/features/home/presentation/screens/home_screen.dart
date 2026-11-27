@@ -41,6 +41,9 @@ import '../../../writer/services/writer_repository.dart';
 import '../../../writer/presentation/screens/published_story_screen.dart';
 import 'community_publications_screen.dart';
 
+// Valor seguro para pruebas o consumidores que todavía no usan historias guardadas.
+Future<bool> _defaultSaveCommunityStory(WriterPublication story) async => false;
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
@@ -72,6 +75,9 @@ class HomeScreen extends StatefulWidget {
     required this.onToggleFavoriteBook,
     required this.favoriteCommunityStoryIds,
     required this.onToggleCommunityStoryFavorite,
+    this.savedCommunityStoryIds = const <String>{},
+    this.savingCommunityStoryIds = const <String>{},
+    this.onSaveCommunityStory = _defaultSaveCommunityStory,
     required this.clubs,
     this.readingClubRepository,
     required this.joinedClubIds,
@@ -113,6 +119,9 @@ class HomeScreen extends StatefulWidget {
 
   final Set<String> favoriteCommunityStoryIds;
   final ValueChanged<WriterStory> onToggleCommunityStoryFavorite;
+  final Set<String> savedCommunityStoryIds;
+  final Set<String> savingCommunityStoryIds;
+  final Future<bool> Function(WriterPublication) onSaveCommunityStory;
 
   final List<ReadingClub> clubs;
   final ReadingClubRepository? readingClubRepository;
@@ -453,6 +462,15 @@ class HomeScreenState extends State<HomeScreen> {
       onCommunity: _openCommunity,
       onAuthorTap: _openPublicationAuthor,
       onStoryTap: _readCommunityPublication,
+      savedStoryIds: widget.savedCommunityStoryIds,
+      savingStoryIds: widget.savingCommunityStoryIds,
+      onSaveStory: (story) {
+        if (widget.isGuest) {
+          widget.onGuestRestrictedAction();
+        } else {
+          widget.onSaveCommunityStory(story);
+        }
+      },
       openingPublicationId: _openingPublication,
     );
   }
@@ -476,6 +494,9 @@ class HomeScreenState extends State<HomeScreen> {
               onAuthorTap: _openPublicationAuthor,
               favoriteIds: widget.favoriteCommunityStoryIds,
               onToggleFavorite: widget.onToggleCommunityStoryFavorite,
+              savedStoryIds: widget.savedCommunityStoryIds,
+              savingStoryIds: widget.savingCommunityStoryIds,
+              onSaveStory: widget.onSaveCommunityStory,
             ),
           ),
         )

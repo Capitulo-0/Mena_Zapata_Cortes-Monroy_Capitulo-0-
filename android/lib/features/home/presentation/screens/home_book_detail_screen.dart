@@ -8,7 +8,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../library/presentation/screens/library_screen.dart';
 import '../../../library/presentation/widgets/book_interaction_store.dart';
-import '../../../library/presentation/widgets/reading_status_field.dart';
 
 class HomeBookDetailScreen extends StatefulWidget {
   const HomeBookDetailScreen({
@@ -58,7 +57,6 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
 
   bool _compactHeader = false;
   bool _favorite = false;
-  int? _readingProgress;
 
   bool _hasReview = false;
   bool _reviewEditorOpen = false;
@@ -111,7 +109,6 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   int get _year => widget.book['year'] as int? ?? 0;
   double get _bookRating => widget.book['rating'] as double? ?? 0;
   bool get _isInLibrary => widget.readStatus?.call() != null;
-  bool get _isRead => widget.readStatus?.call() == BookStatus.leido;
   bool get _isFree => widget.book['availability']?.toString() == 'GRATIS';
 
   @override
@@ -131,7 +128,6 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     }
 
     _favorite = widget.initiallyFavorite;
-    _readingProgress = widget.initialProgress;
 
     final initialReview = widget.initialReview;
     if (initialReview != null) {
@@ -210,14 +206,6 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _openReading() async {
-    if (_guardGuestAction(requireSaved: false)) return;
-    final progress = await widget.onRead?.call();
-    if (mounted && progress != null) {
-      setState(() => _readingProgress = progress);
-    }
   }
 
   Widget _buildHero() {
@@ -580,56 +568,6 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             ),
           ),
           const SizedBox(height: 18),
-          Text(
-            _isFree ? 'Disponible para leer en Capítulo 0' : 'No disponible para lectura en Capítulo 0. Puedes registrar tu progreso si lees en físico, ebook u otra plataforma.',
-          ),
-          Text(
-            widget.book['googleVolumeId'] != null
-                ? 'Google Books · Lectura no disponible en la app'
-                : widget.book['isBackendBook'] == true
-                ? 'Seguimiento privado guardado en tu cuenta'
-                : 'Disponibilidad simulada · Demo',
-            style: const TextStyle(fontSize: 11),
-          ),
-          if (!widget.isGuest && _readingProgress != null) ...[
-            Text('Progreso: $_readingProgress%'),
-            LinearProgressIndicator(value: _readingProgress! / 100),
-          ],
-          if (_isInLibrary && widget.onStatusChanged != null)
-            ReadingStatusField(
-              status: widget.readStatus!()!,
-              onChanged: (status) async {
-                if (_guardGuestAction()) return;
-                await widget.onStatusChanged!(status);
-                if (!mounted) return;
-                setState(
-                  () => _readingProgress =
-                      widget.readProgress?.call() ?? _readingProgress,
-                );
-              },
-            ),
-          if (_isRead) ...[
-            Text(
-              'Leído',
-              style: TextStyle(
-                color: _textPrimary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            OutlinedButton(
-              onPressed: widget.onRead == null ? null : _openReading,
-              child: Text(_isFree ? 'Abrir libro' : 'Registrar lectura'),
-            ),
-          ] else
-            FilledButton(
-              onPressed: widget.onRead == null ? null : _openReading,
-              child: Text(
-                _isFree
-                    ? (widget.readStatus?.call() ?? BookStatus.porLeer)
-                          .readingActionLabel
-                    : 'Registrar lectura',
-              ),
-            ),
           const SizedBox(height: 15),
           _sectionTitle(
             widget.book['googleVolumeId'] != null

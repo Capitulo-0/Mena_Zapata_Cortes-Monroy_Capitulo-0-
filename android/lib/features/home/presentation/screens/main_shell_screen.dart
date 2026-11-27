@@ -32,6 +32,7 @@ import '../../../library/presentation/screens/simulated_reader_screen.dart';
 import '../../../library/presentation/dialogs/reading_record_dialog.dart';
 import '../widgets/main_header.dart';
 import '../../../writer/models/writer_story.dart';
+import '../../../writer/models/writer_publication.dart';
 import '../../../writer/services/writer_repository.dart';
 import '../../../writer/services/literary_chat.dart';
 import '../../../writer/presentation/widgets/literary_chat_screen.dart';
@@ -285,6 +286,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   void initState() {
     super.initState();
     _loadWriterStories();
+    unawaited(_loadSavedCommunityStories());
     unawaited(_loadPersistedFavoriteBooks());
     unawaited(_refreshUnreadNotifications());
     unawaited(_loadOrganizerVerification());
@@ -761,6 +763,82 @@ class _MainShellScreenState extends State<MainShellScreen> {
   final Map<String, WriterStory> _favoriteCommunityStories =
       <String, WriterStory>{};
 
+  final Map<String, WriterPublication> _savedCommunityStories = {};
+  final Set<String> _savingCommunityStoryIds = {};
+  int _savedStoriesGeneration = 0;
+
+  CommunityWriterRepository? get _communityRepository =>
+      widget.writerRepository is CommunityWriterRepository
+          ? widget.writerRepository! as CommunityWriterRepository : null;
+
+  Future<void> _loadSavedCommunityStories() async {
+    final repository = _communityRepository;
+    final request = ++_savedStoriesGeneration;
+    if (widget.isGuest || repository == null) return;
+    try {
+      final stories = await repository.getSavedPublications();
+      if (!mounted || request != _savedStoriesGeneration) return;
+      setState(() {
+        _savedCommunityStories
+          ..clear()
+          ..addEntries(stories.map((s) => MapEntry(s.id, s)));
+      });
+    } catch (_) {
+      // Keep existing stories if refreshing fails; never invent remote saves.
+    }
+  }
+
+  Future<bool> _saveCommunityStory(WriterPublication story) async {
+    if (widget.isGuest) {
+      _showGuestAccessDialog();
+      return false;
+    }
+    final repository = _communityRepository;
+    if (repository == null ||
+        _savingCommunityStoryIds.contains(story.id) ||
+        _savedCommunityStories.containsKey(story.id)) {
+      return _savedCommunityStories.containsKey(story.id);
+    }
+    setState(() => _savingCommunityStoryIds.add(story.id));
+    try {
+      await repository.savePublication(story.id);
+      if (!mounted) return false;
+      ++_savedStoriesGeneration;
+      setState(() => _savedCommunityStories[story.id] = story);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Historia añadida a tu biblioteca.')));
+      return true;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No pudimos guardar la historia. Reintenta.')),
+        );
+      }
+      return false;
+    } finally {
+      if (mounted) {
+        setState(() => _savingCommunityStoryIds.remove(story.id));
+      }
+    }
+  }
+
+  Future<void> _removeSavedCommunityStory(String id) async {
+    final repository = _communityRepository;
+    if (repository == null) return;
+    try {
+      await repository.removeSavedPublication(id);
+      if (!mounted) return;
+      ++_savedStoriesGeneration;
+      setState(() => _savedCommunityStories.remove(id));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No pudimos quitar la historia.')),
+        );
+      }
+    }
+  }
+
   Timer? _finishReadingTimer;
   int? _finishingBookId;
   final Map<int, int> _lastIncompleteProgresses = {};
@@ -780,6 +858,15 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
     if (oldWidget.isGuest != widget.isGuest ||
         oldWidget.profileUser?.id != widget.profileUser?.id ||
+        oldWidget.writerRepository != widget.writerRepository) {
+      ++_savedStoriesGeneration;
+      _savedCommunityStories.clear();
+      _savingCommunityStoryIds.clear();
+      unawaited(_loadSavedCommunityStories());
+    }
+
+    if (oldWidget.isGuest != widget.isGuest ||
+        oldWidget.profileUser?.id != widget.profileUser?.id ||
         oldWidget.verificationRepository != widget.verificationRepository ||
         oldWidget.readingClubRepository != widget.readingClubRepository) {
       ++_verificationRequestGeneration;
@@ -794,6 +881,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
     ++_verificationRequestGeneration;
     ++_myClubsRequestGeneration;
     ++_favoriteBooksGeneration;
+    ++_savedStoriesGeneration;
     _finishReadingTimer?.cancel();
     _remoteLibrary
       ?..removeListener(_syncRemoteLibrary)
@@ -1509,6 +1597,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
           _toggleFavoriteBook(bookId);
         },
         favoriteCommunityStoryIds: _favoriteCommunityStories.keys.toSet(),
+        savedCommunityStoryIds: _savedCommunityStories.keys.toSet(),
+        savingCommunityStoryIds: _savingCommunityStoryIds.toSet(),
+        onSaveCommunityStory: _saveCommunityStory,
         onToggleCommunityStoryFavorite: (story) {
           if (widget.isGuest) {
             _showGuestAccessDialog();
@@ -1542,6 +1633,15 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onOpenProfile: () => _selectTab(4),
       ),
       LibraryScreen(
+        savedCommunityStories: _savedCommunityStories.values.toList(),
+        communityWriterRepository: _communityRepository,
+        onRemoveCommunityStory: _removeSavedCommunityStory,
+        onOpenCommunityAuthor: (story) {
+          final username = story.authorUsername;
+          if (username != null && username.isNotEmpty) {
+            _openUserProfile(username);
+          }
+        },
         syncController: _remoteLibrary,
         onAddBook: _addRealBook,
         dataAvailable: _remoteLibrary?.loaded ?? true,

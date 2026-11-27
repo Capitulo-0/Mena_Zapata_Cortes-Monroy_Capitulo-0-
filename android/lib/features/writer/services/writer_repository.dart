@@ -13,6 +13,14 @@ abstract class WriterRepository {
 abstract class CommunityWriterRepository {
   Future<List<WriterPublication>> getPublications();
   Future<WriterStory> readPublication(String id);
+  // Implementaciones por defecto para dobles de prueba antiguos.
+  // El repositorio HTTP real sobrescribe estos métodos.
+  Future<List<WriterPublication>> getSavedPublications() async =>
+      throw UnsupportedError('La consulta de historias guardadas no está implementada.');
+  Future<void> savePublication(String id) async =>
+      throw UnsupportedError('El guardado de historias no está implementado.');
+  Future<void> removeSavedPublication(String id) async =>
+      throw UnsupportedError('La eliminación de historias guardadas no está implementada.');
 }
 
 class UnavailableWriterRepository implements WriterRepository {
