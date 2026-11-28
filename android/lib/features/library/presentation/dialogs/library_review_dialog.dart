@@ -10,17 +10,23 @@ class LibraryReviewDialog extends StatefulWidget {
     required this.initial,
     required this.bookTitle,
     required this.onSave,
+    this.onSaveReal,
+    this.onlyMe = false,
   });
 
   final BookReview? initial;
   final String bookTitle;
   final ValueChanged<BookReview> onSave;
+  final Future<void> Function(BookReview)? onSaveReal;
+  final bool onlyMe;
 
   @override
   State<LibraryReviewDialog> createState() => _LibraryReviewDialogState();
 }
 
 class _LibraryReviewDialogState extends State<LibraryReviewDialog> {
+  bool _saving = false;
+  String? _saveError;
   late int _rating;
   late bool _isPublic;
   late TextEditingController _controller;
@@ -52,9 +58,12 @@ class _LibraryReviewDialogState extends State<LibraryReviewDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final canSave = _rating > 0 && _controller.text.trim().isNotEmpty;
+    final canSave = !_saving && _rating > 0 &&
+        (widget.onSaveReal != null || _controller.text.trim().isNotEmpty);
 
-    return Dialog(
+    return PopScope(
+      canPop: !_saving,
+      child: Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: 22),
       child: Container(
@@ -132,7 +141,7 @@ class _LibraryReviewDialogState extends State<LibraryReviewDialog> {
                     ),
                   ),
                   InkWell(
-                    onTap: () => Navigator.of(context).pop(),
+                    onTap: _saving ? null : () => Navigator.of(context).pop(),
                     customBorder: const CircleBorder(),
                     child: Container(
                       width: 28,
@@ -254,7 +263,7 @@ class _LibraryReviewDialogState extends State<LibraryReviewDialog> {
                     ),
                     Expanded(
                       child: _privacyButton(
-                        label: '🔒  Privada',
+                        label: widget.onlyMe ? '🔒  Solo yo' : '🔒  Privada',
                         selected: !_isPublic,
                         onTap: () =>
                             setState(() => _isPublic = false),
@@ -267,7 +276,7 @@ class _LibraryReviewDialogState extends State<LibraryReviewDialog> {
               Text(
                 _isPublic
                     ? 'Visible para todos los lectores y en Mis reseñas.'
-                    : 'Se mostrará como anónima para la comunidad.',
+                    : widget.onlyMe ? 'Visible solo para ti.' : 'Se mostrará como anónima para la comunidad.',
                 style: GoogleFonts.inter(
                   color: _textSecondary,
                   fontSize: 6.7,
@@ -284,6 +293,8 @@ class _LibraryReviewDialogState extends State<LibraryReviewDialog> {
                   ),
                 ),
               ),
+              if (_saveError != null)
+                Text(_saveError!, style: GoogleFonts.inter(color: _textSecondary, fontSize: 7, height: 1.4)),
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -291,7 +302,7 @@ class _LibraryReviewDialogState extends State<LibraryReviewDialog> {
                     child: SizedBox(
                       height: 38,
                       child: OutlinedButton(
-                        onPressed: () =>
+                        onPressed: _saving ? null : () =>
                             Navigator.of(context).pop(),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: _textPrimary,
@@ -319,15 +330,33 @@ class _LibraryReviewDialogState extends State<LibraryReviewDialog> {
                       height: 38,
                       child: FilledButton(
                         onPressed: canSave
-                            ? () {
+                            ? () async {
                                 final review = BookReview(
                                   rating: _rating,
                                   text: _controller.text.trim(),
                                   isPublic: _isPublic,
                                 );
 
-                                widget.onSave(review);
-                                Navigator.of(context).pop();
+                                final saveReal = widget.onSaveReal;
+                                if (saveReal == null) {
+                                  widget.onSave(review);
+                                } else {
+                                  setState(() { _saving = true; _saveError = null; });
+                                  try {
+                                    await saveReal(review);
+                                  } catch (_) {
+                                    if (mounted) {
+                                      setState(() {
+                                        _saving = false;
+                                        _saveError = 'No pudimos guardar. Inténtalo nuevamente.';
+                                      });
+                                    }
+                                    return;
+                                  }
+                                  if (!mounted) return;
+                                  setState(() => _saving = false);
+                                }
+                                if (context.mounted) Navigator.of(context).pop();
                               }
                             : null,
                         style: FilledButton.styleFrom(
@@ -340,7 +369,7 @@ class _LibraryReviewDialogState extends State<LibraryReviewDialog> {
                           ),
                         ),
                         child: Text(
-                          _isEditing
+                          _saving ? 'Guardando…' : _isEditing
                               ? 'Guardar cambios'
                               : 'Publicar reseña',
                           style: GoogleFonts.inter(
@@ -356,6 +385,7 @@ class _LibraryReviewDialogState extends State<LibraryReviewDialog> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

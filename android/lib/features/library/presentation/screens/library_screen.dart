@@ -13,7 +13,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/network/api_client.dart';
 import '../../models/book_review.dart';
+import '../../../social/data/social_api_repository.dart';
+import '../../../social/data/social_book_resolver.dart';
+import '../../../social/models/social_review.dart';
 import '../../models/book_status.dart';
 import '../../models/library_book.dart';
 import '../../models/personal_library_list.dart';
@@ -38,6 +42,7 @@ export '../../models/library_book.dart';
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({
     super.key,
+    this.socialApi,
     this.onReadBook,
     this.syncController,
     this.onAddBook,
@@ -66,6 +71,7 @@ class LibraryScreen extends StatefulWidget {
     this.onOpenCommunityAuthor,
   });
 
+  final ApiClient? socialApi;
   final LibraryController? syncController;
   final VoidCallback? onAddBook;
   final EpubStore? epubStore;
@@ -108,6 +114,29 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return true;
   }
 
+  final Map<int, Future<SocialReview?>> _cardReviews = {};
+  String? _reviewUid;
+  ApiClient? _reviewApi;
+  bool _openingReview = false;
+
+  Future<SocialReview?> _loadOwnReview(LibraryBook book, ApiClient api, String uid) async {
+    final target = await SocialBookResolver(api, expectedUid: uid).fromLibrary(book);
+    return SocialApiRepository(api, expectedUid: uid).ownReview(target);
+  }
+
+  void _invalidateCardReview(int bookId) {
+    if (mounted) setState(() => _cardReviews.remove(bookId));
+  }
+
+  @override
+  void didUpdateWidget(covariant LibraryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.socialApi != widget.socialApi || oldWidget.isGuest != widget.isGuest ||
+        oldWidget.books != widget.books || oldWidget.statuses != widget.statuses) {
+      _cardReviews.clear();
+    }
+  }
+
   final TextEditingController _searchController = TextEditingController();
 
   List<ImportedEpub> _epubBooks = const [];
@@ -132,6 +161,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => PublishedStoryScreen(
+          socialApi: widget.socialApi,
+          isGuest: widget.isGuest,
+          onGuestRestrictedAction: widget.onGuestRestrictedAction,
             story: story,
             currentUsername: widget.currentUsername,
             authorUsername: publication.author,
@@ -423,41 +455,62 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Widget _buildBookCard(LibraryBook book) {
     final status = widget.statuses[book.id] ?? BookStatus.porLeer;
     final progress = widget.progresses[book.id] ?? 0;
-    final review = widget.reviews[book.id];
+    final api = widget.socialApi;
+    final uid = widget.isGuest ? null : api?.auth.currentUser?.uid;
+    if (_reviewUid != uid || _reviewApi != api) {
+      _cardReviews.clear();
+      _reviewUid = uid;
+      _reviewApi = api;
+    }
+    return FutureBuilder<SocialReview?>(
+      key: ValueKey('review-$uid-${book.id}'),
+      future: api == null || uid == null || status != BookStatus.leido
+          ? null
+          : _cardReviews.putIfAbsent(book.id, () => _loadOwnReview(book, api, uid)),
+      builder: (context, snapshot) {
+        final own = uid != null && api?.auth.currentUser?.uid == uid &&
+                snapshot.connectionState == ConnectionState.done && !snapshot.hasError
+            ? snapshot.data : null;
+        final review = own == null ? null : BookReview(
+          rating: own.rating, text: own.reviewText ?? '',
+          isPublic: own.visibility == ReviewVisibility.public,
+        );
+        return LibraryBookCard(
+          book: book,
+          status: status,
+          progress: progress,
+          review: review,
+          reviewOnlyMe: own?.visibility == ReviewVisibility.private,
+          onOpen: () => _openBookDetail(book),
+          onRemove: widget.onRemoveBook == null ? null : () => _removeBook(book),
+          onStartReading: () async {
+            await widget.onReadBook?.call(context, book.id);
+            if (mounted) setState(() {});
+          },
+          onAdvance: () async {
+            await widget.onReadBook?.call(context, book.id);
 
-    return LibraryBookCard(
-      book: book,
-      status: status,
-      progress: progress,
-      review: review,
-      onOpen: () => _openBookDetail(book),
-      onRemove: widget.onRemoveBook == null ? null : () => _removeBook(book),
-      onStartReading: () async {
-        await widget.onReadBook?.call(context, book.id);
-        if (mounted) setState(() {});
+            if (mounted) setState(() {});
+          },
+          onFinish: () async {
+            await widget.onStatusChanged(book.id, BookStatus.leido);
+            if (!mounted || widget.statuses[book.id] != BookStatus.leido) return;
+
+            setState(() {
+              _showFinishSuccess = true;
+            });
+
+            Future<void>.delayed(const Duration(milliseconds: 2500), () {
+              if (!mounted) return;
+
+              setState(() {
+                _showFinishSuccess = false;
+              });
+            });
+          },
+          onReviewTap: () => _openReviewEditor(book),
+        );
       },
-      onAdvance: () async {
-        await widget.onReadBook?.call(context, book.id);
-
-        if (mounted) setState(() {});
-      },
-      onFinish: () async {
-        await widget.onStatusChanged(book.id, BookStatus.leido);
-        if (!mounted || widget.statuses[book.id] != BookStatus.leido) return;
-
-        setState(() {
-          _showFinishSuccess = true;
-        });
-
-        Future<void>.delayed(const Duration(milliseconds: 2500), () {
-          if (!mounted) return;
-
-          setState(() {
-            _showFinishSuccess = false;
-          });
-        });
-      },
-      onReviewTap: () => _openReviewEditor(book),
     );
   }
 
@@ -934,10 +987,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return removed;
   }
 
-  void _openBookDetail(LibraryBook book) {
-    Navigator.of(context).push(
+  Future<void> _openBookDetail(LibraryBook book) async {
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => LibraryBookDetailScreen(
+          socialApi: widget.socialApi,
           book: book,
           readStatus: () => widget.statuses[book.id],
           readProgress: () => widget.progresses[book.id] ?? 0,
@@ -971,21 +1025,55 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
       ),
     );
+    _invalidateCardReview(book.id);
   }
 
-  void _openReviewEditor(LibraryBook book) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return LibraryReviewDialog(
-          initial: widget.reviews[book.id],
+  Future<void> _openReviewEditor(LibraryBook book) async {
+    if (_blockGuestAction() || _openingReview) return;
+    final api = widget.socialApi;
+    final uid = api?.auth.currentUser?.uid;
+    if (api == null || uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Inicia sesión para calificar el libro.')),
+      );
+      return;
+    }
+    _openingReview = true;
+    try {
+      final target = await SocialBookResolver(api, expectedUid: uid).fromLibrary(book);
+      final repository = SocialApiRepository(api, expectedUid: uid);
+      final own = await repository.ownReview(target);
+      if (!mounted || widget.socialApi != api || api.auth.currentUser?.uid != uid) return;
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => LibraryReviewDialog(
+          initial: own == null ? null : BookReview(
+            rating: own.rating, text: own.reviewText ?? '',
+            isPublic: own.visibility == ReviewVisibility.public,
+          ),
           bookTitle: book.title,
-          onSave: (review) {
-            widget.onReviewSaved(book.id, review);
-            setState(() {});
+          onSave: (_) {},
+          onlyMe: own?.visibility == ReviewVisibility.private,
+          onSaveReal: (review) async {
+            if (api.auth.currentUser?.uid != uid) throw ApiFailure.forStatus(401);
+            await repository.saveReview(target, rating: review.rating,
+              reviewText: review.text,
+              visibility: review.isPublic ? ReviewVisibility.public
+                  : own?.visibility == ReviewVisibility.private
+                      ? ReviewVisibility.private : ReviewVisibility.anonymous);
           },
-        );
-      },
-    );
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(error is ApiFailure ? error.message : 'No pudimos cargar tu reseña.'),
+        ));
+      }
+    } finally {
+      _openingReview = false;
+      _invalidateCardReview(book.id);
+    }
   }
 }

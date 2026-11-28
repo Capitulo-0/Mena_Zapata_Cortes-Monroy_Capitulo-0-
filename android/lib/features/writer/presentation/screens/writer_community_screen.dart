@@ -1,3 +1,4 @@
+import '../../services/writer_api_repository.dart';
 import '../widgets/writer_cover.dart';
 
 import 'package:google_fonts/google_fonts.dart';
@@ -55,6 +56,8 @@ class _WriterCommunityScreenState extends State<WriterCommunityScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => PublishedStoryScreen(
+          socialApi: widget.repository is ApiWriterRepository ? (widget.repository as ApiWriterRepository).api : null,
+          socialExpectedUid: widget.repository is ApiWriterRepository ? (widget.repository as ApiWriterRepository).ownerUid : null,
             story: story,
             currentUsername: widget.currentUsername,
             authorUsername: publication.author,

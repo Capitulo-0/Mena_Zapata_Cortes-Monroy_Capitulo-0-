@@ -7,11 +7,16 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../library/presentation/screens/library_screen.dart';
-import '../../../library/presentation/widgets/book_interaction_store.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../social/presentation/controllers/book_comments_controller.dart';
+import '../../../social/models/social_comment.dart';
+import '../../../social/models/social_review.dart';
+import '../../../social/presentation/controllers/book_reviews_controller.dart';
 
 class HomeBookDetailScreen extends StatefulWidget {
   const HomeBookDetailScreen({
     super.key,
+    this.socialApi,
     this.onRead,
     this.readStatus,
     this.readProgress,
@@ -29,6 +34,7 @@ class HomeBookDetailScreen extends StatefulWidget {
     required this.onGuestRestrictedAction,
   });
 
+  final ApiClient? socialApi;
   final Future<int?> Function()? onRead;
   final BookStatus? Function()? readStatus;
   final int Function()? readProgress;
@@ -52,12 +58,44 @@ class HomeBookDetailScreen extends StatefulWidget {
 
 class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   final ScrollController _scrollController = ScrollController();
-  late final List<TextEditingController> _replyControllers;
+  final Map<int, TextEditingController> _replyControllers = {};
+  final Map<int, Map<String, dynamic>> _commentUi = {};
+  BookCommentsController? _social;
+
+  void _socialChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool _allowCommentAction() {
+    if (_guardGuestAction(requireSaved: false)) return false;
+    if (_social == null) {
+      _commentMessage('Los comentarios no están disponibles para este libro.');
+      return false;
+    }
+    return !_social!.busy;
+  }
+
+  void _commentMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Map<String, dynamic> _commentData(SocialComment item) => {
+    ..._commentUi.putIfAbsent(item.id, () => {
+      'replying': false, 'repliesExpanded': false, 'replyPublic': true,
+    }),
+    'user': item.username ?? 'Comentario eliminado',
+    'text': item.content ?? 'Comentario no disponible.',
+    'likes': item.likeCount,
+    'liked': item.likedByMe,
+  };
+
   final TextEditingController _reviewController = TextEditingController();
 
   bool _compactHeader = false;
   bool _favorite = false;
 
+  BookReviewsController? _reviews;
   bool _hasReview = false;
   bool _reviewEditorOpen = false;
   bool _reviewIsPublic = true;
@@ -67,29 +105,6 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   int _draftRating = 5;
 
   String _reviewText = '';
-
-  final List<Map<String, dynamic>> _comments = [
-    {
-      'user': '@lectora_clasica',
-      'text': 'La evolución entre Elizabeth y Darcy me sigue pareciendo brillante en cada relectura.',
-      'likes': 11,
-      'liked': false,
-      'replying': false,
-      'repliesExpanded': false,
-      'replyPublic': true,
-      'replies': <Map<String, dynamic>>[],
-    },
-    {
-      'user': '@clubdelasletras',
-      'text': 'Una lectura muy entretenida para conversar sobre orgullo, prejuicios y primeras impresiones.',
-      'likes': 3,
-      'liked': false,
-      'replying': false,
-      'repliesExpanded': false,
-      'replyPublic': true,
-      'replies': <Map<String, dynamic>>[],
-    },
-  ];
 
   Color get _background => AppColors.backgroundOf(context);
   Color get _surface => AppColors.surfaceOf(context);
@@ -107,7 +122,16 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   String get _synopsis => widget.book['synopsis']?.toString() ?? '';
   String get _isbn => widget.book['isbn']?.toString() ?? '';
   int get _year => widget.book['year'] as int? ?? 0;
-  double get _bookRating => widget.book['rating'] as double? ?? 0;
+  String get _bookRatingLabel {
+    final summary = _reviews?.summary;
+    if (summary == null) return 'Sin datos';
+    return summary.ratingCount == 0 ? 'Sin valorar' : summary.averageRating.toStringAsFixed(1);
+  }
+
+  String get _ratingCountLabel {
+    final summary = _reviews?.summary;
+    return summary == null ? 'Sin datos de valoraciones' : '${summary.ratingCount} valoraciones';
+  }
   bool get _isInLibrary => widget.readStatus?.call() != null;
   bool get _isFree => widget.book['availability']?.toString() == 'GRATIS';
 
@@ -115,30 +139,30 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_handleScroll);
-    _replyControllers = List.generate(
-      _comments.length,
-      (_) => TextEditingController(),
-    );
-
-    final bookId = widget.book['id'] as int?;
-    for (var index = 0; index < _comments.length; index++) {
-      _comments[index]['replies'] = bookId == null
-          ? <Map<String, dynamic>>[]
-          : BookInteractionStore.repliesFor(bookId, index);
+    final api = widget.socialApi;
+    final uid = api?.auth.currentUser?.uid;
+    if (!widget.isGuest && api != null && uid != null && uid.isNotEmpty) {
+      _social = BookCommentsController.home(api, expectedUid: uid, book: widget.book)
+        ..addListener(_socialChanged);
+      unawaited(_social!.refresh());
+      _reviews = BookReviewsController.home(api, expectedUid: uid, book: widget.book)
+        ..addListener(_reviewsChanged);
+      unawaited(_reviews!.refresh());
     }
 
     _favorite = widget.initiallyFavorite;
 
-    final initialReview = widget.initialReview;
-    if (initialReview != null) {
-      _hasReview = true;
-      _rating = initialReview.rating;
-      _draftRating = initialReview.rating;
-      _reviewIsPublic = initialReview.isPublic;
-      _draftReviewIsPublic = initialReview.isPublic;
-      _reviewText = initialReview.text;
-      _reviewController.text = initialReview.text;
-    }
+  }
+
+  void _reviewsChanged() {
+    if (!mounted) return;
+    final own = _reviews?.ownReview;
+    setState(() {
+      _hasReview = own != null;
+      _rating = own?.rating ?? 5;
+      _reviewIsPublic = own?.visibility == ReviewVisibility.public || own == null;
+      _reviewText = own?.reviewText ?? '';
+    });
   }
 
   @override
@@ -147,10 +171,14 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       ..removeListener(_handleScroll)
       ..dispose();
 
-    for (final controller in _replyControllers) {
+    for (final controller in _replyControllers.values) {
       controller.dispose();
     }
 
+    _social?.removeListener(_socialChanged);
+    _social?.dispose();
+    _reviews?.removeListener(_reviewsChanged);
+    _reviews?.dispose();
     _reviewController.dispose();
 
     super.dispose();
@@ -465,9 +493,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
               Icon(Icons.star_rounded, color: _gold, size: 13),
               const SizedBox(width: 3),
               Text(
-                widget.book['googleVolumeId'] != null
-                    ? 'Sin valorar'
-                    : _bookRating.toStringAsFixed(1),
+                _bookRatingLabel,
                 style: GoogleFonts.inter(
                   color: _textPrimary,
                   fontSize: 8,
@@ -481,9 +507,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
               ),
               const SizedBox(width: 10),
               Text(
-                widget.book['googleVolumeId'] != null
-                    ? 'Sin reseñas sincronizadas'
-                    : '136 reseñas · Demo',
+                _ratingCountLabel,
                 style: GoogleFonts.inter(color: _textSecondary, fontSize: 8),
               ),
             ],
@@ -569,16 +593,29 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
           ),
           const SizedBox(height: 18),
           const SizedBox(height: 15),
-          _sectionTitle(
-            widget.book['googleVolumeId'] != null
-                ? 'COMENTARIOS DE LA COMUNIDAD · DEMO'
-                : 'COMENTARIOS DE LA COMUNIDAD',
-          ),
+          _sectionTitle('COMENTARIOS DE LA COMUNIDAD'),
           const SizedBox(height: 10),
-          ..._comments.asMap().entries.map(
-            (entry) => Padding(
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                if (_allowCommentAction()) _showCommentEditor();
+              },
+              child: Text('Comentar', style: GoogleFonts.inter(color: _accent, fontSize: 7, fontWeight: FontWeight.w700)),
+            ),
+          ),
+          if (_social?.busy == true) LinearProgressIndicator(color: _accent, backgroundColor: _gold.withValues(alpha: 0.16), minHeight: 2),
+          if (_social?.error != null)
+            TextButton(onPressed: () => _social?.refresh(), child: Text('${_social!.error} Reintentar', style: GoogleFonts.inter(color: _accent, fontSize: 7))),
+          if (_social == null)
+            Text(widget.isGuest ? 'Inicia sesión para interactuar.' : 'Comentarios no disponibles.', style: GoogleFonts.inter(color: _textSecondary, fontSize: 7)),
+          if (_social?.loaded == true && _social!.roots.isEmpty)
+            Text('Aún no hay comentarios.', style: GoogleFonts.inter(color: _textSecondary, fontSize: 7)),
+          ...(_social?.roots ?? const <SocialComment>[]).map(
+            (item) => Padding(
+              key: ValueKey(item.id),
               padding: const EdgeInsets.only(bottom: 9),
-              child: _commentCard(entry.key),
+              child: _commentCard(item),
             ),
           ),
           const SizedBox(height: 15),
@@ -803,14 +840,15 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     );
   }
 
-  Widget _commentCard(int index) {
-    final comment = _comments[index];
+  Widget _commentCard(SocialComment item) {
+    final comment = _commentData(item);
+    final ui = _commentUi[item.id]!;
     final liked = comment['liked'] as bool;
     final replying = comment['replying'] as bool;
     final repliesExpanded = comment['repliesExpanded'] as bool;
-    final replies = comment['replies'] as List<Map<String, dynamic>>;
+    final replies = _social!.repliesTo(item.id);
     final replyPublic = comment['replyPublic'] as bool;
-    final controller = _replyControllers[index];
+    final controller = _replyControllers.putIfAbsent(item.id, TextEditingController.new);
 
     return Container(
       width: double.infinity,
@@ -837,8 +875,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
               ),
               InkWell(
                 onTap: () {
-                  if (_guardGuestAction()) return;
-                  _showCommentMenu(index);
+                  if (!_allowCommentAction() || item.deleted) return;
+                  _showCommentMenu(item);
                 },
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
@@ -872,13 +910,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             children: [
               InkWell(
                 onTap: () {
-                  if (_guardGuestAction()) return;
-
-                  setState(() {
-                    comment['liked'] = !liked;
-                    comment['likes'] =
-                        (comment['likes'] as int) + (liked ? -1 : 1);
-                  });
+                  if (!_allowCommentAction() || item.deleted) return;
+                  unawaited(_social!.setLiked(item.id, !liked));
                 },
                 borderRadius: BorderRadius.circular(8),
                 child: Padding(
@@ -911,10 +944,10 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
               const SizedBox(width: 15),
               InkWell(
                 onTap: () {
-                  if (_guardGuestAction()) return;
+                  if (!_allowCommentAction() || item.deleted) return;
 
                   setState(() {
-                    comment['replying'] = !replying;
+                    ui['replying'] = !replying;
                   });
                 },
                 borderRadius: BorderRadius.circular(8),
@@ -940,7 +973,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             InkWell(
               onTap: () {
                 setState(() {
-                  comment['repliesExpanded'] = !repliesExpanded;
+                  ui['repliesExpanded'] = !repliesExpanded;
                 });
               },
               child: Text(
@@ -958,7 +991,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
           AnimatedSize(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
-            child: replying
+            child: replying && !item.deleted
                 ? Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Container(
@@ -976,6 +1009,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                         children: [
                           TextField(
                             controller: controller,
+                            maxLength: 300,
                             minLines: 2,
                             maxLines: 4,
                             style: GoogleFonts.inter(
@@ -984,6 +1018,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                             ),
                             decoration: InputDecoration(
                               hintText: 'Responder a ${comment['user']}...',
+                              counterText: '',
                               hintStyle: GoogleFonts.inter(
                                 color: _textSecondary,
                                 fontSize: 6.7,
@@ -1032,7 +1067,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                                   child: InkWell(
                                     onTap: () {
                                       setState(() {
-                                        comment['replyPublic'] = true;
+                                        ui['replyPublic'] = true;
                                       });
                                     },
                                     borderRadius: BorderRadius.circular(6),
@@ -1064,7 +1099,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                                   child: InkWell(
                                     onTap: () {
                                       setState(() {
-                                        comment['replyPublic'] = false;
+                                        ui['replyPublic'] = false;
                                       });
                                     },
                                     borderRadius: BorderRadius.circular(6),
@@ -1101,25 +1136,16 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                             child: SizedBox(
                               height: 34,
                               child: FilledButton(
-                                onPressed: () {
-                                  if (_guardGuestAction()) return;
-
+                                onPressed: () async {
+                                  if (!_allowCommentAction() || item.deleted) return;
                                   final reply = controller.text.trim();
                                   if (reply.isEmpty) return;
-
+                                  final saved = await _social!.publish(reply, anonymous: !replyPublic, parentId: item.id);
+                                  if (!mounted || !saved) return;
                                   setState(() {
-                                    replies.add({
-                                      'text': reply,
-                                      'isPublic': replyPublic,
-                                    });
-                                    BookInteractionStore.saveReplies(
-                                      widget.book['id'] as int,
-                                      index,
-                                      replies,
-                                    );
-                                    comment['replying'] = false;
-                                    comment['repliesExpanded'] = true;
-                                    comment['replyPublic'] = true;
+                                    ui['replying'] = false;
+                                    ui['repliesExpanded'] = true;
+                                    ui['replyPublic'] = true;
                                     controller.clear();
                                   });
                                 },
@@ -1157,8 +1183,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                     padding: const EdgeInsets.only(top: 8, left: 12),
                     child: Column(
                       children: replies.map((reply) {
-                        final isPublic = reply['isPublic'] as bool? ?? true;
-                        final replyText = reply['text'] as String? ?? '';
+                        final isPublic = !reply.anonymous;
+                        final replyText = reply.content ?? 'Comentario no disponible.';
 
                         return Container(
                           width: double.infinity,
@@ -1178,9 +1204,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      isPublic
-                                          ? widget.currentUsername
-                                          : '@anonimo',
+                                      reply.username ?? 'Comentario eliminado',
                                       style: GoogleFonts.inter(
                                         color: _accent,
                                         fontSize: 6.2,
@@ -1207,6 +1231,22 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                                   height: 1.4,
                                 ),
                               ),
+                              if (!reply.deleted) Row(
+                                children: [
+                                  InkWell(
+                                    onTap: () { if (_allowCommentAction()) unawaited(_social!.setLiked(reply.id, !reply.likedByMe)); },
+                                    child: Text('${reply.likeCount} Me gusta', style: GoogleFonts.inter(fontSize: 6.3, color: reply.likedByMe ? _accent : _textSecondary)),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  InkWell(onTap: () { if (_allowCommentAction()) _showCommentEditor(parentId: reply.id); }, child: Text('Responder', style: GoogleFonts.inter(fontSize: 6.3, color: _accent))),
+                                  const Spacer(),
+                                  InkWell(onTap: () { if (_allowCommentAction()) _showCommentMenu(reply); }, child: Icon(Icons.more_vert_rounded, size: 15, color: _textSecondary)),
+                                ],
+                              ),
+                              ..._social!.repliesTo(reply.id).map((nested) => Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: _commentCard(nested),
+                              )),
                             ],
                           ),
                         );
@@ -1220,7 +1260,127 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     );
   }
 
-  Future<void> _showCommentMenu(int index) async {
+  Widget _commentMenuAction(IconData icon, String label, VoidCallback action) => InkWell(
+    onTap: action,
+    borderRadius: BorderRadius.circular(12),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
+      child: Row(children: [Icon(icon, size: 14, color: _accent), const SizedBox(width: 8), Text(label, style: GoogleFonts.inter(fontSize: 7.4, fontWeight: FontWeight.w700, color: _accent))]),
+    ),
+  );
+
+  // Visual conventions reused from the original report and review editors.
+  Widget _socialDialog(BuildContext dialogContext, {required String title, required Widget content, required List<Widget> actions}) {
+    return SafeArea(
+      child: AnimatedPadding(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(dialogContext).viewInsets.bottom),
+        duration: const Duration(milliseconds: 180),
+        child: Center(
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            width: MediaQuery.of(dialogContext).size.width * 0.84,
+            constraints: const BoxConstraints(maxWidth: 380),
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            decoration: BoxDecoration(
+              color: _surface,
+              borderRadius: BorderRadius.circular(17),
+              border: Border.all(color: _gold.withValues(alpha: 0.28)),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.18), blurRadius: 24, offset: const Offset(0, 10))],
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(title, style: GoogleFonts.merriweather(fontSize: 13.5, fontWeight: FontWeight.w700, color: _textPrimary)),
+                  const SizedBox(height: 12),
+                  content,
+                  const SizedBox(height: 12),
+                  Row(children: [for (var i = 0; i < actions.length; i++) ...[if (i > 0) const SizedBox(width: 8), Expanded(child: actions[i])]]),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+      ),
+    );
+  }
+
+  Widget _socialDialogMessage(String message) => Text(message, style: GoogleFonts.inter(color: _textSecondary, fontSize: 8, height: 1.45));
+
+  Widget _socialDialogButton({required VoidCallback? onPressed, required Widget child, bool primary = false}) {
+    final textStyle = GoogleFonts.inter(fontSize: 7.4, fontWeight: FontWeight.w800);
+    return SizedBox(
+      height: 36,
+      child: primary
+          ? FilledButton(onPressed: onPressed, style: FilledButton.styleFrom(backgroundColor: _accent, disabledBackgroundColor: _accent.withValues(alpha: 0.32), foregroundColor: AppColors.background, textStyle: textStyle, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9))), child: child)
+          : OutlinedButton(onPressed: onPressed, style: OutlinedButton.styleFrom(foregroundColor: _textPrimary, side: BorderSide(color: _gold.withValues(alpha: 0.34)), textStyle: textStyle, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9))), child: child),
+    );
+  }
+
+  Future<void> _confirmDeleteComment(SocialComment item) async {
+    final confirm = await showDialog<bool>(context: context, builder: (ctx) => _socialDialog(ctx,
+      title: 'Eliminar comentario',
+      content: _socialDialogMessage('¿Quieres eliminar tu comentario?'),
+      actions: [_socialDialogButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')), _socialDialogButton(primary: true, onPressed: () => Navigator.pop(ctx, true), child: const Text('Eliminar'))],
+    ));
+    if (mounted && confirm == true && _allowCommentAction()) await _social!.delete(item.id);
+  }
+
+  Future<void> _showCommentEditor({SocialComment? existing, int? parentId}) async {
+    if (!_allowCommentAction()) return;
+    var text = existing?.content ?? '';
+    var anonymous = existing?.anonymous ?? false;
+    var sending = false;
+    String? error;
+    await showDialog<void>(context: context, barrierDismissible: false, builder: (ctx) => StatefulBuilder(
+      builder: (ctx, update) => _socialDialog(ctx,
+        title: existing != null ? 'Editar comentario' : parentId != null ? 'Responder' : 'Comentar',
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextFormField(initialValue: text, enabled: !sending, minLines: 2, maxLines: 4, maxLength: 300, onChanged: (value) => text = value,
+            style: GoogleFonts.inter(color: _textPrimary, fontSize: 7), decoration: InputDecoration(
+              hintText: 'Escribe tu comentario...',
+              hintStyle: GoogleFonts.inter(color: _textSecondary, fontSize: 6.7),
+              filled: true, fillColor: _background, counterText: '',
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: BorderSide(color: _gold.withValues(alpha: 0.26))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: BorderSide(color: _gold)),
+            )),
+          Text('PRIVACIDAD', style: GoogleFonts.cinzel(color: _textPrimary, fontSize: 6.4, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          Container(
+            height: 32,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: _surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _gold.withValues(alpha: 0.24)),
+            ),
+            child: Row(children: [
+              Expanded(child: _reviewPrivacyButton(label: '🌐 Pública', selected: !anonymous, onTap: () { if (!sending) update(() => anonymous = false); })),
+              Expanded(child: _reviewPrivacyButton(label: '🔒 Privada', selected: anonymous, onTap: () { if (!sending) update(() => anonymous = true); })),
+            ]),
+          ),
+          if (error != null) _socialDialogMessage(error!),
+        ]),
+        actions: [
+          _socialDialogButton(onPressed: sending ? null : () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          _socialDialogButton(primary: true, onPressed: sending ? null : () async {
+            if (text.trim().isEmpty) { update(() => error = 'Escribe un comentario.'); return; }
+            if (!_allowCommentAction()) return;
+            update(() => sending = true);
+            final saved = existing == null ? await _social!.publish(text, anonymous: anonymous, parentId: parentId) : await _social!.edit(existing.id, text, anonymous: anonymous);
+            if (!ctx.mounted) return;
+            if (saved) { Navigator.pop(ctx); } else { update(() { sending = false; error = _social?.error ?? 'No se pudo guardar.'; }); }
+          }, child: Text(existing == null ? 'Publicar' : 'Guardar cambios')),
+        ],
+      ),
+    ));
+  }
+
+  Future<void> _showCommentMenu(SocialComment item) async {
     await showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
@@ -1256,10 +1416,22 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                       ),
                     ],
                   ),
-                  child: InkWell(
+                  child: item.ownComment ? Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _commentMenuAction(Icons.edit_outlined, 'Editar comentario', () {
+                        Navigator.of(dialogContext).pop();
+                        _showCommentEditor(existing: item);
+                      }),
+                      _commentMenuAction(Icons.delete_outline, 'Eliminar comentario', () {
+                        Navigator.of(dialogContext).pop();
+                        _confirmDeleteComment(item);
+                      }),
+                    ],
+                  ) : InkWell(
                     onTap: () {
                       Navigator.of(dialogContext).pop();
-                      _showCommentReportDialog(index);
+                      _showCommentReportDialog(item);
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: Padding(
@@ -1308,8 +1480,8 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     );
   }
 
-  Future<void> _showCommentReportDialog(int index) async {
-    final comment = _comments[index];
+  Future<void> _showCommentReportDialog(SocialComment item) async {
+    final comment = _commentData(item);
     final detailController = TextEditingController();
     final reasons = <String>[
       'Spam o contenido engañoso',
@@ -1531,8 +1703,13 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                           child: FilledButton(
                             onPressed: selectedReason == null
                                 ? null
-                                : () {
+                                : () async {
+                                    if (!_allowCommentAction()) return;
+                                    final reason = '$selectedReason${detailController.text.trim().isEmpty ? '' : ': ${detailController.text.trim()}'}';
+                                    final saved = await _social!.report(item.id, reason);
+                                    if (!dialogContext.mounted || !saved) return;
                                     Navigator.of(dialogContext).pop();
+                                    if (!mounted) return;
                                     _showModerationSuccess(
                                       title: 'Comentario reportado',
                                       message: 'Gracias. El reporte fue registrado para revisión de moderación.',
@@ -2161,7 +2338,16 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
   }
 
   Widget _buildReviewSection() {
-    return AnimatedSize(
+    final reviews = _reviews;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (reviews?.busy == true) LinearProgressIndicator(color: _accent, backgroundColor: _gold.withValues(alpha: 0.16), minHeight: 2),
+        if (reviews != null && reviews.error != null) ...[
+          Text(reviews.error!, style: GoogleFonts.inter(color: _textSecondary, fontSize: 8)),
+          TextButton(onPressed: reviews.busy ? null : () => unawaited(reviews.refresh()), child: Text('Recargar reseñas', style: GoogleFonts.inter(color: _accent, fontSize: 7))),
+        ],
+        AnimatedSize(
       duration: const Duration(milliseconds: 280),
       curve: Curves.easeOutCubic,
       alignment: Alignment.topCenter,
@@ -2170,6 +2356,12 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
           : _hasReview
           ? _buildPublishedReview()
           : _buildReviewCallToAction(),
+        ),
+        if (_hasReview && !_reviewEditorOpen)
+          TextButton(onPressed: reviews?.busy == true ? null : _deleteReview, child: Text('Eliminar mi reseña', style: GoogleFonts.inter(color: _accent, fontSize: 7))),
+        for (final review in reviews?.reviews ?? const <SocialReview>[])
+          if (!review.ownReview) _buildCommunityReview(review),
+      ],
     );
   }
 
@@ -2178,7 +2370,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
       width: double.infinity,
       height: 38,
       child: OutlinedButton(
-        onPressed: _openReviewEditor,
+        onPressed: _reviews?.busy == true ? null : _openReviewEditor,
         style: OutlinedButton.styleFrom(
           foregroundColor: _textPrimary,
           side: BorderSide(color: _gold.withValues(alpha: 0.40)),
@@ -2195,7 +2387,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
 
   Widget _buildReviewEditor() {
     final canPublish =
-        _draftRating > 0 && _reviewController.text.trim().isNotEmpty;
+        _draftRating > 0 && _reviews?.busy == false && _reviews?.loaded == true;
 
     return Container(
       width: double.infinity,
@@ -2316,7 +2508,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                 ),
                 Expanded(
                   child: _reviewPrivacyButton(
-                    label: '🔒  Privada',
+                    label: _reviews?.ownReview?.visibility == ReviewVisibility.private ? '🔒  Solo yo' : '🔒  Privada',
                     selected: !_draftReviewIsPublic,
                     onTap: () {
                       setState(() {
@@ -2334,7 +2526,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
             child: Text(
               _draftReviewIsPublic
                   ? 'Visible para todos los lectores.'
-                  : 'Anonimo para todos los lectores.',
+                  : (_reviews?.ownReview?.visibility == ReviewVisibility.private ? 'Visible solo para ti.' : 'Anonimo para todos los lectores.'),
               key: ValueKey(_draftReviewIsPublic),
               style: GoogleFonts.inter(color: _textSecondary, fontSize: 6.7),
             ),
@@ -2354,7 +2546,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                 child: SizedBox(
                   height: 36,
                   child: OutlinedButton(
-                    onPressed: _cancelReviewEditing,
+                    onPressed: _reviews?.busy == true ? null : _cancelReviewEditing,
                     style: OutlinedButton.styleFrom(
                       foregroundColor: _textPrimary,
                       side: BorderSide(color: _gold.withValues(alpha: 0.34)),
@@ -2478,7 +2670,7 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
                   border: Border.all(color: _gold.withValues(alpha: 0.28)),
                 ),
                 child: Text(
-                  _reviewIsPublic ? '🌐 Pública' : '🔒 Privada',
+                  _reviewIsPublic ? '🌐 Pública' : (_reviews?.ownReview?.visibility == ReviewVisibility.private ? '🔒 Solo yo' : '🔒 Privada'),
                   style: GoogleFonts.inter(
                     color: _textSecondary,
                     fontSize: 6,
@@ -2526,8 +2718,36 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     );
   }
 
+  Widget _buildCommunityReview(SocialReview review) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(11),
+        border: Border.all(color: _gold.withValues(alpha: 0.23)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(review.username ?? '@anonimo', style: GoogleFonts.inter(color: _accent, fontSize: 6.8, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 7),
+          Row(children: List.generate(5, (index) => Icon(index < review.rating ? Icons.star_rounded : Icons.star_border_rounded, color: _gold, size: 13))),
+          if (review.reviewText?.isNotEmpty == true) ...[
+            const SizedBox(height: 8),
+            Text(review.reviewText!, style: GoogleFonts.merriweather(color: _textPrimary, fontSize: 7.7, height: 1.45)),
+          ],
+        ],
+      ),
+    );
+  }
+
   void _openReviewEditor() {
-    if (_guardGuestAction()) return;
+    if (_guardGuestAction(requireSaved: false)) return;
+    if (_reviews?.loaded != true || _reviews?.busy == true) {
+      _commentMessage('Las reseñas aún no están disponibles.');
+      return;
+    }
 
     setState(() {
       _draftRating = _rating;
@@ -2546,29 +2766,36 @@ class _HomeBookDetailScreenState extends State<HomeBookDetailScreen> {
     });
   }
 
-  void _publishReview() {
-    if (_guardGuestAction()) return;
-
+  Future<void> _publishReview() async {
+    if (_guardGuestAction(requireSaved: false)) return;
+    final reviews = _reviews;
+    if (reviews == null || reviews.busy || !reviews.loaded) return;
     final text = _reviewController.text.trim();
+    final visibility = _draftReviewIsPublic
+        ? ReviewVisibility.public
+        : reviews.ownReview?.visibility == ReviewVisibility.private
+            ? ReviewVisibility.private
+            : ReviewVisibility.anonymous;
+    final saved = await reviews.save(rating: _draftRating, text: text, visibility: visibility);
+    if (!mounted) return;
+    if (saved) setState(() => _reviewEditorOpen = false);
+    if (reviews.error != null) _commentMessage(reviews.error!);
+  }
 
-    if (text.isEmpty || _draftRating <= 0) {
-      return;
-    }
-
-    final review = BookReview(
-      rating: _draftRating,
-      text: text,
-      isPublic: _draftReviewIsPublic,
-    );
-
-    widget.onReviewSaved(widget.book['id'] as int, review);
-
-    setState(() {
-      _rating = review.rating;
-      _reviewIsPublic = review.isPublic;
-      _reviewText = review.text;
-      _hasReview = true;
-      _reviewEditorOpen = false;
-    });
+  Future<void> _deleteReview() async {
+    if (_guardGuestAction(requireSaved: false)) return;
+    final reviews = _reviews;
+    if (reviews == null || reviews.busy) return;
+    final confirmed = await showDialog<bool>(context: context, builder: (context) => _socialDialog(context,
+      title: 'Eliminar reseña',
+      content: _socialDialogMessage('¿Quieres eliminar tu valoración y reseña?'),
+      actions: [
+        _socialDialogButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+        _socialDialogButton(primary: true, onPressed: () => Navigator.pop(context, true), child: const Text('Eliminar')),
+      ],
+    ));
+    if (!mounted || confirmed != true) return;
+    await reviews.delete();
+    if (mounted && reviews.error != null) _commentMessage(reviews.error!);
   }
 }

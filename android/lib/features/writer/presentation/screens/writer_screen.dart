@@ -1,3 +1,4 @@
+import '../../services/writer_api_repository.dart';
 import '../widgets/writer_cover.dart';
 import '../widgets/writer_header.dart';
 
@@ -183,6 +184,8 @@ class _WriterScreenState extends State<WriterScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => PublishedStoryScreen(
+          socialApi: _writerService is ApiWriterRepository ? (_writerService).api : null,
+          socialExpectedUid: _writerService is ApiWriterRepository ? (_writerService).ownerUid : null,
           story: story,
           currentUsername: widget.currentUsername,
         ),

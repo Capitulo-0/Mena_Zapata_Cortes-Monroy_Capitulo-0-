@@ -208,6 +208,7 @@ extension _ProfileWorksBadgesSection on _ProfileScreenState {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => PublishedStoryScreen(
+          socialApi: widget.socialApi,
           story: story,
           currentUsername: widget.username,
         ),
@@ -455,6 +456,9 @@ extension _ProfileWorksBadgesSection on _ProfileScreenState {
           MaterialPageRoute<void>(
             builder: (_) => HomeBookDetailScreen(
               book: bookData,
+              socialApi: widget.socialApi ?? (widget.followRepository is ApiFollowRepository
+                  ? (widget.followRepository as ApiFollowRepository).api
+                  : null),
               initialProgress: widget.progresses[book.id] ?? 0,
               readStatus: () => widget.statuses[book.id],
               readProgress: () => widget.progresses[book.id] ?? 0,
@@ -488,7 +492,11 @@ extension _ProfileWorksBadgesSection on _ProfileScreenState {
           ),
         )
         .then((_) {
-          if (mounted) _updateState(() {});
+          if (mounted) {
+            _updateState(() {
+              if (_selectedTab == 'resenas') _reloadOwnReviews();
+            });
+          }
         });
   }
 

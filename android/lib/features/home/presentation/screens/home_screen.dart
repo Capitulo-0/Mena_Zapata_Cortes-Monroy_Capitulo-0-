@@ -1,3 +1,4 @@
+import '../../../writer/services/writer_api_repository.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -525,6 +526,8 @@ class HomeScreenState extends State<HomeScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => PublishedStoryScreen(
+          socialApi: repository is ApiWriterRepository ? (repository).api : null,
+          socialExpectedUid: repository is ApiWriterRepository ? (repository).ownerUid : null,
             story: story,
             currentUsername: widget.currentUsername,
             authorUsername: publication.author,
@@ -606,6 +609,9 @@ class HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute<void>(
         builder: (_) => HomeBookDetailScreen(
           book: book,
+          socialApi: widget.catalogRepository is ApiCatalogRepository
+              ? (widget.catalogRepository as ApiCatalogRepository).api
+              : null,
           initialProgress: widget.progresses[book['id']] ?? 0,
           readStatus: () => widget.statuses[book['id']],
           readProgress: () => widget.progresses[book['id']] ?? 0,

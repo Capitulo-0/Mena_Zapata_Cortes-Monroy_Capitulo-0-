@@ -8,6 +8,10 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/network/api_client.dart';
+import '../../../social/data/social_api_repository.dart';
+import '../../../social/models/social_review.dart';
+import '../../../social/models/own_book_review_entry.dart';
 import '../../../follow/data/follow_repository.dart';
 import '../../../follow/presentation/screens/follow_lists_screen.dart';
 import '../../data/profile_demo_data.dart';
@@ -33,6 +37,8 @@ class ProfileScreen extends StatefulWidget {
   const ProfileScreen({
     super.key,
     this.onReadBook,
+    this.socialApi,
+    this.socialActive = false,
     this.followRepository,
     this.onOpenSocialProfile,
     this.readOnly = false,
@@ -69,6 +75,8 @@ class ProfileScreen extends StatefulWidget {
     required this.publishedStories,
   });
 
+  final ApiClient? socialApi;
+  final bool socialActive;
   final Future<int?> Function(BuildContext context, int bookId)? onReadBook;
 
   final FollowRepository? followRepository;
@@ -119,6 +127,34 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  Future<List<OwnBookReviewEntry>>? _realReviews;
+  String? _reviewsUid;
+
+  void _reloadOwnReviews() {
+    final api = widget.socialApi;
+    final uid = api?.auth.currentUser?.uid;
+    _reviewsUid = uid;
+    _realReviews = null;
+    if (widget.readOnly || api == null || uid == null || !widget.socialActive) return;
+    _realReviews = _fetchOwnReviews(api, uid);
+  }
+
+  Future<List<OwnBookReviewEntry>> _fetchOwnReviews(ApiClient api, String uid) async {
+    final repository = SocialApiRepository(api, expectedUid: uid);
+    final entries = await repository.listOwnBookReviews();
+    if (api.auth.currentUser?.uid != uid) throw ApiFailure.forStatus(401);
+    // Do not associate anonymous or private reviews with the profile.
+    return entries.where((entry) =>
+        entry.review.visibility == ReviewVisibility.public).toList(growable: false);
+  }
+
+  void _selectProfileTab(String tab) {
+    setState(() {
+      _selectedTab = tab;
+      if (tab == 'resenas') _reloadOwnReviews();
+    });
+  }
+
   FollowCounts? _socialCounts;
   bool _socialCountsLoading = false;
   String? _socialCountsError;
@@ -137,6 +173,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void didUpdateWidget(covariant ProfileScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.socialApi != oldWidget.socialApi ||
+        widget.socialActive != oldWidget.socialActive ||
+        widget.readOnly != oldWidget.readOnly ||
+        widget.socialApi?.auth.currentUser?.uid != _reviewsUid) {
+      if (_selectedTab == 'resenas') {
+        _reloadOwnReviews();
+      } else {
+        _realReviews = null;
+      }
+    }
     if (widget.username != oldWidget.username ||
         widget.followRepository != oldWidget.followRepository ||
         widget.readOnly != oldWidget.readOnly ||

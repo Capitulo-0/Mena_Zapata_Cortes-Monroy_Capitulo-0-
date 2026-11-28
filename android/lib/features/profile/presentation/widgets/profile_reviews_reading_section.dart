@@ -2,7 +2,49 @@ part of '../screens/profile_screen.dart';
 
 extension _ProfileReviewsReadingSection on _ProfileScreenState {
   Widget _buildReviews() {
-    final reviewEntries = widget.reviews.entries
+    if (widget.readOnly) return _buildReviewCards(widget.reviews);
+    if (_realReviews == null) return _emptyCard('Reseñas no disponibles.');
+    return FutureBuilder<List<OwnBookReviewEntry>>(
+      future: _realReviews,
+      builder: (context, snapshot) {
+        if (widget.socialApi?.auth.currentUser?.uid != _reviewsUid) {
+          return _emptyCard('Reseñas no disponibles.');
+        }
+        if (snapshot.connectionState != ConnectionState.done) {
+          return _emptyCard('Cargando reseñas…');
+        }
+        if (snapshot.hasError) {
+          return Column(children: [
+            _emptyCard('No se pudieron cargar las reseñas.'),
+            InkWell(
+              onTap: () => _updateState(_reloadOwnReviews),
+              borderRadius: BorderRadius.circular(14),
+              child: _emptyCard('Reintentar'),
+            ),
+          ]);
+        }
+        final entries = snapshot.data ?? const <OwnBookReviewEntry>[];
+        final reviews = <int, BookReview>{};
+        final books = <int, LibraryBook>{};
+        for (final entry in entries) {
+          reviews[entry.bookId] = BookReview(
+            rating: entry.review.rating, text: entry.review.reviewText ?? '',
+          );
+          books[entry.bookId] = _bookById(entry.bookId) ?? LibraryBook(
+            id: entry.bookId, title: entry.title, author: entry.author,
+            year: 0, genre: '', isbn: '', cover: entry.coverUrl ?? '',
+            synopsis: '', isBackendBook: true, googleVolumeId: entry.googleVolumeId,
+          );
+        }
+        return _buildReviewCards(reviews, reviewedBooks: books);
+      },
+    );
+  }
+
+  Widget _buildReviewCards(Map<int, BookReview> reviews, {
+    Map<int, LibraryBook> reviewedBooks = const {},
+  }) {
+    final reviewEntries = reviews.entries
         .where((entry) => entry.value.isPublic)
         .toList();
     if (reviewEntries.isEmpty) {
@@ -10,7 +52,7 @@ extension _ProfileReviewsReadingSection on _ProfileScreenState {
     }
     return Column(
       children: reviewEntries.map((entry) {
-        final book = _bookById(entry.key);
+        final book = reviewedBooks[entry.key] ?? _bookById(entry.key);
         if (book == null) return const SizedBox.shrink();
         final review = entry.value;
         return Padding(

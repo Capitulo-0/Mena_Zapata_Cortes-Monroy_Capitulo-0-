@@ -297,7 +297,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
       _bookStatuses.clear();
       _bookProgresses.clear();
       _readingRecords.clear();
-      _bookReviews.clear();
       _favoriteBookIds.clear();
       _lastAdvancedBookId = null;
       _remoteLibrary = LibraryController(widget.libraryRepository!)
@@ -723,21 +722,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
     22: 100,
   };
 
-  final Map<int, BookReview> _bookReviews = {
-    1: const BookReview(
-      rating: 5,
-      text: 'Ingeniosa, elegante y profundamente humana. Elizabeth Bennet sigue siendo una de mis protagonistas favoritas.',
-    ),
-    2: const BookReview(
-      rating: 5,
-      text: 'Una obra intensa y oscura que se queda contigo mucho después de cerrar el libro.',
-    ),
-    4: const BookReview(
-      rating: 4,
-      text: 'Más melancólica y filosófica de lo que recordaba. Una lectura gótica preciosa.',
-      isPublic: false,
-    ),
-  };
+  // Compatibility only; reviews are persisted by SocialApiRepository.
+  static const Map<int, BookReview> _bookReviews = {};
 
   final Set<int> _favoriteBookIds = <int>{};
   int _favoriteBooksGeneration = 0;
@@ -1179,9 +1165,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   void _saveBookReview(int bookId, BookReview review) {
-    setState(() {
-      _bookReviews[bookId] = review;
-    });
+    // Legacy callback retained for constructor compatibility.
   }
 
   Future<void> _toggleFavoriteBook(int bookId) async {
@@ -1633,6 +1617,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
         onOpenProfile: () => _selectTab(4),
       ),
       LibraryScreen(
+        socialApi: widget.catalogRepository is ApiCatalogRepository
+            ? (widget.catalogRepository as ApiCatalogRepository).api
+            : null,
         savedCommunityStories: _savedCommunityStories.values.toList(),
         communityWriterRepository: _communityRepository,
         onRemoveCommunityStory: _removeSavedCommunityStory,
@@ -1686,6 +1673,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
         )
       else
         ProfileScreen(
+          socialActive: selectedIndex == 4,
+          socialApi: widget.catalogRepository is ApiCatalogRepository
+              ? (widget.catalogRepository as ApiCatalogRepository).api
+              : null,
           readingMoodSource: widget.isGuest
               ? null
               : (widget.publicProfileRepository is ReadingMoodSource

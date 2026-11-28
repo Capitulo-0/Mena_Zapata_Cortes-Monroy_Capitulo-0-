@@ -82,6 +82,16 @@ extension _PublishedStoryOverview on _PublishedStoryScreenState {
             text:
                 '${widget.story.publishedChapterCount} ${widget.story.publishedChapterCount == 1 ? 'capítulo' : 'capítulos'}',
           ),
+          if (_reviews?.summary != null) ...[
+            const SizedBox(width: 12),
+            _metric(
+              context,
+              icon: Icons.star_rounded,
+              text: _reviews!.summary!.ratingCount == 0
+                  ? 'Sin valorar'
+                  : '${_reviews!.summary!.averageRating.toStringAsFixed(1)} (${_reviews!.summary!.ratingCount} valoraciones)',
+            ),
+          ],
         ],
       ),
     );

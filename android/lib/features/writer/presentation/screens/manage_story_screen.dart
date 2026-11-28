@@ -1,3 +1,4 @@
+import '../../services/writer_api_repository.dart';
 import '../widgets/writer_cover.dart';
 
 import 'package:flutter/material.dart';
@@ -136,6 +137,8 @@ class _ManageStoryScreenState extends State<ManageStoryScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => PublishedStoryScreen(
+          socialApi: _writerService is ApiWriterRepository ? (_writerService).api : null,
+          socialExpectedUid: _writerService is ApiWriterRepository ? (_writerService).ownerUid : null,
           story: _story,
           currentUsername: widget.currentUsername,
         ),
