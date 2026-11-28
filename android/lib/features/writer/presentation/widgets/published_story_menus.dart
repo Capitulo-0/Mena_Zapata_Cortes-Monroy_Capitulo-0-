@@ -4,7 +4,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
   Future<void> _showCommentMenu(
     BuildContext context,
     WriterChapter chapter,
-    _MockChapterComment comment,
+    _ChapterCommentView comment,
     Offset tapPosition,
   ) async {
     await showGeneralDialog<void>(
@@ -16,7 +16,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
       pageBuilder: (dialogContext, animation, secondaryAnimation) {
         final size = MediaQuery.of(dialogContext).size;
         const menuWidth = 160.0;
-        const menuHeight = 88.0;
+        const menuHeight = 140.0;
 
         final left = (tapPosition.dx - menuWidth).clamp(
           12.0,
@@ -60,6 +60,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (comment.active && !comment.data.ownComment)
                       _commentMenuOption(
                         dialogContext,
                         icon: Icons.flag_rounded,
@@ -67,21 +68,33 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                         color: _headingColor(dialogContext),
                         onTap: () {
                           Navigator.of(dialogContext).pop();
-                          _showCommentReportDialog(context, comment);
+                          _showCommentReportDialog(context, chapter, comment);
                         },
                       ),
+                      if (comment.active && comment.data.ownComment) ...[
+                        _commentMenuOption(dialogContext, icon: Icons.edit_outlined, label: 'Editar', color: AppColors.accent,
+                          onTap: () { Navigator.of(dialogContext).pop(); _showCommentEditor(context, chapter, editing: comment); }),
+                        _commentMenuOption(dialogContext, icon: Icons.delete_outline, label: 'Eliminar', color: AppColors.accent,
+                          onTap: () { Navigator.of(dialogContext).pop(); _deleteRealComment(context, chapter, comment); }),
+                      ],
+                      if (comment.data.canModerate && !comment.data.deleted)
                       Divider(
                         height: 1,
                         color: AppColors.gold.withValues(alpha: 0.14),
                       ),
+                      if (comment.data.canModerate && !comment.data.deleted)
                       _commentMenuOption(
                         dialogContext,
-                        icon: Icons.visibility_off_outlined,
-                        label: 'Ocultar comentario',
+                        icon: comment.data.hidden ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        label: comment.data.hidden ? 'Restaurar comentario' : 'Ocultar comentario',
                         color: AppColors.accent,
                         onTap: () {
                           Navigator.of(dialogContext).pop();
-                          _showHideCommentDialog(context, chapter, comment);
+                          if (comment.data.hidden) {
+                            _restoreRealComment(chapter, comment);
+                          } else {
+                            _showHideCommentDialog(context, chapter, comment);
+                          }
                         },
                       ),
                     ],
@@ -137,7 +150,8 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
 
   Future<void> _showCommentReportDialog(
     BuildContext context,
-    _MockChapterComment comment,
+    WriterChapter chapter,
+    _ChapterCommentView comment,
   ) async {
     final reasons = <String>[
       'Spam o contenido repetitivo',
@@ -380,10 +394,13 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                             child: FilledButton(
                               onPressed: selectedReason == null
                                   ? null
-                                  : () {
+                                  : () async {
+                                      final detail = detailController.text.trim();
+                                      final reason = detail.isEmpty ? selectedReason! : '${selectedReason!}: $detail';
                                       Navigator.of(dialogContext).pop();
-
+                                      final saved = await _controllerFor(chapter)?.report(comment.id, reason) ?? false;
                                       if (!mounted) return;
+                                      if (!saved) { _showCommentFailure(chapter); return; }
                                       _showModerationSuccess(
                                         this.context,
                                         title: 'Comentario reportado',
@@ -441,7 +458,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
   Future<void> _showHideCommentDialog(
     BuildContext context,
     WriterChapter chapter,
-    _MockChapterComment comment,
+    _ChapterCommentView comment,
   ) async {
     final shouldHide = await showGeneralDialog<bool>(
       context: context,
@@ -563,8 +580,7 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
                     const SizedBox(height: 11),
                     Text(
                       'Como autor puedes ocultarlo de tu publicación. '
-                      'El comentario no se elimina de forma permanente; '
-                      'más adelante esta acción se conectará con la moderación del backend.',
+                      'El comentario no se elimina de forma permanente.',
                       style: GoogleFonts.inter(
                         fontSize: 6.7,
                         height: 1.5,
@@ -638,9 +654,9 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
     if (shouldHide == true) {
       if (!mounted) return;
 
-      _updateState(() {
-        comment.hidden = true;
-      });
+      final saved = await _controllerFor(chapter)?.setHidden(comment.id, true) ?? false;
+      if (!mounted) return;
+      if (!saved) { _showCommentFailure(chapter); return; }
 
       _showModerationSuccess(
         this.context,
@@ -782,6 +798,64 @@ extension _PublishedStoryMenus on _PublishedStoryScreenState {
       },
     );
   }
+
+  Future<void> _restoreRealComment(WriterChapter chapter, _ChapterCommentView comment) async {
+    if (!await (_controllerFor(chapter)?.setHidden(comment.id, false) ?? Future.value(false))) {
+      _showCommentFailure(chapter);
+    }
+  }
+
+  Future<void> _deleteRealComment(BuildContext context, WriterChapter chapter, _ChapterCommentView comment) async {
+    final confirmed = await _realCommentDialog(context, title: 'Eliminar comentario', body: (ctx, close) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('¿Quieres eliminar este comentario?', style: GoogleFonts.inter(fontSize: 7, color: _textPrimaryColor(ctx))),
+        const SizedBox(height: 14),
+        Row(children: [Expanded(child: OutlinedButton(onPressed: () => close(false), child: const Text('Cancelar'))),
+          const SizedBox(width: 8), Expanded(child: FilledButton(style: FilledButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: AppColors.background), onPressed: () => close(true), child: const Text('Eliminar')))]),
+      ],
+    ));
+    if (confirmed == true && mounted) {
+      if (!await (_controllerFor(chapter)?.delete(comment.id) ?? Future.value(false))) _showCommentFailure(chapter);
+    }
+  }
+
+  Future<void> _showCommentEditor(BuildContext context, WriterChapter chapter, {_ChapterCommentView? editing, _ChapterCommentView? parent}) async {
+    final social = _controllerFor(chapter);
+    if (social == null || social.busy || _guardGuestAction()) return;
+    final input = TextEditingController(text: editing?.text ?? '');
+    var anonymous = editing?.data.anonymous ?? false;
+    String? text;
+    final saved = await _realCommentDialog(context, title: editing != null ? 'Editar comentario' : parent != null ? 'Responder' : 'Escribir comentario', body: (ctx, close) => StatefulBuilder(builder: (ctx, update) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextField(controller: input, maxLength: 220, minLines: 2, maxLines: 4,
+          style: GoogleFonts.inter(fontSize: 7, color: _textPrimaryColor(ctx)),
+          decoration: InputDecoration(isDense: true, hintText: 'Escribe tu comentario…', filled: true, fillColor: _backgroundColor(ctx),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: BorderSide(color: AppColors.gold.withValues(alpha: 0.28))),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(9), borderSide: const BorderSide(color: AppColors.gold)))),
+        Row(children: [for (final value in [false, true]) Expanded(child: InkWell(onTap: () => update(() => anonymous = value), child: AnimatedContainer(duration: const Duration(milliseconds: 180), padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: anonymous == value ? AppColors.deepOf(ctx) : Colors.transparent, borderRadius: BorderRadius.circular(6)), child: Text(value ? '🔒 Privada' : '🌐 Pública', textAlign: TextAlign.center, style: GoogleFonts.inter(fontSize: 6.4, fontWeight: FontWeight.w700, color: anonymous == value ? AppColors.backgroundOf(ctx) : _textPrimaryColor(ctx))))))]),
+        const SizedBox(height: 8),
+        Text('La opción privada se muestra como anónima.', style: GoogleFonts.inter(fontSize: 6, color: _textSecondaryColor(ctx))),
+        Row(mainAxisAlignment: MainAxisAlignment.end, children: [TextButton(onPressed: () => close(false), child: Text('Cancelar', style: GoogleFonts.inter(fontSize: 6))), FilledButton(style: FilledButton.styleFrom(backgroundColor: AppColors.accent, foregroundColor: AppColors.background), onPressed: () { final value = input.text.trim(); if (value.isNotEmpty) { text = value; close(true); } }, child: Text('Guardar', style: GoogleFonts.inter(fontSize: 7, fontWeight: FontWeight.w700)))]),
+      ],
+    )));
+    // El diálogo puede continuar animándose al cerrarse; liberar al terminar el frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) => input.dispose());
+    if (saved != true || text == null || !mounted) return;
+    final ok = editing == null ? await social.publish(text!, anonymous: anonymous, parentId: parent?.id) : await social.edit(editing.id, text!, anonymous: anonymous);
+    if (!ok) _showCommentFailure(chapter);
+  }
+
+  Future<bool?> _realCommentDialog(BuildContext context, {required String title, required Widget Function(BuildContext, ValueChanged<bool>) body}) => showGeneralDialog<bool>(
+    context: context, barrierDismissible: true, barrierLabel: title,
+    barrierColor: Colors.black.withValues(alpha: 0.60), transitionDuration: const Duration(milliseconds: 180),
+    pageBuilder: (ctx, animation, secondaryAnimation) => SafeArea(child: Center(child: Material(color: Colors.transparent,
+      child: Container(width: 310, margin: const EdgeInsets.all(18), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: _surfaceColor(ctx), borderRadius: BorderRadius.circular(13), border: Border.all(color: AppColors.gold.withValues(alpha: 0.28))),
+        child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: GoogleFonts.cinzel(fontSize: 10, fontWeight: FontWeight.w700, color: _headingColor(ctx))), const SizedBox(height: 12), body(ctx, (value) => Navigator.of(ctx).pop(value))])),
+      )))),
+    transitionBuilder: (ctx, animation, secondaryAnimation, child) => FadeTransition(opacity: animation, child: ScaleTransition(scale: Tween<double>(begin: 0.96, end: 1).animate(animation), child: child)),
+  );
 
   Widget _buildEmptyChapters(BuildContext context) {
     return Container(

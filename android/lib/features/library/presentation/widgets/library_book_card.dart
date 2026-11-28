@@ -15,6 +15,7 @@ class LibraryBookCard extends StatelessWidget {
     required this.status,
     required this.progress,
     required this.review,
+    this.reviewOnlyMe = false,
     required this.onOpen,
     required this.onStartReading,
     required this.onAdvance,
@@ -26,6 +27,7 @@ class LibraryBookCard extends StatelessWidget {
   final BookStatus status;
   final int progress;
   final BookReview? review;
+  final bool reviewOnlyMe;
   final VoidCallback onOpen;
   final VoidCallback? onRemove;
   final VoidCallback onStartReading;
@@ -149,7 +151,7 @@ class LibraryBookCard extends StatelessWidget {
                         Text(
                           review!.isPublic
                               ? 'Reseña pública'
-                              : 'Reseña privada',
+                              : reviewOnlyMe ? 'Solo yo' : 'Reseña anónima',
                           style: GoogleFonts.inter(
                             color: AppColors.textSecondaryOf(context),
                             fontSize: 7,

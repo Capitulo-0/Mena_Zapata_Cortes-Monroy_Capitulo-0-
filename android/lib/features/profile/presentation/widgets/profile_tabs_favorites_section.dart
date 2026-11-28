@@ -25,7 +25,7 @@ extension _ProfileTabsFavoritesSection on _ProfileScreenState {
           return Padding(
             padding: const EdgeInsets.only(right: 12),
             child: InkWell(
-              onTap: () => _updateState(() => _selectedTab = tab['id']!),
+              onTap: () => _selectProfileTab(tab['id']!),
               child: Container(
                 padding: const EdgeInsets.only(bottom: 6),
                 decoration: BoxDecoration(
@@ -154,6 +154,7 @@ extension _ProfileTabsFavoritesSection on _ProfileScreenState {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => PublishedStoryScreen(
+          socialApi: widget.socialApi,
           story: story,
           currentUsername: widget.username,
           initiallyFavorite: true,

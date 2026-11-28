@@ -1,3 +1,4 @@
+import '../../../writer/services/writer_api_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -8,7 +9,6 @@ import '../../../writer/services/writer_repository.dart';
 import '../../../writer/presentation/screens/published_story_screen.dart';
 import '../widgets/community_stories_section.dart';
 
-/// Catálogo de publicaciones reales. Reutiliza las mismas tarjetas de Home.
 class CommunityPublicationsScreen extends StatefulWidget {
   const CommunityPublicationsScreen({
     super.key,
@@ -100,6 +100,8 @@ class _CommunityPublicationsScreenState
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => PublishedStoryScreen(
+          socialApi: widget.repository is ApiWriterRepository ? (widget.repository as ApiWriterRepository).api : null,
+          socialExpectedUid: widget.repository is ApiWriterRepository ? (widget.repository as ApiWriterRepository).ownerUid : null,
             story: story,
             currentUsername: widget.currentUsername,
             authorUsername: publication.author,

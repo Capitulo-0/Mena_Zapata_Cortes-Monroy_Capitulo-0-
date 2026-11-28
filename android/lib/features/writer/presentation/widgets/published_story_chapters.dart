@@ -4,6 +4,7 @@ extension _PublishedStoryChapters on _PublishedStoryScreenState {
   Widget _buildChapterCard(BuildContext context, WriterChapter chapter) {
     final expanded = _expandedChapterIds.contains(chapter.id);
     final comments = _visibleComments(chapter);
+    final controller = _controllerFor(chapter);
 
     return Container(
       width: double.infinity,
@@ -91,7 +92,7 @@ extension _PublishedStoryChapters on _PublishedStoryScreenState {
           const SizedBox(height: 12),
           Divider(height: 1, color: AppColors.gold.withValues(alpha: 0.15)),
           const SizedBox(height: 3),
-          if (widget.socialActionsEnabled)
+          if (_chapterCommentsAvailable || widget.isGuest)
             InkWell(
               onTap: () => _toggleChapterComments(chapter),
               borderRadius: BorderRadius.circular(8),
@@ -134,22 +135,24 @@ extension _PublishedStoryChapters on _PublishedStoryScreenState {
             child: expanded
                 ? Padding(
                     padding: const EdgeInsets.only(top: 3),
-                    child: comments.isEmpty
-                        ? _buildNoComments(context)
-                        : Column(
-                            children: comments
-                                .map(
-                                  (comment) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 7),
-                                    child: _buildCommentCard(
-                                      context,
-                                      chapter,
-                                      comment,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                          ),
+                    child: controller == null ? const SizedBox.shrink() : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextButton(
+                          onPressed: controller.busy ? null : () => _showCommentEditor(context, chapter),
+                          child: Text('Escribir comentario', style: GoogleFonts.inter(fontSize: 7, fontWeight: FontWeight.w700, color: AppColors.accent)),
+                        ),
+                        if (controller.busy && !controller.loaded)
+                          Text('Cargando comentarios…', style: GoogleFonts.inter(fontSize: 7, color: _textSecondaryColor(context)))
+                        else if (controller.error != null)
+                          TextButton(onPressed: controller.busy ? null : () { controller.refresh(); }, child: Text('${controller.error} Reintentar', style: GoogleFonts.inter(fontSize: 7, color: AppColors.accent)))
+                        else if (comments.isEmpty && controller.loaded) _buildNoComments(context),
+                        ...comments.map((comment) => Padding(
+                          padding: const EdgeInsets.only(bottom: 7),
+                          child: _buildCommentCard(context, chapter, comment),
+                        )),
+                      ],
+                    ),
                   )
                 : const SizedBox.shrink(),
           ),

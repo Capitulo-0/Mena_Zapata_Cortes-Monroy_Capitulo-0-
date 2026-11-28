@@ -20,9 +20,10 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
   Widget _buildCommentCard(
     BuildContext context,
     WriterChapter chapter,
-    _MockChapterComment comment,
+    _ChapterCommentView comment,
   ) {
-    final controller = _replyControllers[comment.id]!;
+    final controller = _replyControllers.putIfAbsent(comment.id, TextEditingController.new);
+    final social = _controllerFor(chapter)!;
 
     return Container(
       width: double.infinity,
@@ -48,6 +49,7 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
                   ),
                 ),
               ),
+              if (comment.active || comment.data.canModerate)
               GestureDetector(
                 onTapDown: (details) {
                   if (_guardGuestAction()) return;
@@ -91,13 +93,11 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
           Row(
             children: [
               InkWell(
-                onTap: () {
+                onTap: !comment.active || social.busy ? null : () async {
                   if (_guardGuestAction()) return;
-
-                  _updateState(() {
-                    comment.liked = !comment.liked;
-                    comment.likes += comment.liked ? 1 : -1;
-                  });
+                  if (!await social.setLiked(comment.id, !comment.liked)) {
+                    _showCommentFailure(chapter);
+                  }
                 },
                 borderRadius: BorderRadius.circular(999),
                 child: Container(
@@ -141,12 +141,9 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
               ),
               const SizedBox(width: 9),
               InkWell(
-                onTap: () {
+                onTap: !comment.active || social.busy ? null : () {
                   if (_guardGuestAction()) return;
-
-                  _updateState(() {
-                    comment.replying = !comment.replying;
-                  });
+                  _updateState(() { comment.replying = !comment.replying; });
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
@@ -214,7 +211,7 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
           AnimatedSize(
             duration: const Duration(milliseconds: 220),
             curve: Curves.easeOutCubic,
-            child: comment.replying
+            child: comment.replying && comment.active
                 ? Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Container(
@@ -387,7 +384,7 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
                               ),
                               const SizedBox(width: 4),
                               FilledButton(
-                                onPressed: () {
+                                onPressed: social.busy ? null : () async {
                                   if (_guardGuestAction()) return;
 
                                   final replyText = controller.text.trim();
@@ -396,18 +393,16 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
                                     return;
                                   }
 
+                                  final saved = await social.publish(replyText,
+                                    anonymous: !comment.replyPublic, parentId: comment.id);
+                                  if (!mounted) return;
+                                  if (!saved) { _showCommentFailure(chapter); return; }
+                                  controller.clear();
                                   _updateState(() {
-                                    comment.replies.add({
-                                      'text': replyText,
-                                      'isPublic': comment.replyPublic,
-                                    });
                                     comment.replying = false;
                                     comment.repliesExpanded = true;
                                     comment.replyPublic = true;
                                   });
-
-                                  controller.clear();
-                                  _savePersistedReplies();
                                 },
                                 style: FilledButton.styleFrom(
                                   backgroundColor: AppColors.accent,
@@ -458,7 +453,7 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
                             .map(
                               (reply) => Padding(
                                 padding: const EdgeInsets.only(bottom: 6),
-                                child: _buildReplyCard(context, reply),
+                                child: _buildReplyCard(context, chapter, reply),
                               ),
                             )
                             .toList(),
@@ -472,9 +467,10 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
     );
   }
 
-  Widget _buildReplyCard(BuildContext context, Map<String, dynamic> reply) {
-    final isPublic = reply['isPublic'] as bool? ?? true;
-    final replyText = reply['text']?.toString() ?? '';
+  Widget _buildReplyCard(BuildContext context, WriterChapter chapter, _ChapterCommentView reply) {
+    final isPublic = !reply.data.anonymous;
+    final replyText = reply.text;
+    final social = _controllerFor(chapter)!;
 
     return Container(
       width: double.infinity,
@@ -496,7 +492,7 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
             children: [
               Expanded(
                 child: Text(
-                  '↳ ${isPublic ? widget.currentUsername : '@anonimo'}',
+                  '↳ ${reply.username}',
                   style: GoogleFonts.inter(
                     fontSize: 6.2,
                     fontWeight: FontWeight.w800,
@@ -504,6 +500,11 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
                   ),
                 ),
               ),
+              if (reply.active || reply.data.canModerate)
+                GestureDetector(
+                  onTapDown: (details) => _showCommentMenu(context, chapter, reply, details.globalPosition),
+                  child: Icon(Icons.more_vert_rounded, size: 14, color: _textSecondaryColor(context)),
+                ),
               Text(
                 isPublic ? '🌐 Pública' : '🔒 Privada',
                 style: GoogleFonts.inter(
@@ -523,6 +524,18 @@ extension _PublishedStoryComments on _PublishedStoryScreenState {
               color: _textPrimaryColor(context),
             ),
           ),
+          if (reply.active)
+            InkWell(
+              onTap: social.busy ? null : () async {
+                if (!await social.setLiked(reply.id, !reply.liked)) _showCommentFailure(chapter);
+              },
+              child: Text('${reply.liked ? '♥' : '♡'} ${reply.likes} Me gusta',
+                style: GoogleFonts.inter(fontSize: 6.1, color: AppColors.accent)),
+            ),
+          if (reply.active)
+            TextButton(onPressed: social.busy ? null : () => _showCommentEditor(context, chapter, parent: reply),
+              child: Text('Responder', style: GoogleFonts.inter(fontSize: 6.2, color: AppColors.accent))),
+          ...reply.replies.map((child) => _buildReplyCard(context, chapter, child)),
         ],
       ),
     );
