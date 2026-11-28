@@ -43,10 +43,10 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
   Timer? _debounce;
   bool _suggestionsPending = false;
   static const _modes = {
-    'all': 'Texto libre',
+    'users': 'Solo usuarios',
+    'books': 'Solo libros',
     'title': 'Título',
     'author': 'Autor',
-    'isbn': 'ISBN',
   };
 
   // Cada categoría conserva su carga, resultados y error independientes.
@@ -84,7 +84,10 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
   }
 
   Future<void> _loadPreview(String query, int generation) async {
-    unawaited(_loadBookPreview(query, generation));
+    if (_searchesBooks) {
+      unawaited(_loadBookPreview(query, generation));
+    }
+
     if (_searchesUsers) {
       unawaited(_loadUserPreview(query, generation));
     }
@@ -120,7 +123,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
       _suggestionsPending = true;
       _previewBooksReady = false;
     });
-    await _suggestions?.search(query, mode: _mode);
+    await _suggestions?.search(query, mode: _catalogMode);
     if (!mounted || generation != _previewGeneration || searchSubmitted) return;
     setState(() {
       _previewBooksReady = true;
@@ -132,7 +135,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     unawaited(_loadBookPreview(searchQuery.trim(), _previewGeneration));
   }
 
-  String _mode = 'all';
+  String _mode = 'books';
   @override
   void initState() {
     super.initState();
@@ -148,11 +151,21 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     if (mounted) setState(() {});
   }
 
-  bool get _bookFiltersActive =>
-      _mode != 'all' || selectedGenres.isNotEmpty || searchFilter != 'titulo';
-
   bool get _searchesUsers =>
-      widget.userSearchRepository != null && !_bookFiltersActive;
+      widget.userSearchRepository != null && _mode == 'users';
+
+  bool get _searchesBooks => _mode != 'users';
+
+  String get _catalogMode {
+    switch (_mode) {
+      case 'title':
+        return 'title';
+      case 'author':
+        return 'author';
+      default:
+        return 'all';
+    }
+  }
 
   void _submitSearch() {
     final query = searchController.text.trim();
@@ -186,7 +199,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
       if (resetFilters) {
         selectedGenres.clear();
         searchFilter = 'titulo';
-        _mode = 'all';
+        _mode = 'books';
       }
     });
     widget.onSearchModeChanged(false);
@@ -200,7 +213,17 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
     final generation = _searchGeneration;
     if (query.isEmpty) return;
 
-    unawaited(_searchBooks(query, generation));
+    if (_searchesBooks) {
+      unawaited(_searchBooks(query, generation));
+    } else {
+      setState(() {
+        _bookResults = [];
+        _booksLoading = false;
+        _bookError = null;
+        _catalog?.clear();
+      });
+    }
+
     if (_searchesUsers) {
       unawaited(_searchUsers(query, generation));
     }
@@ -220,7 +243,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
       return;
     }
     try {
-      await _catalog!.search(query, mode: _mode);
+      await _catalog!.search(query, mode: _catalogMode);
       if (!mounted || generation != _searchGeneration) return;
       setState(() {
         _bookResults = List<Map<String, dynamic>>.of(_catalog!.items);
@@ -658,12 +681,25 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                           title: mode.value,
                           value: _mode == mode.key
                               ? 'Seleccionado'
-                              : 'Buscar por ${mode.value.toLowerCase()}',
+                              : switch (mode.key) {
+                                  'users' => 'Mostrar solo perfiles',
+                                  'books' => 'Mostrar solo libros',
+                                  _ => 'Buscar por ${mode.value.toLowerCase()}',
+                                },
                           onTap: () {
                             setState(() {
                               _mode = mode.key;
-                              _queueSuggestions();
                             });
+
+                            final query = searchController.text.trim();
+
+                            if (query.isNotEmpty) {
+                              if (searchSubmitted) {
+                                _search();
+                              } else {
+                                _queueSuggestions();
+                              }
+                            }
                             setSheetState(() {});
                           },
                         ),
@@ -706,7 +742,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                     if (selectedGenres.isNotEmpty ||
                         searchFilter == 'recientes' ||
                         searchFilter == 'calificados' ||
-                        _mode != 'all') ...[
+                        _mode != 'books') ...[
                       const SizedBox(height: 10),
                       Align(
                         alignment: Alignment.centerRight,
@@ -715,7 +751,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
                             setState(() {
                               selectedGenres.clear();
                               searchFilter = 'titulo';
-                              _mode = 'all';
+                              _mode = 'books';
                               _queueSuggestions();
                             });
                             setSheetState(() {});
@@ -1032,7 +1068,7 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
 
     return Column(
       children: [
-        _buildBookPreview(query),
+        if (_searchesBooks) _buildBookPreview(query),
         if (_searchesUsers)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
@@ -1342,12 +1378,11 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
   }
 
   Widget _buildUniversalResults() {
-    return Column(
-      children: [
-        _buildSearchResults(),
-        if (_searchesUsers) _buildUserResults(),
-      ],
-    );
+    if (_searchesUsers) {
+      return _buildUserResults();
+    }
+
+    return _buildSearchResults();
   }
 
   Widget _buildSearchResults() {
@@ -1670,7 +1705,10 @@ class _HomeSearchSectionState extends State<HomeSearchSection> {
           _buildUniversalResults()
         else
           _buildSearchPreview(),
-        if (searchSubmitted && !_booksLoading && _catalog?.next != null)
+        if (searchSubmitted &&
+            _searchesBooks &&
+            !_booksLoading &&
+            _catalog?.next != null)
           TextButton(
             onPressed: _catalog!.loading ? null : _loadMoreBooks,
             child: const Text('Más resultados'),
